@@ -21,8 +21,6 @@ from megengine import jit
 from megengine.data import DataLoader, SequentialSampler
 from megengine.data.dataset import COCO as COCODataset
 from tqdm import tqdm
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 
 from official.vision.detection.tools.nms import py_cpu_nms
 
@@ -272,6 +270,9 @@ def make_parser():
 
 
 def main():
+    from pycocotools.coco import COCO
+    from pycocotools.cocoeval import COCOeval
+    
     parser = make_parser()
     args = parser.parse_args()
 
