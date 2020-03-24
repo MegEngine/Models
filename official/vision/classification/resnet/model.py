@@ -341,6 +341,9 @@ def resnet101(**kwargs):
     return ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
 
 
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/resnet152_fbaug_78582_7551aff3.pkl"
+)
 def resnet152(**kwargs):
     r"""ResNet-152 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_

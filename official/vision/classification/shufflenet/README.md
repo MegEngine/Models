@@ -8,7 +8,10 @@
 
 | 模型 | top1 acc | top5 acc |
 | --- | --- | --- |
-| shufflenet_v2_x1_0 |  69.369  |  88.793  | 
+| ShuffleNetV2 x0.5 |  60.696  |  82.190  | 
+| ShuffleNetV2 x1.0 |  69.372  |  88.764  | 
+| ShuffleNetV2 x1.5 |  72.806  |  90.792  | 
+| ShuffleNetV2 x2.0 |  75.074  |  92.278  | 
 
 用户可以通过`megengine.hub`直接加载本目录下定义好的模型，例如：
 

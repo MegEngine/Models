@@ -60,8 +60,12 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 | ResNet34 |  73.960  |  91.630  |
 | ResNet50 | 76.254 | 93.056 |
 | ResNet101 | 77.944 | 93.844 |
+| ResNet152 | 78.582 | 94.130 | 
 | ResNeXt50 32x4d | 77.592 | 93.644 |
-| ShuffleNetV2 x1.0 |  69.369  |  88.793  |
+| ShuffleNetV2 x0.5 |  60.696  |  82.190  | 
+| ShuffleNetV2 x1.0 |  69.372  |  88.764  | 
+| ShuffleNetV2 x1.5 |  72.806  |  90.792  | 
+| ShuffleNetV2 x2.0 |  75.074  |  92.278  | 
 
 
 ### 目标检测
