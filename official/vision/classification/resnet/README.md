@@ -66,7 +66,7 @@ python3 train.py --dataset-dir=/path/to/imagenet
 - `--arch`, 需要训练的网络结构，默认`resnet18`；
 - `--batch-size`，训练时每张卡采用的batch size, 默认32；
 - `--ngpus`, 训练时采用的节点/gpu数量，默认1；当使用多张gpu时，将自动切换为分布式训练模式；
-- `--save-dir`, 模型以及log存储的目录，默认`/data/models`;
+- `--save`, 模型以及log存储的目录，默认`/data/models`;
 - `--learning-rate`, 训练时的初始学习率，默认0.0125，在分布式训练下，实际学习率等于初始学习率乘以节点/gpu数；
 - `--epochs`, 训练多少个epoch，默认100；
 
