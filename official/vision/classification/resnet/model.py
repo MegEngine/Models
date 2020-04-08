@@ -367,6 +367,9 @@ def resnext50_32x4d(**kwargs):
     return ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
 
 
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/resnext101_32x8d_fbaug_79520_80efb344.pkl"
+)
 def resnext101_32x8d(**kwargs):
     r"""ResNeXt-101 32x8d model from
     `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
