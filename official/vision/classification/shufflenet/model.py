@@ -97,6 +97,8 @@ class ShuffleV2Block(M.Module):
             x_proj = old_x
             x = old_x
             return F.concat((self.branch_proj(x_proj), self.branch_main(x)), 1)
+        else:
+            raise ValueError("use strdie 1 or 2, current stride {}".format(self.stride))
 
     def channel_shuffle(self, x):
         batchsize, num_channels, height, width = x.shape

@@ -270,9 +270,10 @@ def make_parser():
 
 
 def main():
+    # pylint: disable=import-outside-toplevel
     from pycocotools.coco import COCO
     from pycocotools.cocoeval import COCOeval
-    
+
     parser = make_parser()
     args = parser.parse_args()
 

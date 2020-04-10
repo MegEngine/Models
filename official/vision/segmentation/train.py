@@ -116,9 +116,9 @@ def worker(rank, world_size, args):
     )
 
     @jit.trace(symbolic=True, opt_level=2)
-    def train_func(data, label, net=None, optimizer=None):
+    def train_func(input_data, label, net=None, optimizer=None):
         net.train()
-        pred = net(data)
+        pred = net(input_data)
         loss = softmax_cross_entropy(pred, label, ignore_index=cfg.IGNORE_INDEX)
         optimizer.backward(loss)
         return pred, loss

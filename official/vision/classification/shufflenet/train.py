@@ -116,13 +116,15 @@ def infinite_iter(loader):
     iterator = iter(loader)
     while True:
         try:
-            yield next(iterator)
+            return next(iterator)
         except StopIteration:
             iterator = iter(loader)
-            yield next(iterator)
+            return next(iterator)
 
 
 def worker(rank, world_size, args):
+    # pylint: disable=too-many-statements
+
     if world_size > 1:
         # Initialize distributed process group
         logger.info("init distributed process group {} / {}".format(rank, world_size))
@@ -308,7 +310,7 @@ def infer(model, data_queue, args):
     return objs.avg, top1.avg, top5.avg
 
 
-class AverageMeter(object):
+class AverageMeter:
     """Computes and stores the average and current value"""
 
     def __init__(self, name, fmt=":.3f"):

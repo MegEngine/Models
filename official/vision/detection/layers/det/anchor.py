@@ -129,7 +129,7 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         flatten_shift_y = F.add_axis(broad_shift_y.reshape(-1), 1)
 
         centers = F.concat(
-            [flatten_shift_x, flatten_shift_y, flatten_shift_x, flatten_shift_y,],
+            [flatten_shift_x, flatten_shift_y, flatten_shift_x, flatten_shift_y, ],
             axis=1,
         )
         if self.offset > 0:
