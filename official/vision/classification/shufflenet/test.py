@@ -137,7 +137,7 @@ def infer(model, data_queue, args, epoch=0):
     return objs.avg, top1.avg, top5.avg
 
 
-class AverageMeter(object):
+class AverageMeter:
     """Computes and stores the average and current value"""
 
     def __init__(self, name, fmt=":.3f"):

@@ -86,22 +86,22 @@ def pad_image_to_shape(img, shape, border_mode, value):
 
 def eval_single(net, img, is_flip):
     @jit.trace(symbolic=True, opt_level=2)
-    def pred_fun(data, net=None):
+    def pred_fun(input_data, net=None):
         net.eval()
-        pred = net(data)
+        pred = net(input_data)
         return pred
 
-    data = mge.tensor()
-    data.set_value(img.transpose(2, 0, 1)[np.newaxis])
-    pred = pred_fun(data, net=net)
+    input_data = mge.tensor()
+    input_data.set_value(img.transpose(2, 0, 1)[np.newaxis])
+    pred = pred_fun(input_data, net=net)
     if is_flip:
         img_flip = img[:, ::-1, :]
-        data.set_value(img_flip.transpose(2, 0, 1)[np.newaxis])
-        pred_flip = pred_fun(data, net=net)
+        input_data.set_value(img_flip.transpose(2, 0, 1)[np.newaxis])
+        pred_flip = pred_fun(input_data, net=net)
         pred = (pred + pred_flip[:, :, :, ::-1]) / 2.0
         del pred_flip
     pred = pred.numpy().squeeze().transpose(1, 2, 0)
-    del data
+    del input_data
     return pred
 
 
@@ -119,7 +119,7 @@ def evaluate(net, img):
             img_scale = cv2.resize(img, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
             val_size = (out_h, out_w)
 
-        new_h, new_w, _ = img_scale.shape
+        new_h = img_scale.shape[0]
         if (new_h <= val_size[0]) and (new_h <= val_size[1]):
             img_pad, margin = pad_image_to_shape(
                 img_scale, val_size, cv2.BORDER_CONSTANT, value=0
@@ -195,6 +195,7 @@ def compute_metric(result_list):
     """
     modified from https://github.com/YudeWang/deeplabv3plus-pytorch
     """
+    # pylint: disable=redefined-outer-name
     TP, P, T = [], [], []
     for i in range(cfg.NUM_CLASSES):
         TP.append(mp.Value("i", 0, lock=True))

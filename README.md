@@ -1,5 +1,7 @@
 # MegEngine Models
 
+![](https://github.com/MegEngine/Models/workflows/CI/badge.svg)
+
 本仓库包含了采用[MegEngine](https://github.com/megengine/megengine)实现的各种主流深度学习模型。
 
 [official](./official)目录下提供了各种经典的图像分类、目标检测、图像分割以及自然语言模型的官方实现。每个模型同时提供了模型定义、推理以及训练的代码。

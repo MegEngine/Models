@@ -113,6 +113,8 @@ def get_parameters(model):
 
 
 def worker(rank, world_size, args):
+    # pylint: disable=too-many-statements
+
     if world_size > 1:
         # Initialize distributed process group
         logger.info("init distributed process group {} / {}".format(rank, world_size))
@@ -297,7 +299,7 @@ def infer(model, data_queue, args):
     return objs.avg, top1.avg, top5.avg
 
 
-class AverageMeter(object):
+class AverageMeter:
     """Computes and stores the average and current value"""
 
     def __init__(self, name, fmt=":.3f"):
