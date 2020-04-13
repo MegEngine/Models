@@ -30,7 +30,7 @@ from typing import List
 import megengine.functional as F
 import megengine.module as M
 
-from official.vision.detection import layers
+import layers  # pylint: disable=import-error
 
 
 class FPN(M.Module):

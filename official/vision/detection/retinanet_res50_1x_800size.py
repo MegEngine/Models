@@ -6,14 +6,20 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import os
+import sys
+
 import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 import numpy as np
 from megengine import hub
 
-from official.vision.classification.resnet.model import resnet50
-from official.vision.detection import layers
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "../classification"))
+from resnet.model import resnet50  # pylint: disable=import-error,wrong-import-position
+sys.path.pop(0)
+
+import layers  # pylint: disable=import-error,wrong-import-position
 
 
 class RetinaNet(M.Module):

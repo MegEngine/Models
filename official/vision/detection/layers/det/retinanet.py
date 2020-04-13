@@ -13,7 +13,7 @@ import megengine.module as M
 
 from megengine.core import Tensor
 
-from official.vision.detection.layers import basic
+from layers import basic  # pylint: disable=import-error
 
 
 class RetinaNetHead(M.Module):

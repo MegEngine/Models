@@ -12,7 +12,7 @@ import numpy as np
 
 from megengine.core import tensor, Tensor
 
-from official.vision.detection.layers import basic
+from layers import basic  # pylint: disable=import-error
 
 
 def get_focal_loss(

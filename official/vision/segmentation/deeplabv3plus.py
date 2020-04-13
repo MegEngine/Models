@@ -6,12 +6,17 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import os
+import sys
+
 import megengine as mge
 import megengine.functional as F
 import megengine.hub as hub
 import megengine.module as M
 
-from official.vision.classification.resnet.model import Bottleneck, ResNet
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "../classification"))
+from resnet.model import Bottleneck, ResNet  # pylint: disable=import-error,wrong-import-position
+sys.path.pop(0)
 
 
 class ModifiedResNet(ResNet):
@@ -19,18 +24,18 @@ class ModifiedResNet(ResNet):
         self, block, channels, blocks, stride=1, dilate=False, norm=M.BatchNorm2d
     ):
         if dilate:
-            self.dilation *= stride
+            self.dilation *= stride  # pylint: disable=no-member
             stride = 1
 
         layers = []
         layers.append(
             block(
-                self.in_channels,
+                self.in_channels,  # pylint: disable=access-member-before-definition
                 channels,
                 stride,
                 groups=self.groups,
                 base_width=self.base_width,
-                dilation=self.dilation,
+                dilation=self.dilation,  # pylint: disable=no-member
                 norm=norm,
             )
         )
@@ -42,7 +47,7 @@ class ModifiedResNet(ResNet):
                     channels,
                     groups=self.groups,
                     base_width=self.base_width,
-                    dilation=self.dilation,
+                    dilation=self.dilation,  # pylint: disable=no-member
                     norm=norm,
                 )
             )

@@ -17,7 +17,7 @@ import numpy as np
 from megengine import jit
 from megengine.data.dataset import COCO
 
-from official.vision.detection.tools.test import DetEvaluator
+from tools.test import DetEvaluator
 
 logger = mge.get_logger(__name__)
 
@@ -47,7 +47,7 @@ def main():
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
     model = current_network.Net(current_network.Cfg(), batch_size=1)
     model.eval()
-    model.load_state_dict(mge.load(args.model)["state_dict"])
+    model.load_state_dict(mge.load(args.model))
 
     evaluator = DetEvaluator(model)
 

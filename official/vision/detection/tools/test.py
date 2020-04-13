@@ -22,7 +22,7 @@ from megengine.data import DataLoader, SequentialSampler
 from megengine.data.dataset import COCO as COCODataset
 from tqdm import tqdm
 
-from official.vision.detection.tools.nms import py_cpu_nms
+from tools.nms import py_cpu_nms
 
 logger = mge.get_logger(__name__)
 
