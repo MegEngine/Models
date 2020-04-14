@@ -19,10 +19,7 @@ import megengine.jit as jit
 import megengine.optimizer as optim
 import numpy as np
 
-from official.vision.segmentation.deeplabv3plus import (
-    DeepLabV3Plus,
-    softmax_cross_entropy,
-)
+from deeplabv3plus import DeepLabV3Plus, softmax_cross_entropy
 
 logger = mge.get_logger(__name__)
 
@@ -79,7 +76,7 @@ def main():
     world_size = args.ngpus
     logger.info("Device Count = %d", world_size)
     if world_size > 1:
-        mp.set_start_method("spawn")
+        # mp.set_start_method("spawn")
         processes = []
         for rank in range(world_size):
             p = mp.Process(target=worker, args=(rank, world_size, args))
@@ -206,7 +203,7 @@ def build_dataloader(batch_size, dataset_dir):
             ],
             order=["image", "mask"],
         ),
-        num_workers=0,
+        num_workers=4,
     )
     return train_dataloader, train_dataset.__len__()
 

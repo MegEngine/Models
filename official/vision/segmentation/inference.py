@@ -15,7 +15,7 @@ import megengine.jit as jit
 import numpy as np
 
 from megengine.utils.http_download import download_from_url
-from official.vision.segmentation.deeplabv3plus import DeepLabV3Plus
+from deeplabv3plus import DeepLabV3Plus
 
 
 class Config:
