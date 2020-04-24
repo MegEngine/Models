@@ -20,7 +20,7 @@ from tokenization import BertTokenizer
 logger = mge.get_logger(__name__)
 
 
-class DataProcessor(object):
+class DataProcessor:
     """Base class for data converters for sequence classification data sets."""
 
     def get_train_examples(self, data_dir):
@@ -46,7 +46,7 @@ class DataProcessor(object):
             return lines
 
 
-class InputFeatures(object):
+class InputFeatures:
     """A single set of features of data."""
 
     def __init__(self, input_ids, input_mask, segment_ids, label_id):
@@ -56,7 +56,7 @@ class InputFeatures(object):
         self.label_id = label_id
 
 
-class InputExample(object):
+class InputExample:
     """A single training/test example for simple sequence classification."""
 
     def __init__(self, guid, text_a, text_b=None, label=None):
@@ -195,12 +195,12 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
         label_id = label_map[example.label]
         if ex_index < 0:
             logger.info("*** Example ***")
-            logger.info("guid: %s" % (example.guid))
-            logger.info("tokens: %s" % " ".join([str(x) for x in tokens]))
-            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-            logger.info("input_mask: %s" % " ".join([str(x) for x in input_mask]))
-            logger.info("segment_ids: %s" % " ".join([str(x) for x in segment_ids]))
-            logger.info("label: %s (id = %d)" % (example.label, label_id))
+            logger.info("guid: {}".format(example.guid))
+            logger.info("tokens: {}".format(" ".join([str(x) for x in tokens])))
+            logger.info("input_ids: {}".format(" ".join([str(x) for x in input_ids])))
+            logger.info("input_mask: {}".format(" ".join([str(x) for x in input_mask])))
+            logger.info("segment_ids: {}".format(" ".join([str(x) for x in segment_ids])))
+            logger.info("label: {} (id = {})".format(example.label, label_id))
 
         features.append(
             InputFeatures(

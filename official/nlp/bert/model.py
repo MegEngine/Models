@@ -23,7 +23,6 @@ import copy
 import json
 import math
 import os
-import sys
 import urllib
 import urllib.request
 from io import open
@@ -39,7 +38,7 @@ from megengine.module.activation import Softmax
 
 
 def transpose(inp, a, b):
-    cur_shape = [i for i in range(0, len(inp.shape))]
+    cur_shape = list(range(0, len(inp.shape)))
     cur_shape[a], cur_shape[b] = cur_shape[b], cur_shape[a]
     return inp.dimshuffle(*cur_shape)
 
@@ -84,7 +83,7 @@ def gelu(x):
 ACT2FN = {"gelu": gelu, "relu": F.relu}
 
 
-class BertConfig(object):
+class BertConfig:
     """Configuration class to store the configuration of a `BertModel`.
     """
 
@@ -441,6 +440,7 @@ class BertModel(Module):
     """
 
     def __init__(self, config):
+        super().__init__()
         self.embeddings = BertEmbeddings(config)
         self.encoder = BertEncoder(config)
         self.pooler = BertPooler(config)
@@ -537,6 +537,7 @@ class BertForSequenceClassification(Module):
     """
 
     def __init__(self, config, num_labels, bert=None):
+        super().__init__()
         if bert is None:
             self.bert = BertModel(config)
         else:
@@ -577,10 +578,8 @@ MODEL_NAME = {
 
 
 def download_file(url, filename):
-    try:
-        urllib.URLopener().retrieve(url, filename)
-    except:
-        urllib.request.urlretrieve(url, filename)
+    # urllib.URLopener().retrieve(url, filename)
+    urllib.request.urlretrieve(url, filename)
 
 
 def create_hub_bert(model_name, pretrained):

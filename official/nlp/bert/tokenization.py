@@ -22,7 +22,7 @@ import os
 import unicodedata
 from io import open
 
-import megengine as megengine
+import megengine
 
 logger = megengine.get_logger(__name__)
 
@@ -54,7 +54,7 @@ def whitespace_tokenize(text):
     return tokens
 
 
-class BertTokenizer(object):
+class BertTokenizer:
     """Runs end-to-end tokenization: punctuation splitting + wordpiece"""
 
     def __init__(
@@ -150,7 +150,7 @@ class BertTokenizer(object):
         return vocab_file
 
 
-class BasicTokenizer(object):
+class BasicTokenizer:
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
     def __init__(
@@ -243,18 +243,19 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if (
-            (cp >= 0x4E00 and cp <= 0x9FFF)
-            or (cp >= 0x3400 and cp <= 0x4DBF)  #
-            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
-            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
-            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
-            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
-            or (cp >= 0xF900 and cp <= 0xFAFF)
-            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
-        ):  #
-            return True
-
+        cp_range = [
+            (0x4E00, 0x9FFF),
+            (0x3400, 0x4DBF),
+            (0x20000, 0x2A6DF),
+            (0x2A700, 0x2B73F),
+            (0x2B740, 0x2B81F),
+            (0x2B820, 0x2CEAF),
+            (0xF900, 0xFAFF),
+            (0x2F800, 0x2FA1F),
+        ]
+        for min_cp, max_cp in cp_range:
+            if min_cp <= cp <= max_cp:
+                return True
         return False
 
     def _clean_text(self, text):
@@ -271,7 +272,7 @@ class BasicTokenizer(object):
         return "".join(output)
 
 
-class WordpieceTokenizer(object):
+class WordpieceTokenizer:
     """Runs WordPiece tokenization."""
 
     def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=100):
@@ -335,7 +336,7 @@ def _is_whitespace(char):
     """Checks whether `chars` is a whitespace character."""
     # \t, \n, and \r are technically contorl characters but we treat them
     # as whitespace since they are generally considered as such.
-    if char == " " or char == "\t" or char == "\n" or char == "\r":
+    if char in (" ", "\t", "\n", "\r"):
         return True
     cat = unicodedata.category(char)
     if cat == "Zs":
@@ -347,7 +348,7 @@ def _is_control(char):
     """Checks whether `chars` is a control character."""
     # These are technically control characters but we count them as whitespace
     # characters.
-    if char == "\t" or char == "\n" or char == "\r":
+    if char in ("\t", "\n", "\r"):
         return False
     cat = unicodedata.category(char)
     if cat.startswith("C"):
@@ -363,10 +364,10 @@ def _is_punctuation(char):
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
     if (
-        (cp >= 33 and cp <= 47)
-        or (cp >= 58 and cp <= 64)
-        or (cp >= 91 and cp <= 96)
-        or (cp >= 123 and cp <= 126)
+        (33 <= cp <= 47)
+        or (58 <= cp <= 64)
+        or (91 <= cp <= 96)
+        or (123 <= cp <= 126)
     ):
         return True
     cat = unicodedata.category(char)
