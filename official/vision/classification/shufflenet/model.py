@@ -110,7 +110,7 @@ class ShuffleV2Block(M.Module):
 
 
 class ShuffleNetV2(M.Module):
-    def __init__(self, input_size=224, num_classes=1000, model_size="1.5x"):
+    def __init__(self, num_classes=1000, model_size="1.5x"):
         super(ShuffleNetV2, self).__init__()
 
         self.stage_repeats = [4, 8, 4]
