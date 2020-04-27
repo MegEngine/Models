@@ -10,7 +10,6 @@ import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 import numpy as np
-from megengine import hub
 
 from official.vision.classification.resnet.model import resnet50
 from official.vision.detection import layers
@@ -47,7 +46,7 @@ class RetinaNet(M.Module):
             for p in bottom_up.layer1.parameters():
                 p.requires_grad = False
 
-        # -------------------------- build the FPN -------------------------- #
+        # ----------------------- build the FPN ----------------------------- #
         in_channels_p6p7 = 2048
         out_channels = 256
         self.backbone = layers.FPN(
@@ -61,7 +60,7 @@ class RetinaNet(M.Module):
         backbone_shape = self.backbone.output_shape()
         feature_shapes = [backbone_shape[f] for f in self.in_features]
 
-        # -------------------------- build the RetinaNet Head -------------- #
+        # ----------------------- build the RetinaNet Head ------------------ #
         self.head = layers.RetinaNetHead(cfg, feature_shapes)
 
         self.inputs = {
@@ -199,13 +198,22 @@ class RetinaNetConfig:
         self.resnet_norm = "FrozenBN"
         self.backbone_freeze_at = 2
 
-        # ------------------------ data cfg --------------------------- #
+        # ------------------------ data cfg -------------------------- #
+        self.train_dataset = dict(
+            name="coco",
+            root="train2017",
+            ann_file="instances_train2017.json"
+        )
+        self.test_dataset = dict(
+            name="coco",
+            root="val2017",
+            ann_file="instances_val2017.json"
+        )
         self.train_image_short_size = 800
         self.train_image_max_size = 1333
         self.num_classes = 80
         self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
         self.img_std = np.array([57.375, 57.120, 58.395])
-        # self.img_std = np.array([1.0, 1.0, 1.0])
         self.reg_mean = None
         self.reg_std = np.array([0.1, 0.1, 0.2, 0.2])
 
@@ -217,7 +225,7 @@ class RetinaNetConfig:
         self.class_aware_box = False
         self.cls_prior_prob = 0.01
 
-        # ------------------------ losss cfg ------------------------- #
+        # ------------------------ loss cfg -------------------------- #
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.reg_loss_weight = 1.0 / 4.0
@@ -229,29 +237,14 @@ class RetinaNetConfig:
         self.log_interval = 20
         self.nr_images_epoch = 80000
         self.max_epoch = 18
-        self.warm_iters = 100
+        self.warm_iters = 500
         self.lr_decay_rate = 0.1
         self.lr_decay_sates = [12, 16, 17]
 
-        # ------------------------ testing cfg ------------------------- #
+        # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800
         self.test_image_max_size = 1333
         self.test_max_boxes_per_image = 100
         self.test_vis_threshold = 0.3
         self.test_cls_threshold = 0.05
         self.test_nms = 0.5
-
-
-@hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/"
-    "retinanet_d3f58dce_res50_1x_800size_36dot0.pkl"
-)
-def retinanet_res50_1x_800size(batch_size=1, **kwargs):
-    r"""ResNet-18 model from
-    `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
-    """
-    return RetinaNet(RetinaNetConfig(), batch_size=batch_size, **kwargs)
-
-
-Net = RetinaNet
-Cfg = RetinaNetConfig

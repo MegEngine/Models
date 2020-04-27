@@ -10,8 +10,7 @@ import megengine as mge
 import megengine.functional as F
 import numpy as np
 
-from megengine import _internal as mgb
-from megengine.core import Tensor, wrap_io_tensor
+from megengine.core import Tensor
 
 
 def get_padded_array_np(
@@ -86,8 +85,3 @@ def get_padded_tensor(
     else:
         raise Exception("Not supported tensor dim: %d" % ndim)
     return padded_array
-
-
-@wrap_io_tensor
-def indexing_set_one_hot(inp, axis, idx, value) -> Tensor:
-    return mgb.opr.indexing_set_one_hot(inp, axis, idx, value)

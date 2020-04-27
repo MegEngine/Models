@@ -19,9 +19,9 @@ import megengine as mge
 import numpy as np
 from megengine import jit
 from megengine.data import DataLoader, SequentialSampler
-from megengine.data.dataset import COCO as COCODataset
 from tqdm import tqdm
 
+from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.nms import py_cpu_nms
 
 logger = mge.get_logger(__name__)
@@ -119,9 +119,10 @@ class DetEvaluator:
         return dtboxes_all
 
     @staticmethod
-    def format(results):
-        all_results = []
+    def format(results, cfg):
+        dataset_class = data_mapper[cfg.test_dataset["name"]]
 
+        all_results = []
         for record in results:
             image_filename = record["image_id"]
             boxes = record["det_res"]
@@ -133,8 +134,8 @@ class DetEvaluator:
                 elem["image_id"] = image_filename
                 elem["bbox"] = box[:4].tolist()
                 elem["score"] = box[4]
-                elem["category_id"] = COCODataset.classes_originID[
-                    COCODataset.class_names[int(box[5]) + 1]
+                elem["category_id"] = dataset_class.classes_originID[
+                    dataset_class.class_names[int(box[5])]
                 ]
                 all_results.append(elem)
         return all_results
@@ -156,7 +157,7 @@ class DetEvaluator:
         for det in dets:
             bb = det[:4].astype(int)
             if is_show_label:
-                cls_id = int(det[5] + 1)
+                cls_id = int(det[5])
                 score = det[4]
 
                 if cls_id == 0:
@@ -200,10 +201,10 @@ class DetEvaluator:
                 break
 
 
-def build_dataloader(rank, world_size, data_dir):
-    val_dataset = COCODataset(
-        os.path.join(data_dir, "val2017"),
-        os.path.join(data_dir, "annotations/instances_val2017.json"),
+def build_dataloader(rank, world_size, data_dir, cfg):
+    val_dataset = data_mapper[cfg.test_dataset["name"]](
+        os.path.join(data_dir, cfg.test_dataset["name"], cfg.test_dataset["root"]),
+        os.path.join(data_dir, cfg.test_dataset["name"], cfg.test_dataset["ann_file"]),
         order=["image", "info"],
     )
     val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
@@ -236,7 +237,7 @@ def worker(
     evaluator = DetEvaluator(model)
     model.load_state_dict(mge.load(model_file)["state_dict"])
 
-    loader = build_dataloader(worker_id, total_worker, data_dir)
+    loader = build_dataloader(worker_id, total_worker, data_dir, model.cfg)
     for data_dict in loader:
         data, im_info = DetEvaluator.process_inputs(
             data_dict[0][0],
@@ -262,7 +263,7 @@ def make_parser():
     parser.add_argument(
         "-f", "--file", default="net.py", type=str, help="net description file"
     )
-    parser.add_argument("-d", "--dataset_dir", default="/data/datasets/coco", type=str)
+    parser.add_argument("-d", "--dataset_dir", default="/data/datasets", type=str)
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
     parser.add_argument("-ee", "--end_epoch", default=-1, type=int)
     parser.add_argument("-m", "--model", default=None, type=str)
@@ -312,7 +313,12 @@ def main():
         for p in procs:
             p.join()
 
-        all_results = DetEvaluator.format(results_list)
+        sys.path.insert(0, os.path.dirname(args.file))
+        current_network = importlib.import_module(
+            os.path.basename(args.file).split(".")[0]
+        )
+        cfg = current_network.Cfg()
+        all_results = DetEvaluator.format(results_list, cfg)
         json_path = "log-of-{}/epoch_{}.json".format(
             os.path.basename(args.file).split(".")[0], epoch_num
         )
@@ -323,7 +329,9 @@ def main():
         logger.info("Save to %s finished, start evaluation!", json_path)
 
         eval_gt = COCO(
-            os.path.join(args.dataset_dir, "annotations/instances_val2017.json")
+            os.path.join(
+                args.dataset_dir, cfg.test_dataset["name"], cfg.test_dataset["ann_file"]
+            )
         )
         eval_dt = eval_gt.loadRes(json_path)
         cocoEval = COCOeval(eval_gt, eval_dt, iouType="bbox")
