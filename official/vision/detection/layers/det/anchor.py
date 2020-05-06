@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2018-2019 Open-MMLab.
+# Copyright 2018-2019 Megvii Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # This file has been modified by Megvii ("Megvii Modifications").
-# All Megvii Modifications are Copyright (C) 2014-2019 Megvii Inc. All rights reserved.
+# All Megvii Modifications are Copyright (C) 2014-2020 Megvii Inc. All rights reserved.
 # ---------------------------------------------------------------------
 from abc import ABCMeta, abstractmethod
 
@@ -132,8 +132,7 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
             [flatten_shift_x, flatten_shift_y, flatten_shift_x, flatten_shift_y, ],
             axis=1,
         )
-        if self.offset > 0:
-            centers = centers + self.offset * stride
+        centers = centers + self.offset * self.base_size
         return centers
 
     def get_anchors_by_feature(self, featmap, stride):

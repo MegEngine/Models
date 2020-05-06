@@ -11,6 +11,13 @@ from .box_utils import *
 from .fpn import *
 from .loss import *
 from .retinanet import *
+from .match_anchors import *
+
+from .bbox_opr import *
+from .rpn import *
+from .rcnn import *
+from .pooler import *
+
 
 _EXCLUDE = {}
 __all__ = [k for k in globals().keys() if k not in _EXCLUDE and not k.startswith("_")]

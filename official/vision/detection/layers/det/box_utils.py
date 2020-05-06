@@ -112,7 +112,7 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
         pred_y2 = pred_ctr_y + 0.5 * pred_height
 
         pred_box = self._concat_new_axis(pred_x1, pred_y1, pred_x2, pred_y2, 2)
-        pred_box = pred_box.reshape(pred_box.shape[0], -1)
+        pred_box = pred_box.reshape(pred_box.shapeof(0), -1)
 
         return pred_box
 
@@ -161,6 +161,7 @@ def get_iou(boxes1: Tensor, boxes2: Tensor) -> Tensor:
 
 def get_clipped_box(boxes, hw):
     """ Clip the boxes into the image region."""
+    # TODO check + 1 and use clamp
     # x1 >=0
     box_x1 = F.maximum(F.minimum(boxes[:, 0::4], hw[1]), 0)
     # y1 >=0
@@ -173,3 +174,10 @@ def get_clipped_box(boxes, hw):
     clip_box = F.concat([box_x1, box_y1, box_x2, box_y2], axis=1)
 
     return clip_box
+
+
+def filter_boxes(boxes, size=0):
+    width = boxes[:, 2] - boxes[:, 0]
+    height = boxes[:, 3] - boxes[:, 1]
+    keep = (width > size) * (height > size)
+    return keep
