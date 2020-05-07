@@ -204,7 +204,7 @@ class ShuffleNetV1(Module):
 
 
 @hub.pretrained(
-    ""
+    "https://data.megengine.org.cn/models/weights/snetv1_x0_5_g3.pkl"
 )
 def shufflenet_v1_x0_5_g3(num_classes=1000):
     net = ShuffleNetV1(num_classes=num_classes, model_size="0.5x", group=3)
@@ -212,7 +212,7 @@ def shufflenet_v1_x0_5_g3(num_classes=1000):
 
 
 @hub.pretrained(
-    ""
+    "https://data.megengine.org.cn/models/weights/snetv1_x0_5_g3_int8.pkl"
 )
 def shufflenet_v1_x0_5_g3_int8(num_classes=1000):
     net = ShuffleNetV1(num_classes=num_classes, model_size="0.5x", group=3)
