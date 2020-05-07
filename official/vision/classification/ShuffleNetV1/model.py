@@ -109,7 +109,7 @@ class ShuffleV1Block(Module):
 
 
 class ShuffleNetV1(Module):
-    def __init__(self, input_size=224, num_classes=1000, model_size='2.0x', group=None):
+    def __init__(self, num_classes=1000, model_size='2.0x', group=None):
         super(ShuffleNetV1, self).__init__()
         print('model size is ', model_size)
 
