@@ -13,6 +13,7 @@ import cv2
 import megengine as mge
 import megengine.data.transform as T
 import megengine.functional as F
+import megengine.quantization as Q
 import megengine.jit as jit
 import numpy as np
 

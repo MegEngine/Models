@@ -26,7 +26,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--arch", default="resnet50", type=str)
     parser.add_argument("-m", "--model", default=None, type=str)
-    parser.add_argument("-o","--output",type=str)
+    parser.add_argument("-o", "--output", type=str)
     args = parser.parse_args()
 
     model = getattr(M, args.arch)(pretrained=(args.model is None))

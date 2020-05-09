@@ -228,7 +228,7 @@ class ResNet(M.Module):
         assert mode in ('qat', 'normal')
         self.mode = mode
         self.quant = M.QuantStub()
-        self.dequant= M.DequantStub()
+        self.dequant = M.DequantStub()
         # self.conv1 = M.Conv2d(
         #     3, self.in_channels, kernel_size=7, stride=2, padding=3, bias=False
         # )
