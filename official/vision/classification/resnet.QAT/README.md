@@ -87,8 +87,7 @@ python3 train.py --data /path/to/imagenet \
 完成浮点模型后可以进行QAT模型训练, 训练可从Float模型继续进行finetune:
 
 ```bash
-python3 train.py --data-dir=/path/to/imagenet --restore=/path/to/float_model
---mode qat
+python3 train.py --data-dir=/path/to/imagenet --restore=/path/to/float_model --mode qat
 ```
 
 更多详细的介绍可以通过运行`python3 train.py --help`查看。
@@ -115,7 +114,7 @@ python3 test.py --data=/path/to/imagenet --arch resnet50 --model /path/to/model 
 模型训练好之后，可以通过如下命令测试单张图片:
 
 ```bash
-python3 inference.py --model /path/to/model --image /path/to/image.jpg
+python3 inference.py --model /path/to/model --image /path/to/image.jpg --mode quantized
 ```
 
 使用默认的测试图片和默认的resnet18模型，将输出如下结果：
