@@ -19,7 +19,7 @@ import megengine.jit as jit
 import numpy as np
 from tqdm import tqdm
 
-from official.vision.segmentation.deeplabv3plus import DeepLabV3Plus
+from official.vision.segmentation.voc.deeplabv3plus import DeepLabV3Plus
 
 
 class Config:
@@ -184,7 +184,7 @@ def save_results(result_list, save_dir):
 
 # voc cityscapes metric
 def compute_metric(result_list):
-    class_num = cfg.MODEL_NUM_CLASSES
+    class_num = cfg.NUM_CLASSES
     hist = np.zeros((class_num, class_num))
     correct = 0
     labeled = 0
