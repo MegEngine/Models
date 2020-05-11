@@ -10,6 +10,7 @@ import argparse
 
 import cv2
 import megengine as mge
+
 import megengine.data.dataset as dataset
 import megengine.jit as jit
 import numpy as np
@@ -27,7 +28,6 @@ class Config:
 
 cfg = Config()
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_path", type=str, default=None, help="inference image")
@@ -42,7 +42,6 @@ def main():
         img = cv2.imread(args.image_path)
     pred = inference(img, net)
     cv2.imwrite("out.jpg", pred)
-
 
 def load_model(model_path):
     model_dict = mge.load(model_path)
@@ -73,7 +72,7 @@ def inference(img, net):
         pred.astype("uint8"), (oriw, orih), interpolation=cv2.INTER_NEAREST
     )
 
-    class_colors = dataset.PascalVOC.class_colors
+    class_colors = dataset.Cityscapes.class_colors
     out = np.zeros((orih, oriw, 3))
     nids = np.unique(pred)
     for t in nids:

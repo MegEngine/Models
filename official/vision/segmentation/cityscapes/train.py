@@ -35,11 +35,11 @@ class Config:
         os.makedirs(MODEL_SAVE_DIR)
 
     DATA_WORKERS = 4
-    DATA_TYPE = "trainaug"
 
     IGNORE_INDEX = 255
-    NUM_CLASSES = 21
-    IMG_SIZE = 512
+    NUM_CLASSES = 19
+    IMG_HEIGHT = 800
+	IMG_WIDTH = 800
     IMG_MEAN = [103.530, 116.280, 123.675]
     IMG_STD = [57.375, 57.120, 58.395]
 
@@ -50,7 +50,7 @@ cfg = Config()
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-d", "--dataset_dir", type=str, default="/data/datasets/VOC2012",
+        "-d", "--dataset_dir", type=str, default="/data/datasets/Cityscapes",
     )
     parser.add_argument(
         "-w", "--weight_file", type=str, default=None, help="pre-train weights file",
@@ -59,17 +59,17 @@ def main():
         "-n", "--ngpus", type=int, default=8, help="batchsize for training"
     )
     parser.add_argument(
-        "-b", "--batch_size", type=int, default=8, help="batchsize for training"
+        "-b", "--batch_size", type=int, default=4, help="batchsize for training"
     )
     parser.add_argument(
         "-lr",
         "--base_lr",
         type=float,
-        default=0.002,
+        default=0.0065,
         help="base learning rate for training",
     )
     parser.add_argument(
-        "-e", "--train_epochs", type=int, default=100, help="epochs for training"
+        "-e", "--train_epochs", type=int, default=200, help="epochs for training"
     )
     parser.add_argument(
         "-r", "--resume", type=str, default=None, help="resume model file"
@@ -116,9 +116,9 @@ def worker(rank, world_size, args):
     )
 
     @jit.trace(symbolic=True, opt_level=2)
-    def train_func(input_data, label, net=None, optimizer=None):
+    def train_func(data, label, net=None, optimizer=None):
         net.train()
-        pred = net(input_data)
+        pred = net(data)
         loss = softmax_cross_entropy(pred, label, ignore_index=cfg.IGNORE_INDEX)
         optimizer.backward(loss)
         return pred, loss
@@ -135,11 +135,11 @@ def worker(rank, world_size, args):
     max_itr = end_epoch * batch_iter
 
     image = mge.tensor(
-        np.zeros([args.batch_size, 3, cfg.IMG_SIZE, cfg.IMG_SIZE]).astype(np.float32),
+        np.zeros([args.batch_size, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH]).astype(np.float32),
         dtype="float32",
     )
     label = mge.tensor(
-        np.zeros([args.batch_size, cfg.IMG_SIZE, cfg.IMG_SIZE]).astype(np.int32),
+        np.zeros([args.batch_size, cfg.IMG_HEIGHT, cfg.IMG_WIDTH]).astype(np.int32),
         dtype="int32",
     )
     exp_name = os.path.abspath(os.path.dirname(__file__)).split("/")[-1]
@@ -185,8 +185,11 @@ def worker(rank, world_size, args):
 
 
 def build_dataloader(batch_size, dataset_dir):
-    train_dataset = dataset.PascalVOC(
-        dataset_dir, cfg.DATA_TYPE, order=["image", "mask"]
+    train_dataset = dataset.Cityscapes(
+        dataset_dir,
+        "train",
+        mode='gtFine',
+        order=["image", "mask"]
     )
     train_sampler = data.RandomSampler(train_dataset, batch_size, drop_last=True)
     train_dataloader = data.DataLoader(
@@ -197,7 +200,7 @@ def build_dataloader(batch_size, dataset_dir):
                 T.RandomHorizontalFlip(0.5),
                 T.RandomResize(scale_range=(0.5, 2)),
                 T.RandomCrop(
-                    output_size=(cfg.IMG_SIZE, cfg.IMG_SIZE),
+                    output_size=(cfg.IMG_HEIGHT, cfg.IMG_WIDTH),
                     padding_value=[0, 0, 0],
                     padding_maskvalue=255,
                 ),
