@@ -33,7 +33,7 @@ def main():
         Q.quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
     if args.model:
         state_dict = mge.load(args.model)
-        model.load_state_dict(state_dict)
+        model.load_state_dict(state_dict["state_dict"])
     if args.mode == "quantized":
         Q.quantize(model)
 
