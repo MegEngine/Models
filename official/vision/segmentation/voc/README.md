@@ -1,6 +1,6 @@
 # Semantic Segmentation
 
-本目录包含了采用MegEngine实现的经典[Deeplabv3plus](https://arxiv.org/abs/1802.02611.pdf)网络结构，同时提供了在PASCAL VOC数据集上的完整训练和测试代码。
+本目录包含了采用MegEngine实现的经典[Deeplabv3plus](https://arxiv.org/abs/1802.02611.pdf)网络结构，同时提供了在PASCAL VOC和Cityscapes数据集上的完整训练和测试代码。
 
 网络在PASCAL VOC2012验证集的性能和结果如下:
 
@@ -38,20 +38,17 @@
 3、开始训练:
 
 `train.py`的命令行参数如下：
+- `--config`，训练时采用的配置文件，VOC和Cityscapes各一份默认配置;
 - `--dataset_dir`，训练时采用的训练集存放的目录;
 - `--weight_file`，训练时采用的预训练权重;
-- `--batch-size`，训练时采用的batch size, 默认8；
 - `--ngpus`, 训练时采用的gpu数量，默认8; 当设置为1时，表示单卡训练
-- `--resume`, 是否从已训好的模型继续训练；
-- `--train_epochs`, 需要训练的epoch数量；
+- `--resume`, 是否从已训好的模型继续训练，默认`None`；
 
 ```bash
-python3 train.py --dataset_dir /path/to/VOC2012 \
+python3 train.py --config cfg_voc.py \
+                 --dataset_dir /path/to/VOC2012 \
                  --weight_file /path/to/weights.pkl \
-                 --batch_size 8 \
-                 --ngpus 8 \
-                 --train_epochs 50 \
-                 --resume /path/to/model
+                 --ngpus 8
 ```
 
 ## 如何测试
@@ -59,11 +56,13 @@ python3 train.py --dataset_dir /path/to/VOC2012 \
 模型训练好之后，可以通过如下命令测试模型在VOC2012验证集的性能：
 
 ```bash
-python3 test.py --dataset_dir /path/to/VOC2012 \
+python3 test.py --config cfg_voc.py \
+                --dataset_dir /path/to/VOC2012 \
                 --model_path /path/to/model.pkl
 ```
 
 `test.py`的命令行参数如下：
+- `--config`，训练时采用的配置文件，VOC和Cityscapes各一份默认配置;
 - `--dataset_dir`，验证时采用的验证集目录;
 - `--model_path`，载入训练好的模型；
 

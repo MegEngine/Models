@@ -20,29 +20,14 @@ import numpy as np
 from tqdm import tqdm
 
 from official.vision.segmentation.voc.deeplabv3plus import DeepLabV3Plus
-
-
-class Config:
-    DATA_WORKERS = 4
-
-    NUM_CLASSES = 21
-    VAL_HEIGHT = 512
-    VAL_WIDTH = 512
-    IMG_MEAN = [103.530, 116.280, 123.675]
-    IMG_STD = [57.375, 57.120, 58.395]
-
-    VAL_BATCHES = 1
-    VAL_MULTISCALE = [1.0]  # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
-    VAL_FLIP = False
-    VAL_SLIP = False
-    VAL_SAVE = None
-
-
-cfg = Config()
+from official.vision.segmentation.voc.utils import import_config_from_file
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-c", "--config", type=str, required=True, help="configuration file"
+    )
     parser.add_argument(
         "-d", "--dataset_dir", type=str, default="/data/datasets/VOC2012",
     )
@@ -51,7 +36,9 @@ def main():
     )
     args = parser.parse_args()
 
-    test_loader, test_size = build_dataloader(args.dataset_dir)
+    cfg = import_config_from_file(args.config)
+
+    test_loader, test_size = build_dataloader(args.dataset_dir, cfg)
     print("number of test images: %d" % (test_size))
     net = DeepLabV3Plus(class_num=cfg.NUM_CLASSES)
     model_dict = mge.load(args.model_path)
@@ -65,11 +52,11 @@ def main():
         img = sample_batched[0].squeeze()
         label = sample_batched[1].squeeze()
         im_info = sample_batched[2]
-        pred = evaluate(net, img)
+        pred = evaluate(net, img, cfg)
         result_list.append({"pred": pred, "gt": label, "name":im_info[2]})
     if cfg.VAL_SAVE:
-        save_results(result_list, cfg.VAL_SAVE)
-    compute_metric(result_list)
+        save_results(result_list, cfg.VAL_SAVE, cfg)
+    compute_metric(result_list, cfg)
 
 
 ## inference one image
@@ -108,7 +95,7 @@ def eval_single(net, img, is_flip):
     return pred
 
 
-def evaluate(net, img):
+def evaluate(net, img, cfg):
     ori_h, ori_w, _ = img.shape
     pred_all = np.zeros((ori_h, ori_w, cfg.NUM_CLASSES))
     for rate in cfg.VAL_MULTISCALE:
@@ -119,8 +106,8 @@ def evaluate(net, img):
             new_h, new_w = int(cfg.VAL_HEIGHT*rate), int(cfg.VAL_WIDTH*rate)
             val_size = (new_h, new_w)
         img_scale = cv2.resize(
-			img, (new_w, new_h), interpolation=cv2.INTER_LINEAR
-		)
+            img, (new_w, new_h), interpolation=cv2.INTER_LINEAR
+        )
 
         if (new_h <= val_size[0]) and (new_h <= val_size[1]):
             img_pad, margin = pad_image_to_shape(
@@ -173,17 +160,21 @@ def evaluate(net, img):
     return result
 
 
-def save_results(result_list, save_dir):
+def save_results(result_list, save_dir, cfg):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     for idx, sample in enumerate(result_list):
-        file_path = os.path.join(save_dir, "%s.png"%sample["name"])
+        if cfg.DATASET == "Cityscapes":
+            name = sample["name"].split('/')[-1][:-4]
+        else:
+            name = sample["name"]
+        file_path = os.path.join(save_dir, "%s.png"%name)
         cv2.imwrite(file_path, sample["pred"])
-        file_path = os.path.join(save_dir, "%s.gt.png"%sample["name"])
+        file_path = os.path.join(save_dir, "%s.gt.png"%name)
         cv2.imwrite(file_path, sample["gt"])
 
 # voc cityscapes metric
-def compute_metric(result_list):
+def compute_metric(result_list, cfg):
     class_num = cfg.NUM_CLASSES
     hist = np.zeros((class_num, class_num))
     correct = 0
@@ -206,7 +197,13 @@ def compute_metric(result_list):
     freq_IU   = (iu[freq > 0] * freq[freq >0]).sum()
     mean_pixel_acc = correct / labeled
 
-    class_names = ("background", ) + dataset.PascalVOC.class_names
+    if cfg.DATASET == "VOC2012":
+        class_names = ("background", ) + dataset.PascalVOC.class_names
+    elif cfg.DATASET == "Cityscapes":
+        class_names = dataset.Cityscapes.class_names
+    else:
+        raise ValueError("Unsupported dataset {}".format(cfg.DATASET))
+
     n = iu.size
     lines = []
     for i in range(n):
@@ -233,12 +230,23 @@ class EvalPascalVOC(dataset.PascalVOC):
             ] = i
         return label.astype(np.uint8)
 
-def build_dataloader(dataset_dir):
-    val_dataset = EvalPascalVOC(
-		dataset_dir, 
-		"val", 
-		order=["image", "mask", "info"]
-	)
+def build_dataloader(dataset_dir, cfg):
+    if cfg.DATASET == "VOC2012":
+        val_dataset = EvalPascalVOC(
+            dataset_dir,
+            "val",
+            order=["image", "mask", "info"]
+        )
+    elif cfg.DATASET == "Cityscapes":
+        val_dataset = dataset.Cityscapes(
+            dataset_dir,
+            "val",
+            mode='gtFine',
+            order=["image", "mask", "info"]
+        )
+    else:
+        raise ValueError("Unsupported dataset {}".format(cfg.DATASET))
+
     val_sampler = data.SequentialSampler(val_dataset, cfg.VAL_BATCHES)
     val_dataloader = data.DataLoader(
         val_dataset,

@@ -72,7 +72,8 @@ def inference(img, net):
         pred.astype("uint8"), (oriw, orih), interpolation=cv2.INTER_NEAREST
     )
 
-    class_colors = dataset.Cityscapes.class_colors
+    class_colors = dataset.PascalVOC.class_colors.copy()  # Cityscapes use VOC's colors
+    class_colors.insert(0, [0, 0, 0])
     out = np.zeros((orih, oriw, 3))
     nids = np.unique(pred)
     for t in nids:
