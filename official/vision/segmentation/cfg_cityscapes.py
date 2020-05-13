@@ -30,6 +30,8 @@ class Config:
     IMG_MEAN = [103.530, 116.280, 123.675]
     IMG_STD = [57.375, 57.120, 58.395]
 
+    VAL_HEIGHT = 800
+    VAL_WIDTH = 800
     VAL_BATCHES = 1
     VAL_MULTISCALE = [1.0]  # [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
     VAL_FLIP = False

@@ -10,7 +10,6 @@ import argparse
 
 import cv2
 import megengine as mge
-
 import megengine.data.dataset as dataset
 import megengine.jit as jit
 import numpy as np
