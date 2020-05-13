@@ -22,8 +22,9 @@ from megengine import jit
 from megengine import optimizer as optim
 from megengine.data import Collator, DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-from megengine.data.dataset import COCO
 from tabulate import tabulate
+
+from official.vision.detection.tools.data_mapper import data_mapper
 
 logger = mge.get_logger(__name__)
 
@@ -175,7 +176,7 @@ def make_parser():
         "-b", "--batch_size", default=2, type=int, help="batchsize for training",
     )
     parser.add_argument(
-        "-d", "--dataset_dir", default="/data/datasets/coco", type=str,
+        "-d", "--dataset_dir", default="/data/datasets", type=str,
     )
 
     return parser
@@ -232,9 +233,9 @@ def main():
 
 
 def build_dataloader(batch_size, data_dir, cfg):
-    train_dataset = COCO(
-        os.path.join(data_dir, "train2017"),
-        os.path.join(data_dir, "annotations/instances_train2017.json"),
+    train_dataset = data_mapper[cfg.train_dataset["name"]](
+        os.path.join(data_dir, cfg.train_dataset["name"], cfg.train_dataset["root"]),
+        os.path.join(data_dir, cfg.train_dataset["name"], cfg.train_dataset["ann_file"]),
         remove_images_without_annotations=True,
         order=["image", "boxes", "boxes_category", "info"],
     )

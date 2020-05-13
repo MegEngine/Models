@@ -28,7 +28,7 @@ class RetinaNetHead(M.Module):
         num_classes = cfg.num_classes
         num_convs = 4
         prior_prob = cfg.cls_prior_prob
-        num_anchors = [9, 9, 9, 9, 9]
+        num_anchors = [len(cfg.anchor_ratios) * len(cfg.anchor_scales)] * 5
 
         assert (
             len(set(num_anchors)) == 1
