@@ -19,11 +19,11 @@ import megengine.jit as jit
 import megengine.optimizer as optim
 import numpy as np
 
-from official.vision.segmentation.voc.deeplabv3plus import (
+from official.vision.segmentation.deeplabv3plus import (
     DeepLabV3Plus,
     softmax_cross_entropy,
 )
-from official.vision.segmentation.voc.utils import import_config_from_file
+from official.vision.segmentation.utils import import_config_from_file
 
 logger = mge.get_logger(__name__)
 

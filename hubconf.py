@@ -34,7 +34,7 @@ from official.vision.detection.retinanet_res50_1x_800size import (
 )
 from official.vision.detection.tools.test import DetEvaluator
 
-from official.vision.segmentation.voc.deeplabv3plus import (
+from official.vision.segmentation.deeplabv3plus import (
     deeplabv3plus_res101,
     DeepLabV3Plus,
 )

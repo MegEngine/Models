@@ -16,7 +16,7 @@ import megengine.jit as jit
 import numpy as np
 
 from megengine.utils.http_download import download_from_url
-from official.vision.segmentation.cityscapes.deeplabv3plus import DeepLabV3Plus
+from official.vision.segmentation.deeplabv3plus import DeepLabV3Plus
 
 
 class Config:
@@ -30,8 +30,8 @@ cfg = Config()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_path", type=str, default=None, help="inference image")
-    parser.add_argument("--model_path", type=str, default=None, help="inference model")
+    parser.add_argument("-i", "--image_path", type=str, default=None, help="inference image")
+    parser.add_argument("-m", "--model_path", type=str, default=None, help="inference model")
     args = parser.parse_args()
 
     net = load_model(args.model_path)
@@ -72,8 +72,8 @@ def inference(img, net):
         pred.astype("uint8"), (oriw, orih), interpolation=cv2.INTER_NEAREST
     )
 
-    class_colors = dataset.PascalVOC.class_colors.copy()
-    class_colors.insert(0, [0,0,0])
+    class_colors = dataset.PascalVOC.class_colors.copy()  # Cityscapes use VOC's colors
+    class_colors.insert(0, [0, 0, 0])
     out = np.zeros((orih, oriw, 3))
     nids = np.unique(pred)
     for t in nids:

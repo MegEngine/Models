@@ -19,8 +19,8 @@ import megengine.jit as jit
 import numpy as np
 from tqdm import tqdm
 
-from official.vision.segmentation.voc.deeplabv3plus import DeepLabV3Plus
-from official.vision.segmentation.voc.utils import import_config_from_file
+from official.vision.segmentation.deeplabv3plus import DeepLabV3Plus
+from official.vision.segmentation.utils import import_config_from_file
 
 
 def main():
