@@ -67,12 +67,7 @@ def build_dataloader(rank, world_size, data_root, ann_file):
     return val_dataloader
 
 
-def find_results(func, img, bbox, info):
-    outs = func()
-    outs = outs.numpy()
-    pred = outs[0]
-    fliped_pred = outs[1][cfg.keypoint_flip_order][:, :, ::-1]
-    pred = (pred + fliped_pred) / 2
+def find_keypoints(pred, bbox):
 
     heat_prob = pred.copy()
     heat_prob = heat_prob / cfg.heat_range + 1
@@ -82,7 +77,6 @@ def find_results(func, img, bbox, info):
         pred.shape[0], pred.shape[1] + 2*border, pred.shape[2] + 2*border),
         dtype=np.float32)
     pred_aug[:, border:-border, border:-border] = pred.copy()
-    
     for i in range(pred_aug.shape[0]):
         pred_aug[i] = cv2.GaussianBlur(
             pred_aug[i], (cfg.test_gaussian_kernel, cfg.test_gaussian_kernel), 0)
@@ -152,6 +146,18 @@ def find_results(func, img, bbox, info):
         results[i, 0] = x
         results[i, 1] = y
         results[i, 2] = skeleton_score
+    
+    return results
+
+
+def find_results(func, img, bbox, info):
+    outs = func()
+    outs = outs.numpy()
+    pred = outs[0]
+    fliped_pred = outs[1][cfg.keypoint_flip_order][:, :, ::-1]
+    pred = (pred + fliped_pred) / 2
+
+    results = find_keypoints(pred,bbox)
 
     final_score = float(results[:, -1].mean() * info[-1])
     image_id = int(info[-2])
