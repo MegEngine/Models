@@ -57,8 +57,8 @@ def main():
         "--c", default=None, type=str
     )
 
-    parser.add_argument("-b", "--batch-size", default=128, type=int)
-    parser.add_argument("--initial_lr", default=1e-3, type=float)
+    parser.add_argument("-b", "--batch-size", default=64, type=int)
+    parser.add_argument("--initial_lr", default=5e-4, type=float)
     parser.add_argument("--lr_ratio", default=0.1, type=float)
     parser.add_argument("--warm_epochs", default=1, type=float)
     parser.add_argument("--weight-decay", default=0, type=float)
