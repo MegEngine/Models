@@ -24,7 +24,7 @@ class Config():
     keypoint_num = 17
     heat_kernel = 1.5
     heat_thre = 1e-2
-    heat_range = 1
+    heat_range = 255
 
    
 ##################### augumentation #####################################
