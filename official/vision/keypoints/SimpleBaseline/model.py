@@ -84,26 +84,26 @@ class SimpleBaseline(M.Module):
         return pred
         
 
-# @hub.pretrained(
-#     "https://data.megengine.org.cn/models/weights/simplebaeline_res50_256x192.pkl"
-# )
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/simplebaseline50_256x192_0_255_71_2.pkl"
+)
 def SimpleBaseline_Res50(**kwargs): 
     cfg = Config()
     model = SimpleBaseline(backbone='resnet50', cfg=cfg, **kwargs)
     return model
 
-# @hub.pretrained(
-#     "https://data.megengine.org.cn/models/weights/simplebaeline_res101_256x192.pkl"
-# )
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/simplebaseline101_256x192_0_255_72_3.pkl"
+)
 def SimpleBaseline_Res101(**kwargs):
     
     cfg = Config()
     model = SimpleBaseline(backbone='resnet101', cfg=cfg, **kwargs)
     return model
 
-# @hub.pretrained(
-#     "https://data.megengine.org.cn/models/weights/simplebaeline_res152_256x192.pkl"
-# )
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/simplebaseline152_256x192_0_255_72_3.pkl"
+)
 def SimpleBaseline_Res152(**kwargs):
     
     cfg = Config()
