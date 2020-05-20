@@ -12,8 +12,6 @@ import numpy as np
 
 from megengine.core import tensor, Tensor
 
-from official.vision.detection.layers import basic
-
 
 def get_focal_loss(
     score: Tensor,
@@ -51,28 +49,19 @@ def get_focal_loss(
     Returns:
         the calculated focal loss.
     """
-    mask = 1 - (label == ignore_label)
-    valid_label = label * mask
+    class_range = F.arange(1, score.shape[2] + 1)
 
-    score_shp = score.shape
-    zero_mat = mge.zeros(
-        F.concat([score_shp[0], score_shp[1], score_shp[2] + 1], axis=0),
-        dtype=np.float32,
-    )
-    one_mat = mge.ones(
-        F.concat([score_shp[0], score_shp[1], tensor(1)], axis=0), dtype=np.float32,
-    )
+    label = F.add_axis(label, axis=2)
+    pos_part = (1 - score) ** gamma * F.log(score)
+    neg_part = score ** gamma * F.log(1 - score)
 
-    one_hot = basic.indexing_set_one_hot(
-        zero_mat, 2, valid_label.astype(np.int32), one_mat
-    )[:, :, 1:]
-    pos_part = F.power(1 - score, gamma) * one_hot * F.log(score)
-    neg_part = F.power(score, gamma) * (1 - one_hot) * F.log(1 - score)
-    loss = -(alpha * pos_part + (1 - alpha) * neg_part).sum(axis=2) * mask
+    pos_loss = -(label == class_range) * pos_part * alpha
+    neg_loss = -(label != class_range) * (label != ignore_label) * neg_part * (1 - alpha)
+    loss = pos_loss + neg_loss
 
     if norm_type == "fg":
-        positive_mask = label > background
-        return loss.sum() / F.maximum(positive_mask.sum(), 1)
+        fg_mask = (label != background) * (label != ignore_label)
+        return loss.sum() / F.maximum(fg_mask.sum(), 1)
     elif norm_type == "none":
         return loss.sum()
     else:
@@ -117,8 +106,7 @@ def get_smooth_l1_loss(
     gt_bbox = gt_bbox.reshape(-1, 4)
     label = label.reshape(-1)
 
-    valid_mask = 1 - (label == ignore_label)
-    fg_mask = (1 - (label == background)) * valid_mask
+    fg_mask = (label != background) * (label != ignore_label)
 
     losses = get_smooth_l1_base(pred_bbox, gt_bbox, sigma, is_fix=fix_smooth_l1)
     if norm_type == "fg":
@@ -154,19 +142,16 @@ def get_smooth_l1_base(
         cond_point = sigma
         x = pred_bbox - gt_bbox
         abs_x = F.abs(x)
-        in_mask = abs_x < cond_point
-        out_mask = 1 - in_mask
-        in_loss = 0.5 * (x ** 2)
-        out_loss = sigma * abs_x - 0.5 * (sigma ** 2)
-        loss = in_loss * in_mask + out_loss * out_mask
+        in_loss = 0.5 * x ** 2
+        out_loss = sigma * abs_x - 0.5 * sigma ** 2
     else:
         sigma2 = sigma ** 2
         cond_point = 1 / sigma2
         x = pred_bbox - gt_bbox
         abs_x = F.abs(x)
-        in_mask = abs_x < cond_point
-        out_mask = 1 - in_mask
-        in_loss = 0.5 * (sigma * x) ** 2
+        in_loss = 0.5 * x ** 2 * sigma2
         out_loss = abs_x - 0.5 / sigma2
-        loss = in_loss * in_mask + out_loss * out_mask
+    in_mask = abs_x < cond_point
+    out_mask = 1 - in_mask
+    loss = in_loss * in_mask + out_loss * out_mask
     return loss
