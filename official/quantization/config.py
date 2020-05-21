@@ -24,7 +24,7 @@ class ResnetConfig:
 def get_config(arch: str):
     if "resne" in arch:  # both resnet and resnext
         return ResnetConfig()
-    elif "shufflenet" in arch:
+    elif "shufflenet" in arch or "mobilenet" in arch:
         return ShufflenetConfig()
     else:
         raise ValueError("config for {} not exists".format(arch))
@@ -56,7 +56,7 @@ class ResnetFinetuneConfig:
 def get_finetune_config(arch: str):
     if "resne" in arch:  # both resnet and resnext
         return ResnetFinetuneConfig()
-    elif "shufflenet" in arch:
+    elif "shufflenet" in arch or "mobilenet" in arch:
         return ShufflenetFinetuneConfig()
     else:
         raise ValueError("config for {} not exists".format(arch))

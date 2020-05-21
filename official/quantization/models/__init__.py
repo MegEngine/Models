@@ -9,3 +9,4 @@
 
 from .resnet import *
 from .shufflenet import *
+from .mobilenet_v2 import *
