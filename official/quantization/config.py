@@ -15,6 +15,7 @@ class ResnetConfig:
     MOMENTUM = 0.9
     WEIGHT_DECAY = 1e-4
     EPOCHS = 90
+    # EPOCHS = 1
 
     SCHEDULER = "Multistep"
     SCHEDULER_STEPS = [30, 60, 80]

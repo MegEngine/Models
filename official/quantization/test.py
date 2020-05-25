@@ -74,7 +74,7 @@ def main():
         help="pretrained model to finetune")
 
     parser.add_argument("-m", "--mode", default="qat", type=str,
-        choices=["normal", "qat", "quantized"],
+        choices=["normal", "qat", "quantized", "calibration"],
         help="Quantization Mode\n"
              "normal: no quantization, using float32\n"
              "qat: quantization aware training, simulate int8\n"
@@ -122,20 +122,6 @@ def worker(rank, world_size, args):
             dev=rank,
         )
 
-    model = models.__dict__[args.arch]()
-
-    if args.mode != "normal":
-        Q.quantize_qat(model, Q.ema_fakequant_qconfig)
-
-    if args.checkpoint:
-        logger.info("Load pretrained weights from %s", args.checkpoint)
-        ckpt = mge.load(args.checkpoint)
-        ckpt = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
-        model.load_state_dict(ckpt, strict=False)
-
-    if args.mode == "quantized":
-        Q.quantize(model)
-
     # Define valid graph
     @jit.trace(symbolic=True)
     def valid_func(image, label):
@@ -169,9 +155,29 @@ def worker(rank, world_size, args):
         num_workers=args.workers,
     )
 
+    model = models.__dict__[args.arch]()
+
+
+    if args.mode != "normal" and args.mode != 'calibration':
+        Q.quantize_qat(model, Q.ema_fakequant_qconfig)
+
+    if args.checkpoint:
+        logger.info("Load pretrained weights from %s", args.checkpoint)
+        ckpt = mge.load(args.checkpoint)
+        ckpt = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
+        model.load_state_dict(ckpt, strict=False)
+
+    if args.mode == "calibration":
+        Q.quantize_calibration(model, qconfig=Q.calibration_qconfig)
+        Q.enable_observer(model)
+        _, valid_acc, valid_acc5 = infer(valid_func, valid_queue, args)
+
+    if args.mode == "quantized" or args.mode == "calibration":
+        Q.quantize(model)
+
+
     _, valid_acc, valid_acc5 = infer(valid_func, valid_queue, args)
     logger.info("TEST %f, %f", valid_acc, valid_acc5)
-
 
 def infer(model, data_queue, args):
     objs = AverageMeter("Loss")
@@ -196,6 +202,9 @@ def infer(model, data_queue, args):
         if step % args.report_freq == 0 and dist.get_rank() == 0:
             logger.info("Step %d, %s %s %s %s",
                         step, objs, top1, top5, total_time)
+
+        # if step == 50:
+        #     break
 
     return objs.avg, top1.avg, top5.avg
 
