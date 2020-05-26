@@ -44,7 +44,6 @@ import megengine.functional as F
 import megengine.jit as jit
 import megengine.quantization as Q
 import numpy as np
-from tqdm import tqdm
 
 import models
 
@@ -54,7 +53,6 @@ logger = mge.get_logger(__name__)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--arch", default="resnet18", type=str)
-        # choices=["resnet18", "shufflenet_v1_x1_0_g3"])
     parser.add_argument("-c", "--checkpoint", default=None, type=str)
     parser.add_argument("-i", "--image", default=None, type=str)
 
@@ -64,6 +62,8 @@ def main():
              "normal: no quantization, using float32\n"
              "qat: quantization aware training, simulate int8\n"
              "quantized: convert mode to int8 quantized, inference only")
+    parser.add_argument("--dump", action="store_true",
+        help="Dump quantized model")
     args = parser.parse_args()
 
     if args.mode == "quantized":
@@ -109,11 +109,17 @@ def main():
 
     if args.mode == "normal":
         processed_img = processed_img.astype("float32")
+    elif args.mode == "quantized":
+        processed_img = processed_img.astype("int8")
 
-    # for _ in tqdm(range(100)):
     probs = infer_func(processed_img)
 
     top_probs, classes = F.top_k(probs, k=5, descending=True)
+
+    if args.dump:
+        output_file = ".".join([args.arch, args.mode, "megengine"])
+        logger.info("Dump to {}".format(output_file))
+        infer_func.dump(output_file, arg_names=["data"])
 
     with open("../assets/imagenet_class_info.json") as fp:
         imagenet_class_index = json.load(fp)

@@ -2,7 +2,7 @@ class ShufflenetConfig:
     BATCH_SIZE = 128
     LEARNING_RATE = 0.0625
     MOMENTUM = 0.9
-    WEIGHT_DECAY = lambda n, p: \
+    WEIGHT_DECAY = lambda self, n, p: \
         4e-5 if n.find("weight") >= 0 and len(p.shape) > 1 else 0
     EPOCHS = 240
 
@@ -31,10 +31,10 @@ def get_config(arch: str):
 
 
 class ShufflenetFinetuneConfig:
-    BATCH_SIZE = 128
-    LEARNING_RATE = 0.000625
+    BATCH_SIZE = 128 // 2
+    LEARNING_RATE = 0.00625 / 2
     MOMENTUM = 0.9
-    WEIGHT_DECAY = lambda n, p: \
+    WEIGHT_DECAY = lambda self, n, p: \
         4e-5 if n.find("weight") >= 0 and len(p.shape) > 1 else 0
     EPOCHS = 24
 

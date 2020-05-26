@@ -66,8 +66,7 @@ logger = mge.get_logger(__name__)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--arch", default="resnet18", type=str,
-        choices=["resnet18", "shufflenet_v1_x1_0_g3"])
+    parser.add_argument("-a", "--arch", default="resnet18", type=str)
     parser.add_argument("-d", "--data", default=None, type=str)
     parser.add_argument("-s", "--save", default="/data/models", type=str)
     parser.add_argument("-c", "--checkpoint", default=None, type=str,

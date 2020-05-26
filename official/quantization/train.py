@@ -60,8 +60,7 @@ logger = mge.get_logger(__name__)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--arch", default="resnet18", type=str,
-        choices=["resnet18", "shufflenet_v1_x1_0_g3"])
+    parser.add_argument("-a", "--arch", default="resnet18", type=str)
     parser.add_argument("-d", "--data", default=None, type=str)
     parser.add_argument("-s", "--save", default="/data/models", type=str)
 
@@ -101,7 +100,7 @@ def get_parameters(model, cfg):
 
     groups = collections.defaultdict(list)  # weight_decay -> List[param]
     for pname, p in model.named_parameters(requires_grad=True):
-        wd = cfg.WEIGHT_DECAT(pname, p)
+        wd = cfg.WEIGHT_DECAY(pname, p)
         groups[wd].append(p)
     groups = [
         {"params": params, "weight_decay": wd}

@@ -60,8 +60,7 @@ logger = mge.get_logger(__name__)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--arch", default="resnet18", type=str,
-        choices=["resnet18", "shufflenet_v1_x1_0_g3"])
+    parser.add_argument("-a", "--arch", default="resnet18", type=str)
     parser.add_argument("-d", "--data", default=None, type=str)
     parser.add_argument("-s", "--save", default="/data/models", type=str)
     parser.add_argument("-c", "--checkpoint", default=None, type=str,
@@ -103,7 +102,7 @@ def get_parameters(model, cfg):
 
     groups = collections.defaultdict(list)  # weight_decay -> List[param]
     for pname, p in model.named_parameters(requires_grad=True):
-        wd = cfg.WEIGHT_DECAT(pname, p)
+        wd = cfg.WEIGHT_DECAY(pname, p)
         groups[wd].append(p)
     groups = [
         {"params": params, "weight_decay": wd}
@@ -242,7 +241,7 @@ def worker(rank, world_size, args):
     total_time = AverageMeter("Time")
 
     t = time.time()
-    for step in range(0, 1):
+    for step in range(0, total_steps):
         # Linear learning rate decay
         epoch = step // steps_per_epoch
         learning_rate = adjust_learning_rate(step, epoch)
@@ -278,7 +277,7 @@ def worker(rank, world_size, args):
                 {"step": step, "state_dict": model.state_dict()},
                 os.path.join(save_dir, "checkpoint.pkl"),
             )
-        if step % 10000 == 0 and step != 0:
+        if False:#step % 10000 == 0 and step != 0:
             _, valid_acc, valid_acc5 = infer(valid_func, valid_queue, args)
             logger.info("TEST %06d %f, %f", step, valid_acc, valid_acc5)
 
