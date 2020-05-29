@@ -28,10 +28,10 @@ from official.nlp.bert.model import (
     wwm_cased_L_24_H_1024_A_16,
 )
 
-from official.vision.detection.retinanet_res50_1x_800size import (
-    retinanet_res50_1x_800size,
-    RetinaNet,
+from official.vision.detection.retinanet_res50_coco_1x_800size import (
+    retinanet_res50_coco_1x_800size,
 )
+from official.vision.detection.models import RetinaNet
 from official.vision.detection.tools.test import DetEvaluator
 
 from official.vision.segmentation.deeplabv3plus import (
