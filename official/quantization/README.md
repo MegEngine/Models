@@ -54,25 +54,25 @@ inference_func.dump(...)
 ## Step 1. Train a fp32 model
 
 ```
-python3 train.py -a resnet18 --mode normal
+python3 train.py -a resnet18 -d /path/to/imagenet --mode normal
 ```
 
 ## Step 2. Finetune fp32 model with quantization aware training(QAT)
 
 ```
-python3 finetune.py -a resnet18 --checkpoint /path/to/resnet18.normal/checkpoint.pkl --mode qat
+python3 finetune.py -a resnet18 -d /path/to/imagenet --checkpoint /path/to/resnet18.normal/checkpoint.pkl --mode qat
 ```
 
 ## Step 3. Test QAT model on ImageNet Testset
 
 ```
-python3 test.py -a resnet18 --checkpoint /path/to/resnet18.qat/checkpoint.pkl --mode qat
+python3 test.py -a resnet18 -d /path/to/imagenet --checkpoint /path/to/resnet18.qat/checkpoint.pkl --mode qat
 ```
 
 or testing in quantized mode, which uses only cpu for inference and takes longer time
 
 ```
-python3 test.py -a resnet18 --checkpoint /path/to/resnet18.qat/checkpoint.pkl --mode quantized -n 1
+python3 test.py -a resnet18 -d /path/to/imagenet --checkpoint /path/to/resnet18.qat/checkpoint.pkl --mode quantized -n 1
 ```
 
 ## Step 4. Inference and dump

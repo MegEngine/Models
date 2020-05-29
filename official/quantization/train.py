@@ -26,7 +26,6 @@ import megengine.quantization as Q
 
 import config
 import models
-from imagenet_nori_dataset import ImageNetNoriDataset
 
 logger = mge.get_logger(__name__)
 
@@ -150,7 +149,7 @@ def worker(rank, world_size, args):
 
     # Build train and valid datasets
     logger.info("preparing dataset..")
-    train_dataset = ImageNetNoriDataset("/data/imagenet.train.nori.list") #data.dataset.ImageNet(args.data, train=True)
+    train_dataset = data.dataset.ImageNet(args.data, train=True)
     train_sampler = data.Infinite(data.RandomSampler(
         train_dataset, batch_size=cfg.BATCH_SIZE, drop_last=True
     ))
@@ -169,7 +168,7 @@ def worker(rank, world_size, args):
         num_workers=args.workers,
     )
     train_queue = iter(train_queue)
-    valid_dataset = ImageNetNoriDataset("/data/imagenet.val.nori.list")#data.dataset.ImageNet(args.data, train=False)
+    valid_dataset = data.dataset.ImageNet(args.data, train=False)
     valid_sampler = data.SequentialSampler(
         valid_dataset, batch_size=100, drop_last=False
     )
