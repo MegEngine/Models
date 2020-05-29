@@ -168,7 +168,7 @@ def worker(rank, world_size, args):
             [
                 T.RandomResizedCrop(224),
                 T.RandomHorizontalFlip(),
-                T.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
+                cfg.COLOR_JITTOR,
                 T.Normalize(mean=128),
                 T.ToMode("CHW"),
             ]

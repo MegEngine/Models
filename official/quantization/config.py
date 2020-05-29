@@ -9,6 +9,9 @@
 """
 Configurations to train/finetune quantized classification models
 """
+import megengine.data.transform as T
+
+
 class ShufflenetConfig:
     BATCH_SIZE = 128
     LEARNING_RATE = 0.0625
@@ -18,6 +21,7 @@ class ShufflenetConfig:
     EPOCHS = 240
 
     SCHEDULER = "Linear"
+    COLOR_JITTOR = T.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4)
 
 
 class ResnetConfig:
@@ -30,6 +34,7 @@ class ResnetConfig:
     SCHEDULER = "Multistep"
     SCHEDULER_STEPS = [30, 60, 80]
     SCHEDULER_GAMMA = 0.1
+    COLOR_JITTOR = T.PseudoTransform()  # disable colorjittor
 
 
 def get_config(arch: str):
@@ -41,23 +46,16 @@ def get_config(arch: str):
         raise ValueError("config for {} not exists".format(arch))
 
 
-class ShufflenetFinetuneConfig:
+class ShufflenetFinetuneConfig(ShufflenetConfig):
     BATCH_SIZE = 128 // 2
     LEARNING_RATE = 0.03125
-    MOMENTUM = 0.9
-    WEIGHT_DECAY = lambda self, n, p: \
-        4e-5 if n.find("weight") >= 0 and len(p.shape) > 1 else 0
     EPOCHS = 120
 
-    SCHEDULER = "Linear"
 
-
-class ResnetFinetuneConfig:
+class ResnetFinetuneConfig(ResnetConfig):
     BATCH_SIZE = 32
     LEARNING_RATE = 0.000125
-    MOMENTUM = 0.9
-    WEIGHT_DECAY = 1e-4
-    EPOCHS = 9
+    EPOCHS = 12
 
     SCHEDULER = "Multistep"
     SCHEDULER_STEPS = [6,]
