@@ -13,8 +13,6 @@
 
 量化模型使用时，统一读取0-255的uint8图片，减去128的均值，转化为int8，输入网络。
 
-# Brief Introduction to MegEngine.quantization
-
 ## Quantization Aware Training (QAT)
 
 ```python
@@ -49,7 +47,7 @@ def inference_func(x):
 inference_func.dump(...)
 ```
 
-# HOWTO
+# HOWTO use this codebase
 
 ## Step 1. Train a fp32 model
 
