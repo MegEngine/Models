@@ -1,27 +1,4 @@
 # -*- coding: utf-8 -*-
-# MIT License
-#
-# Copyright (c) 2019 Megvii Technology
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
-# ------------------------------------------------------------------------------
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
 # Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -29,10 +6,6 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#
-# This file has been modified by Megvii ("Megvii Modifications").
-# All Megvii Modifications are Copyright (C) 2014-2019 Megvii Inc. All rights reserved.
-# ------------------------------------------------------------------------------
 """Finetune a pretrained fp32 with int8 quantization aware training(QAT)"""
 import argparse
 import collections
@@ -53,15 +26,13 @@ import megengine.quantization as Q
 
 import config
 import models
-from imagenet_nori_dataset import ImageNetNoriDataset
 
 logger = mge.get_logger(__name__)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--arch", default="resnet18", type=str,
-        choices=["resnet18", "shufflenet_v1_x1_0_g3"])
+    parser.add_argument("-a", "--arch", default="resnet18", type=str)
     parser.add_argument("-d", "--data", default=None, type=str)
     parser.add_argument("-s", "--save", default="/data/models", type=str)
     parser.add_argument("-c", "--checkpoint", default=None, type=str,
@@ -103,7 +74,7 @@ def get_parameters(model, cfg):
 
     groups = collections.defaultdict(list)  # weight_decay -> List[param]
     for pname, p in model.named_parameters(requires_grad=True):
-        wd = cfg.WEIGHT_DECAT(pname, p)
+        wd = cfg.WEIGHT_DECAY(pname, p)
         groups[wd].append(p)
     groups = [
         {"params": params, "weight_decay": wd}
@@ -186,7 +157,7 @@ def worker(rank, world_size, args):
 
     # Build train and valid datasets
     logger.info("preparing dataset..")
-    train_dataset = ImageNetNoriDataset("/data/imagenet.train.nori.list") #data.dataset.ImageNet(args.data, train=True)
+    train_dataset = data.dataset.ImageNet(args.data, train=True)
     train_sampler = data.Infinite(data.RandomSampler(
         train_dataset, batch_size=cfg.BATCH_SIZE, drop_last=True
     ))
@@ -205,7 +176,7 @@ def worker(rank, world_size, args):
         num_workers=args.workers,
     )
     train_queue = iter(train_queue)
-    valid_dataset = ImageNetNoriDataset("/data/imagenet.val.nori.list")#data.dataset.ImageNet(args.data, train=False)
+    valid_dataset = data.dataset.ImageNet(args.data, train=False)
     valid_sampler = data.SequentialSampler(
         valid_dataset, batch_size=100, drop_last=False
     )
@@ -242,7 +213,7 @@ def worker(rank, world_size, args):
     total_time = AverageMeter("Time")
 
     t = time.time()
-    for step in range(0, 1):
+    for step in range(0, total_steps):
         # Linear learning rate decay
         epoch = step // steps_per_epoch
         learning_rate = adjust_learning_rate(step, epoch)
