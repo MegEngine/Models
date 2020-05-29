@@ -169,13 +169,9 @@ class ShuffleNetV1(Module):
     def forward(self, x):
         x = self.quant(x)
         x = self.first_conv(x)
-        # print(x)
-        # print(self.dequant(x).mean())
         x = self.maxpool(x)
 
-        for m in self.features:
-            x = m(x)#self.features(x)
-            # print(self.dequant(x).mean())
+        x = self.features(x)
 
         x = F.avg_pool2d(x, 7)
         x = F.flatten(x, 1)
