@@ -48,3 +48,6 @@ jobs:
         fi
         echo "All lint steps passed!"
 
+    - name: Import hubconf check
+      run: |
+        python -c "import hubconf"
