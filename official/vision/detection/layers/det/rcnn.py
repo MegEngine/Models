@@ -24,10 +24,12 @@ class RCNN(M.Module):
         )
 
         # roi head
-        # TODO into config
-        self.in_features = ['p2', 'p3', 'p4', 'p5']
-        self.stride = [4, 8, 16, 32]
-        self.fc1 = M.Linear(256 * 7 * 7, 1024)
+        self.in_features = cfg.rcnn_in_features
+        self.stride = cfg.rcnn_stride
+        self.pooling_method = cfg.pooling_method
+        self.pooling_size = cfg.pooling_size
+
+        self.fc1 = M.Linear(256 * self.pooling_size[0] * self.pooling_size[1], 1024)
         self.fc2 = M.Linear(1024, 1024)
         for l in [self.fc1, self.fc2]:
             M.init.normal_(l.weight, std=0.01)
@@ -45,9 +47,9 @@ class RCNN(M.Module):
         rcnn_rois, labels, bbox_targets = self.get_ground_truth(rcnn_rois, im_info, gt_boxes)
 
         fpn_fms = [fpn_fms[x] for x in self.in_features]
-        # stride: 64, 32, 16, 8, 4 -> 4, 8, 16, 32
         pool_features = layers.roi_pool(
-            fpn_fms, rcnn_rois, self.stride, (7, 7), 'roi_align'
+            fpn_fms, rcnn_rois, self.stride,
+            self.pooling_size, self.pooling_method,
         )
         flatten_feature = F.flatten(pool_features, start_axis=1)
         roi_feature = F.relu(self.fc1(flatten_feature))

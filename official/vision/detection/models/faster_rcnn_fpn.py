@@ -85,16 +85,13 @@ class FasterRCNN(M.Module):
             return self.inference(fpn_features, im_info)
 
     def _forward_train(self, fpn_features, im_info, gt_boxes):
-        loss_dict = {}
-        rpn_rois, loss_dict_rpn = self.RPN(fpn_features, im_info, gt_boxes)
-        loss_dict_rcnn = self.RCNN(fpn_features, rpn_rois, im_info, gt_boxes)
-        loss_dict.update(loss_dict_rpn)
-        loss_dict.update(loss_dict_rcnn)
+        rpn_rois, rpn_losses = self.RPN(fpn_features, im_info, gt_boxes)
+        rcnn_losses = self.RCNN(fpn_features, rpn_rois, im_info, gt_boxes)
 
-        loss_rpn_cls = loss_dict['loss_rpn_cls']
-        loss_rpn_loc = loss_dict['loss_rpn_loc']
-        loss_rcnn_cls = loss_dict['loss_rcnn_cls']
-        loss_rcnn_loc = loss_dict['loss_rcnn_loc']
+        loss_rpn_cls = rpn_losses['loss_rpn_cls']
+        loss_rpn_loc = rpn_losses['loss_rpn_loc']
+        loss_rcnn_cls = rcnn_losses['loss_rcnn_cls']
+        loss_rcnn_loc = rcnn_losses['loss_rcnn_loc']
         total_loss = loss_rpn_cls + loss_rpn_loc + loss_rcnn_cls + loss_rcnn_loc
 
         loss_dict = {
@@ -129,8 +126,6 @@ class FasterRCNNConfig:
     def __init__(self):
         self.resnet_norm = "FrozenBN"
         self.backbone_freeze_at = 2
-        self.stride_list = np.array([4, 8, 16, 32, 64]).astype(np.float32)
-        self.in_features = ["p2", "p3", "p4", "p5", "p6"]
 
         # ------------------------ data cfg --------------------------- #
         self.train_dataset = dict(
@@ -143,46 +138,36 @@ class FasterRCNNConfig:
             root="val2017",
             ann_file="instances_val2017.json"
         )
-
-        self.rpn_channel = 256
-        self.train_image_short_size = 800
-        self.train_image_max_size = 1333
         self.num_classes = 80
+
         self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
         self.img_std = np.array([57.375, 57.120, 58.395])
 
-        self.bbox_normalize_means = None
-        self.bbox_normalize_stds = np.array([0.1, 0.1, 0.2, 0.2])
-
+        # ----------------------- rpn cfg ------------------------- #
         self.anchor_base_size = 16
         self.anchor_scales = np.array([0.5])
         self.anchor_aspect_ratios = [0.5, 1, 2]
         self.anchor_offset = -0.5
         self.num_cell_anchors = len(self.anchor_aspect_ratios)
-        self.anchor_within_border = False
 
-        self.rpn_min_box_size = 2
+        self.bbox_normalize_means = None
+        self.bbox_normalize_stds = np.array([0.1, 0.1, 0.2, 0.2])
+
+        self.rpn_stride = np.array([4, 8, 16, 32, 64]).astype(np.float32)
+        self.rpn_in_features = ["p2", "p3", "p4", "p5", "p6"]
+        self.rpn_channel = 256
+
         self.rpn_nms_threshold = 0.7
-        self.train_prev_nms_top_n = 2000
-        self.train_post_nms_top_n = 1000
-        self.test_prev_nms_top_n = 1000
-        self.test_post_nms_top_n = 1000
-        self.train_min_box_size = 0
-        self.test_min_box_size = 0
-        self.ignore_label = -1
-
-        self.negative_thresh = 0.3
-        self.positive_thresh = 0.7
         self.allow_low_quality = True
-        self.class_aware_box = True
-
-        self.rpn_smooth_l1_beta = 3
-        self.rcnn_smooth_l1_beta = 1
-
         self.num_sample_anchors = 256
         self.positive_anchor_ratio = 0.5
         self.rpn_positive_overlap = 0.7
         self.rpn_negative_overlap = 0.3
+        self.ignore_label = -1
+
+        # ----------------------- rcnn cfg ------------------------- #
+        self.pooling_method = 'roi_align'
+        self.pooling_size = (7, 7)
 
         self.num_rois = 512
         self.fg_ratio = 0.5
@@ -190,7 +175,19 @@ class FasterRCNNConfig:
         self.bg_threshold_high = 0.5
         self.bg_threshold_low = 0.0
 
+        self.rcnn_in_features = ["p2", "p3", "p4", "p5"]
+        self.rcnn_stride = [4, 8, 16, 32]
+
+        # ------------------------ loss cfg -------------------------- #
+        self.rpn_smooth_l1_beta = 3
+        self.rcnn_smooth_l1_beta = 1
+
         # ------------------------ training cfg ---------------------- #
+        self.train_image_short_size = 800
+        self.train_image_max_size = 1333
+        self.train_prev_nms_top_n = 2000
+        self.train_post_nms_top_n = 1000
+
         self.num_losses = 5
         self.basic_lr = 0.025 / 16.0  # The basic learning rate for single-image
         self.momentum = 0.9
@@ -205,7 +202,11 @@ class FasterRCNNConfig:
         # ------------------------ testing cfg ------------------------- #
         self.test_image_short_size = 800
         self.test_image_max_size = 1333
+        self.test_prev_nms_top_n = 1000
+        self.test_post_nms_top_n = 1000
         self.test_max_boxes_per_image = 100
+
         self.test_vis_threshold = 0.3
         self.test_cls_threshold = 0.05
         self.test_nms = 0.5
+        self.class_aware_box = True

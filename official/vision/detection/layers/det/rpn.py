@@ -21,9 +21,9 @@ class RPN(M.Module):
         self.cfg = cfg
         self.box_coder = layers.BoxCoder()
 
-        self.stride_list = [4, 8, 16, 32, 64]
+        self.stride_list = cfg.rpn_stride
         rpn_channel = cfg.rpn_channel
-        self.in_features = cfg.in_features
+        self.in_features = cfg.rpn_in_features
         self.anchors_generator = layers.DefaultAnchorGenerator(
             cfg.anchor_base_size,
             cfg.anchor_scales,
