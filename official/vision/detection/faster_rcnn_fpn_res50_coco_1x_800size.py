@@ -6,6 +6,8 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+from megengine import hub
+
 from official.vision.detection import models
 
 
@@ -26,6 +28,10 @@ class CustomFasterRCNNFPNConfig(models.FasterRCNNConfig):
         )
 
 
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/"
+    "faster_rcnn_fpn_ec2e80_res50_1x_800szie_37dot3.pkl"
+)
 def faster_rcnn_fpn_res50_coco_1x_800size(batch_size=1, **kwargs):
     r"""
     Faster-RCNN FPN trained from COCO dataset.

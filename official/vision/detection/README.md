@@ -4,12 +4,12 @@
 
 本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[FasterRCNN-FPN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
 
-网络的性能在COCO2017验证集上的测试结果如下：
+网络的性能在COCO2017数据集上的测试结果如下：
 
-| 模型                                  | mAP<br>@5-95 | batch<br>/gpu | gpu    | speed<br>(8gpu)   | speed<br>(1gpu) |
-| ---                                   | ---          | ---           | ---    | ---               | ---             |
-| retinanet-res50-coco-1x-800size       | 36.0         | 2             | 2080Ti | 2.27(it/s)        | 3.7(it/s)       |
-| faster-rcnn-fpn-res50-coco-1x-800size | 37.3         | 2             | 2080Ti | 2.27(it/s)        | 3.7(it/s)       |
+| 模型                                  | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu)   | training speed<br>(1gpu) |
+| ---                                   | ---          | ---           | ---    | ---                         | ---                      |
+| retinanet-res50-coco-1x-800size       | 36.0         | 2             | 2080Ti | 2.27(it/s)                  | 3.7(it/s)                |
+| faster-rcnn-fpn-res50-coco-1x-800size | 37.3         | 2             | 2080Ti | 1.9(it/s)                   | 3.1(it/s)                |
 
 * MegEngine v0.4.0
 
