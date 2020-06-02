@@ -98,7 +98,7 @@ class RCNN(M.Module):
             # all_rois : [batch_id, x1, y1, x2, y2]
             all_rois = F.concat([rpn_rois.ai[batch_roi_inds], gt_rois])
 
-            overlaps_normal, overlaps_ignore = layers.box_overlap_ignore_opr(
+            overlaps_normal, overlaps_ignore = layers.get_iou_with_ignore(
                 all_rois[:, 1:5], gt_boxes_per_img
             )
 

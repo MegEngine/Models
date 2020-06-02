@@ -11,7 +11,7 @@ import megengine.random as rand
 import megengine.functional as F
 import megengine.module as M
 from official.vision.detection import layers
-from official.vision.detection.tools.gpu_nms import gpu_nms
+from official.vision.detection.tools.gpu_nms import batched_nms
 
 
 class RPN(M.Module):
@@ -161,8 +161,7 @@ class RPN(M.Module):
 
             # apply total level nms
             rois = F.concat([proposals, scores.reshape(-1, 1)], axis=1)
-            # keep_inds = gpu_nms(rois, nms_threshold, post_nms_top_n)
-            keep_inds = self.batched_nms(proposals, scores, level, nms_threshold, post_nms_top_n)
+            keep_inds = batched_nms(proposals, scores, level, nms_threshold, post_nms_top_n)
             rois = rois.ai[keep_inds]
 
             # rois shape (N, 5), info [batch_id, x1, y1, x2, y2]
@@ -178,20 +177,6 @@ class RPN(M.Module):
             concated_rois = F.concat(return_rois, axis=0)
             sum_rois_inds = F.sum(F.concat(return_inds, axis=0))
             return F.zero_grad(concated_rois), F.zero_grad(sum_rois_inds)
-
-    def batched_nms(self, boxes, scores, idxs, iou_threshold, num_keep):
-        """
-        boxes_offset = mge.tensor(
-            [0, 0, 1, 1], device=boxes.device
-        ).reshape(1, 4).broadcast(boxes.shapeof(0), 4)
-        boxes = boxes - boxes_offset
-        """
-        max_coordinate = boxes.max()
-        offsets = idxs * (max_coordinate + 1)
-        boxes_for_nms = boxes + offsets.reshape(-1, 1).broadcast(boxes.shapeof(0), 4)
-        boxes_with_scores = F.concat([boxes_for_nms, scores.reshape(-1, 1)], axis=1)
-        keep_inds = gpu_nms(boxes_with_scores, iou_threshold, num_keep)
-        return keep_inds
 
     def merge_rpn_score_box(self, rpn_cls_score_list, rpn_bbox_offsets_list):
         final_rpn_cls_score_list = []
