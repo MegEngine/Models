@@ -157,17 +157,11 @@ class RCNN(M.Module):
             return_labels.append(labels)
             return_bbox_targets.append(bbox_targets)
 
-        if self.cfg.batch_per_gpu == 1:
-            return F.zero_grad(rois), F.zero_grad(labels), F.zero_grad(bbox_targets)
-        else:
-            return_rois = F.concat(return_rois, axis=0)
-            return_labels = F.concat(return_labels, axis=0)
-            return_bbox_targets = F.concat(return_bbox_targets, axis=0)
-            return (
-                F.zero_grad(return_rois),
-                F.zero_grad(return_labels),
-                F.zero_grad(return_bbox_targets)
-            )
+        return (
+            F.zero_grad(F.concat(return_rois, axis=0)),
+            F.zero_grad(F.concat(return_labels, axis=0)),
+            F.zero_grad(F.concat(return_bbox_targets, axis=0))
+        )
 
     def _bernoulli_sample_masks(self, masks, num_samples, sample_value):
         """ Using the bernoulli sampling method"""

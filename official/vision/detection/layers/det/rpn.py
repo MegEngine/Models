@@ -73,7 +73,7 @@ class RPN(M.Module):
                 )
             )
         # sample from the predictions
-        rpn_rois, rpn_rois_inds = self.find_top_rpn_proposals(
+        rpn_rois = self.find_top_rpn_proposals(
             pred_bbox_offsets_list, pred_cls_score_list,
             all_anchors_list, im_info
         )
@@ -117,7 +117,6 @@ class RPN(M.Module):
         list_size = len(rpn_bbox_offsets_list)
 
         return_rois = []
-        return_inds = []
 
         for bid in range(batch_per_gpu):
             batch_proposals_list = []
@@ -168,16 +167,9 @@ class RPN(M.Module):
             # rois shape (N, 5), info [batch_id, x1, y1, x2, y2]
             batch_inds = mge.ones((rois.shapeof(0), 1)) * bid
             batch_rois = F.concat([batch_inds, rois[:, :4]], axis=1)
-
             return_rois.append(batch_rois)
-            return_inds.append(batch_rois.shapeof(0))
 
-        if batch_per_gpu == 1:
-            return F.zero_grad(batch_rois), F.zero_grad(batch_rois.shapeof(0))
-        else:
-            concated_rois = F.concat(return_rois, axis=0)
-            sum_rois_inds = F.sum(F.concat(return_inds, axis=0))
-            return F.zero_grad(concated_rois), F.zero_grad(sum_rois_inds)
+        return F.zero_grad(F.concat(return_rois, axis=0))
 
     def merge_rpn_score_box(self, rpn_cls_score_list, rpn_bbox_offsets_list):
         final_rpn_cls_score_list = []
@@ -202,12 +194,8 @@ class RPN(M.Module):
             final_rpn_cls_score_list.append(batch_rpn_cls_score)
             final_rpn_bbox_offsets_list.append(batch_rpn_bbox_offsets)
 
-        if self.cfg.batch_per_gpu == 1:
-            final_rpn_cls_score = batch_rpn_cls_score
-            final_rpn_bbox_offsets = batch_rpn_bbox_offsets
-        else:
-            final_rpn_cls_score = F.concat(final_rpn_cls_score_list, axis=0)
-            final_rpn_bbox_offsets = F.concat(final_rpn_bbox_offsets_list, axis=0)
+        final_rpn_cls_score = F.concat(final_rpn_cls_score_list, axis=0)
+        final_rpn_bbox_offsets = F.concat(final_rpn_bbox_offsets_list, axis=0)
         return final_rpn_cls_score, final_rpn_bbox_offsets
 
     def per_level_gt(
