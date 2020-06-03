@@ -189,7 +189,7 @@ class FasterRCNNConfig:
         self.train_post_nms_top_n = 1000
 
         self.num_losses = 5
-        self.basic_lr = 0.025 / 16.0  # The basic learning rate for single-image
+        self.basic_lr = 0.02 / 16.0  # The basic learning rate for single-image
         self.momentum = 0.9
         self.weight_decay = 1e-4
         self.log_interval = 20

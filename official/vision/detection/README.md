@@ -73,11 +73,17 @@ python3 tools/train.py -f retinanet_res50_coco_1x_800size.py \
 
 GPU NMS位于tools下的GPU NMS文件夹下面，我们需要进入tools文件夹下进行编译.
 
+首先需要找到MegEngine编译的头文件所在路径，可以通过命令
+
+```bash
+python3 -c "import megengine as mge; print(mge.__file__)"
+```
+将输出结果中__init__.py之前的部分复制(以MegEngine结尾)，将其赋值给shell变量MGE，接下来，运行如下命令进行编译。
+
 ```bash
 cd tools
-nvcc -I /usr/local/lib/python3.6/dist-packages/megengine/_internal/include -shared -o lib_nms.so -Xcompiler "-fno-strict-aliasing -fPIC" gpu_nms/nms.cu
+nvcc -I $MGE/_internal/include -shared -o lib_nms.so -Xcompiler "-fno-strict-aliasing -fPIC" gpu_nms/nms.cu
 ```
-
 
 ## 如何测试
 

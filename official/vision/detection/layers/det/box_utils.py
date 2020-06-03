@@ -117,49 +117,7 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
         return pred_box
 
 
-def get_iou(boxes1: Tensor, boxes2: Tensor) -> Tensor:
-    """
-    Given two lists of boxes of size N and M,
-    compute the IoU (intersection over union)
-    between __all__ N x M pairs of boxes.
-    The box order must be (xmin, ymin, xmax, ymax).
-
-    Args:
-        boxes1,boxes2 (Boxes): two `Boxes`. Contains N & M boxes, respectively.
-
-    Returns:
-        Tensor: IoU, sized [N,M].
-    """
-    box = boxes1
-    gt = boxes2
-    target_shape = (boxes1.shape[0], boxes2.shapeof()[0], 4)
-
-    b_box = F.add_axis(boxes1, 1).broadcast(*target_shape)
-    b_gt = F.add_axis(boxes2, 0).broadcast(*target_shape)
-
-    iw = F.minimum(b_box[:, :, 2], b_gt[:, :, 2]) - F.maximum(
-        b_box[:, :, 0], b_gt[:, :, 0]
-    )
-    ih = F.minimum(b_box[:, :, 3], b_gt[:, :, 3]) - F.maximum(
-        b_box[:, :, 1], b_gt[:, :, 1]
-    )
-    inter = F.maximum(iw, 0) * F.maximum(ih, 0)
-
-    area_box = (box[:, 2] - box[:, 0]) * (box[:, 3] - box[:, 1])
-    area_gt = (gt[:, 2] - gt[:, 0]) * (gt[:, 3] - gt[:, 1])
-
-    area_target_shape = (box.shape[0], gt.shapeof()[0])
-
-    b_area_box = F.add_axis(area_box, 1).broadcast(*area_target_shape)
-    b_area_gt = F.add_axis(area_gt, 0).broadcast(*area_target_shape)
-
-    union = b_area_box + b_area_gt - inter
-    overlaps = F.maximum(inter / union, 0)
-
-    return overlaps
-
-
-def get_iou_with_ignore(boxes1: Tensor, boxes2: Tensor, ignore_label=-1) -> Tensor:
+def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     """
     Given two lists of boxes of size N and M,
     compute the IoU (intersection over union)
@@ -196,28 +154,28 @@ def get_iou_with_ignore(boxes1: Tensor, boxes2: Tensor, ignore_label=-1) -> Tens
     b_area_gt = F.add_axis(area_gt, 0).broadcast(*area_target_shape)
 
     union = b_area_box + b_area_gt - inter
+    overlaps = F.maximum(inter / union, 0)
 
-    overlaps_normal = F.maximum(inter / union, 0)
-    overlaps_ignore = F.maximum(inter / b_area_box, 0)
+    if return_ignore:
+        overlaps_ignore = F.maximum(inter / b_area_box, 0)
+        gt_ignore_mask = F.add_axis((gt[:, 4] == -1), 0).broadcast(*area_target_shape)
+        overlaps *= (1 - gt_ignore_mask)
+        overlaps_ignore *= gt_ignore_mask
+        return overlaps, overlaps_ignore
 
-    # TODO comment next lines since gt is all valid
-    gt_ignore_mask = F.add_axis(F.equal(gt[:, 4], ignore_label), 0).broadcast(*area_target_shape)
-    overlaps_normal *= (1 - gt_ignore_mask)
-    overlaps_ignore *= gt_ignore_mask
-    return overlaps_normal, overlaps_ignore
+    return overlaps
 
 
 def get_clipped_box(boxes, hw):
     """ Clip the boxes into the image region."""
-    # TODO check + 1 and use clamp
     # x1 >=0
-    box_x1 = F.maximum(F.minimum(boxes[:, 0::4], hw[1]), 0)
+    box_x1 = F.clamp(boxes[:, 0::4], lower=0, upper=hw[1])
     # y1 >=0
-    box_y1 = F.maximum(F.minimum(boxes[:, 1::4], hw[0]), 0)
+    box_y1 = F.clamp(boxes[:, 1::4], lower=0, upper=hw[0])
     # x2 < im_info[1]
-    box_x2 = F.maximum(F.minimum(boxes[:, 2::4], hw[1]), 0)
+    box_x2 = F.clamp(boxes[:, 2::4], lower=0, upper=hw[1])
     # y2 < im_info[0]
-    box_y2 = F.maximum(F.minimum(boxes[:, 3::4], hw[0]), 0)
+    box_y2 = F.clamp(boxes[:, 3::4], lower=0, upper=hw[0])
 
     clip_box = F.concat([box_x1, box_y1, box_x2, box_y2], axis=1)
 

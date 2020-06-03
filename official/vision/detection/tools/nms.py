@@ -34,19 +34,3 @@ def py_cpu_nms(dets, thresh):
         order = order[np.where(iou <= thresh)[0] + 1]
 
     return keep
-
-
-def category_nms(dets, category, thresh):
-    """
-    apply nms according to category
-
-    dets: (N, 5) shape numpy array
-    thresh: nms iou threshold
-    """
-    keep_idx = np.zeros(dets.shape[0], dtype=np.bool)
-    for c_type in np.unique(category):
-        mask = (category == c_type)
-        keep = py_cpu_nms(dets[mask], thresh)
-        keep_idx[mask[keep]] = True
-    scores = dets[:, 4]
-    return keep_idx[scores[keep_idx].argsort()]
