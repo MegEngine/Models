@@ -87,11 +87,12 @@ class RPN(M.Module):
 
             # rpn loss
             loss_rpn_cls = layers.softmax_loss(pred_cls_score, rpn_labels)
-            loss_rpn_loc = layers.smooth_l1_loss_rpn(
+            loss_rpn_loc = layers.get_smooth_l1_loss(
                 pred_bbox_offsets,
                 rpn_bbox_targets,
                 rpn_labels,
-                self.cfg.rpn_smooth_l1_beta
+                self.cfg.rpn_smooth_l1_beta,
+                norm_type="all"
             )
             loss_dict = {
                 "loss_rpn_cls": loss_rpn_cls,

@@ -6,11 +6,9 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import megengine as mge
 import megengine.functional as F
-import numpy as np
 
-from megengine.core import tensor, Tensor
+from megengine.core import Tensor
 
 
 def get_focal_loss(
@@ -112,7 +110,8 @@ def get_smooth_l1_loss(
     if norm_type == "fg":
         loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(fg_mask.sum(), 1)
     elif norm_type == "all":
-        raise NotImplementedError
+        all_mask = (label != ignore_label)
+        loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(all_mask.sum(), 1)
     else:
         raise NotImplementedError
 
@@ -155,39 +154,10 @@ def get_smooth_l1_base(
     return loss
 
 
-def smooth_l1_loss_rpn(
-    pred, gt, label, sigma=1, background=0, ignore_label=-1, axis=1
-):
-    value = get_smooth_l1_base(pred, gt, sigma)
-    mask = (label != background) * (label != ignore_label)
-    mask_ig = (label != ignore_label)
-    loss = (value.sum(axis=axis) * mask).sum() / F.maximum(mask_ig.sum(), 1)
-    return loss
-
-
-def smooth_l1_loss_rcnn(
-        pred, gt, label, sigma, background=0, ignore_label=-1):
-    """
-    pred: (minibatch, class_num, 4)
-    gt: (minibatch, 4)
-    label: (minibatch,  )
-    """
-    broadcast_label = label.reshape((label.shapeof(0), 1)) \
-        .broadcast(F.concat([label.shapeof(0), pred.shapeof(-1)], axis=0))
-    mask = (broadcast_label != background) * (broadcast_label != ignore_label)
-    vlabel = broadcast_label * mask
-    pred_corr = F.indexing_one_hot(pred, vlabel, 1)
-    value = get_smooth_l1_base(pred_corr, gt, sigma)
-    loss = (value * mask).sum() / pred.shapeof(0)
-    # loss = (value * mask).sum() / F.maximum((label != ignore_label).sum(), 1)
-    return loss
-
-
 def softmax_loss(score, label, ignore_label=-1):
     max_score = F.zero_grad(score.max(axis=1, keepdims=True))
     score -= max_score
     log_prob = score - F.log(F.exp(score).sum(axis=1, keepdims=True))
-    # mask = 1 - F.equal(label, ignore_label)
     mask = (label != ignore_label)
     vlabel = label * mask
     loss = -(F.indexing_one_hot(log_prob, vlabel.astype("int32"), 1) * mask).sum()

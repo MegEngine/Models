@@ -62,8 +62,14 @@ class RCNN(M.Module):
             loss_rcnn_cls = layers.softmax_loss(pred_cls, labels)
             # loss for regression
             pred_delta = pred_delta.reshape(-1, self.cfg.num_classes + 1, 4)
-            loss_rcnn_loc = layers.smooth_l1_loss_rcnn(
-                pred_delta, bbox_targets, labels, self.cfg.rcnn_smooth_l1_beta
+
+            vlabels = labels.reshape(-1, 1).broadcast((labels.shapeof(0), 4))
+            pred_delta = F.indexing_one_hot(pred_delta, vlabels, axis=1)
+
+            loss_rcnn_loc = layers.get_smooth_l1_loss(
+                pred_delta, bbox_targets, labels,
+                self.cfg.rcnn_smooth_l1_beta,
+                norm_type="all",
             )
             loss_dict = {
                 'loss_rcnn_cls': loss_rcnn_cls,
