@@ -51,6 +51,14 @@ python3 train.py --config cfg_voc.py \
                  --ngpus 8
 ```
 
+或在Cityscapes数据集上进行训练：
+```bash
+python3 train.py --config cfg_cityscapes.py \
+                 --dataset_dir /path/to/Cityscapes \
+                 --weight_file /path/to/weights.pkl \
+                 --ngpus 8
+```
+
 ## 如何测试
 
 模型训练好之后，可以通过如下命令测试模型在VOC2012验证集的性能：
