@@ -47,7 +47,10 @@ def main():
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
     model = current_network.Net(current_network.Cfg(), batch_size=1)
     model.eval()
-    model.load_state_dict(mge.load(args.model)["state_dict"])
+    state_dict = mge.load(args.model)
+    if "state_dict" in state_dict:
+        state_dict = state_dict["state_dict"]
+    model.load_state_dict(state_dict)
 
     evaluator = DetEvaluator(model)
 

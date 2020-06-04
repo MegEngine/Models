@@ -53,7 +53,7 @@ class RetinaNet(M.Module):
             bottom_up=bottom_up,
             in_features=["res3", "res4", "res5"],
             out_channels=out_channels,
-            norm="",
+            norm=self.cfg.fpn_norm,
             top_block=layers.LastLevelP6P7(in_channels_p6p7, out_channels),
         )
 
@@ -97,7 +97,8 @@ class RetinaNet(M.Module):
         ]
 
         anchors_list = [
-            self.anchor_gen(features[i], self.stride_list[i]) for i in range(5)
+            self.anchor_gen(features[i], self.stride_list[i])
+            for i in range(len(features))
         ]
 
         all_level_box_cls = F.sigmoid(F.concat(box_cls_list, axis=1))
@@ -196,18 +197,15 @@ class RetinaNet(M.Module):
 class RetinaNetConfig:
     def __init__(self):
         self.resnet_norm = "FrozenBN"
+        self.fpn_norm = ""
         self.backbone_freeze_at = 2
 
         # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(
-            name="coco",
-            root="train2017",
-            ann_file="instances_train2017.json"
+            name="coco", root="train2017", ann_file="instances_train2017.json"
         )
         self.test_dataset = dict(
-            name="coco",
-            root="val2017",
-            ann_file="instances_val2017.json"
+            name="coco", root="val2017", ann_file="instances_val2017.json"
         )
         self.train_image_short_size = 800
         self.train_image_max_size = 1333
