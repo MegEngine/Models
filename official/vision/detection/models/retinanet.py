@@ -202,10 +202,14 @@ class RetinaNetConfig:
 
         # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(
-            name="coco", root="train2017", ann_file="instances_train2017.json"
+            name="coco",
+            root="train2017",
+            ann_file="annotations/instances_train2017.json",
         )
         self.test_dataset = dict(
-            name="coco", root="val2017", ann_file="instances_val2017.json"
+            name="coco",
+            root="val2017",
+            ann_file="annotations/instances_val2017.json",
         )
         self.train_image_short_size = 800
         self.train_image_max_size = 1333

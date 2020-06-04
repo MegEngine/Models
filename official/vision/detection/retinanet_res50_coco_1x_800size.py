@@ -19,12 +19,12 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
         self.train_dataset = dict(
             name="coco",
             root="train2017",
-            ann_file="annotations/instances_train2017.json"
+            ann_file="annotations/instances_train2017.json",
         )
         self.test_dataset = dict(
             name="coco",
             root="val2017",
-            ann_file="annotations/instances_val2017.json"
+            ann_file="annotations/instances_val2017.json",
         )
 
 
@@ -33,10 +33,11 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
     "retinanet_d3f58dce_res50_1x_800size_36dot0.pkl"
 )
 def retinanet_res50_coco_1x_800size(batch_size=1, **kwargs):
-    r"""ResNet-18 model from
+    r"""
+    RetinaNet trained from COCO dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
     """
-    return models.RetinaNet(RetinaNetConfig(), batch_size=batch_size, **kwargs)
+    return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
 
 
 Net = models.RetinaNet

@@ -15,26 +15,26 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
     def __init__(self):
         super().__init__()
 
+        self.resnet_norm = "SyncBN"
+        self.fpn_norm = "SyncBN"
+        self.backbone_freeze_at = 0
+
         # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(
-            name="objects365",
-            root="train",
-            ann_file="annotations/objects365_train_20190423.json",
+            name="coco",
+            root="train2017",
+            ann_file="annotations/instances_train2017.json",
         )
         self.test_dataset = dict(
-            name="objects365",
-            root="val",
-            ann_file="annotations/objects365_val_20190423.json",
+            name="coco",
+            root="val2017",
+            ann_file="annotations/instances_val2017.json",
         )
-        self.num_classes = 365
-
-        # ------------------------ training cfg ---------------------- #
-        self.nr_images_epoch = 400000
 
 
-def retinanet_objects365_res50_1x_800size(batch_size=1, **kwargs):
+def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     r"""
-    RetinaNet trained from Objects365 dataset.
+    RetinaNet with SyncBN trained from COCO dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
     """
     return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
