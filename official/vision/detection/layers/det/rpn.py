@@ -32,7 +32,7 @@ class RPN(M.Module):
         )
         self.rpn_conv = M.Conv2d(256, rpn_channel, kernel_size=3, stride=1, padding=1)
         self.rpn_cls_score = M.Conv2d(
-            rpn_channel, cfg.num_cell_anchors * 2,
+            rpn_channel, cfg.num_cell_anchors,
             kernel_size=1, stride=1
         )
         self.rpn_bbox_offsets = M.Conv2d(
@@ -59,12 +59,7 @@ class RPN(M.Module):
         for x in features:
             t = F.relu(self.rpn_conv(x))
             scores = self.rpn_cls_score(t)
-            pred_cls_score_list.append(
-                scores.reshape(
-                    scores.shape[0], 2, self.cfg.num_cell_anchors,
-                    scores.shape[2], scores.shape[3]
-                )
-            )
+            pred_cls_score_list.append(scores)
             bbox_offsets = self.rpn_bbox_offsets(t)
             pred_bbox_offsets_list.append(
                 bbox_offsets.reshape(
@@ -86,7 +81,12 @@ class RPN(M.Module):
             )
 
             # rpn loss
-            loss_rpn_cls = layers.softmax_loss(pred_cls_score, rpn_labels)
+            valid_labels, valid_inds = F.cond_take(rpn_labels >= 0, rpn_labels)
+            loss_rpn_cls = F.binary_cross_entropy(
+                F.sigmoid(pred_cls_score.ai[valid_inds]),
+                valid_labels.astype("int32")
+            )
+            # loss_rpn_cls = layers.softmax_loss(pred_cls_score, rpn_labels)
             loss_rpn_loc = layers.get_smooth_l1_loss(
                 pred_bbox_offsets,
                 rpn_bbox_targets,
@@ -128,7 +128,7 @@ class RPN(M.Module):
                 all_anchors = all_anchors_list[l]
                 proposals = self.box_coder.decode(all_anchors, offsets)
 
-                probs = rpn_cls_prob_list[l][bid, 1].dimshuffle(1, 2, 0).reshape(1, -1)
+                probs = rpn_cls_prob_list[l][bid].dimshuffle(1, 2, 0).reshape(1, -1)
                 # prev nms top n
                 probs, order = F.argsort(probs, descending=True)
                 num_proposals = F.minimum(probs.shapeof(1), prev_nms_top_n)
@@ -181,7 +181,7 @@ class RPN(M.Module):
 
             for i in range(len(self.in_features)):
                 rpn_cls_score = rpn_cls_score_list[i][bid] \
-                    .dimshuffle(2, 3, 1, 0).reshape(-1, 2)
+                    .dimshuffle(1, 2, 0).reshape(-1)
                 rpn_bbox_offsets = rpn_bbox_offsets_list[i][bid] \
                     .dimshuffle(2, 3, 0, 1).reshape(-1, 4)
 
@@ -270,6 +270,7 @@ class RPN(M.Module):
 
             final_labels_list.append(concated_batch_labels)
             final_bbox_targets_list.append(concated_batch_bbox_targets)
+
         final_labels = F.concat(final_labels_list, axis=0)
         final_bbox_targets = F.concat(final_bbox_targets_list, axis=0)
         return F.zero_grad(final_labels), F.zero_grad(final_bbox_targets)

@@ -10,7 +10,6 @@ from .anchor import *
 from .box_utils import *
 from .fpn import *
 from .loss import *
-from .match_anchors import *
 from .pooler import *
 from .rcnn import *
 from .retinanet import *
