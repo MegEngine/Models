@@ -73,7 +73,6 @@ python3 train.py --data_root /path/to/COCO images \
 
 ## 如何测试
 
-先准备好人体检测的
 模型训练好之后，可以通过如下命令测试模型在COCOval2017验证集的性能：
 
 ```bash
