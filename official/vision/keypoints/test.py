@@ -192,7 +192,7 @@ def worker(
     @jit.trace(symbolic=True, opt_level=2)
     def val_func():
         pred = model(model.inputs["image"])
-        return pred[-1][-1]
+        return pred
 
     model = getattr(M, arch)()
     model.eval()
