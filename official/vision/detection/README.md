@@ -2,7 +2,7 @@
 
 ## 介绍
 
-本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[FasterRCNN-FPN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
+本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[Faster R-CNN with FPN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
 
 网络的性能在COCO2017数据集上的测试结果如下：
 
@@ -61,7 +61,7 @@ python3 tools/train.py -f retinanet_res50_coco_1x_800size.py \
 
 `tools/train.py`提供了灵活的命令行选项，包括：
 
-- `-f`, 所需要训练的网络结构描述文件。可以是RetinaNet、Faster-RCNN等.
+- `-f`, 所需要训练的网络结构描述文件。可以是RetinaNet、Faster R-CNN等.
 - `-n`, 用于训练的devices(gpu)数量，默认使用所有可用的gpu.
 - `-w`, 预训练的backbone网络权重的路径。
 - `--batch_size`，训练时采用的`batch size`, 默认2，表示每张卡训2张图。

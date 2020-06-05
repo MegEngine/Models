@@ -81,10 +81,8 @@ class RPN(M.Module):
             )
 
             # rpn loss
-            valid_labels, valid_inds = F.cond_take(rpn_labels >= 0, rpn_labels)
-            loss_rpn_cls = F.binary_cross_entropy(
-                F.sigmoid(pred_cls_score.ai[valid_inds]),
-                valid_labels.astype("int32")
+            loss_rpn_cls = layers.binary_cross_entropy(
+                pred_cls_score, rpn_labels.astype("int32")
             )
             # loss_rpn_cls = layers.softmax_loss(pred_cls_score, rpn_labels)
             loss_rpn_loc = layers.get_smooth_l1_loss(

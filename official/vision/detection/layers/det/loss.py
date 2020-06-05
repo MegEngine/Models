@@ -163,3 +163,12 @@ def softmax_loss(score, label, ignore_label=-1):
     loss = -(F.indexing_one_hot(log_prob, vlabel.astype("int32"), 1) * mask).sum()
     loss = loss / F.maximum(mask.sum(), 1)
     return loss
+
+
+def binary_cross_entropy(pred, label, ignore_label=-1):
+    score = F.sigmoid(pred.reshape(-1))
+    mask = (label != ignore_label)
+    vlabel = label * mask
+    loss = -1.0 * (vlabel * F.log(score) + (1.0 - vlabel) * F.log(1 - score))
+    loss = (loss * mask).sum() / F.maximum(mask.sum(), 1)
+    return loss
