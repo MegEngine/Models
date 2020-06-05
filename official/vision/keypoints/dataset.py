@@ -114,6 +114,7 @@ class COCOJoints(VisionDataset):
 
             selected_anns.append(ann)
         self.anns = selected_anns
+
     def __len__(self):
         return len(self.anns)
 

@@ -110,7 +110,7 @@ cfg = SimpleBaseline_Config()
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/simplebaseline50_256x192_0_255_71_2.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/simplebaseline50_256x192_0_255_71_2.pkl"
 )
 def simplebaseline_res50(**kwargs):
 
@@ -119,7 +119,7 @@ def simplebaseline_res50(**kwargs):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/simplebaseline101_256x192_0_255_72_2.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/simplebaseline101_256x192_0_255_72_2.pkl"
 )
 def simplebaseline_res101(**kwargs):
 
@@ -128,10 +128,9 @@ def simplebaseline_res101(**kwargs):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/simplebaseline152_256x192_0_255_72_4.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/simplebaseline152_256x192_0_255_72_4.pkl"
 )
 def simplebaseline_res152(**kwargs):
 
     model = SimpleBaseline(backbone="resnet152", cfg=cfg, **kwargs)
     return model
-

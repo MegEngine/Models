@@ -150,6 +150,7 @@ def find_keypoints(pred, bbox):
         results[i, 0] = x
         results[i, 1] = y
         results[i, 2] = skeleton_score
+
     return results
 
 
@@ -220,6 +221,9 @@ def make_parser():
     )
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
     parser.add_argument("-ee", "--end_epoch", default=-1, type=int)
+    parser.add_argument("-md", "--model_dir", default="/data/models/simplebaseline_res50_256x192/", type=str)
+    parser.add_argument("-tf", "--test_freq", default=1, type=int)
+
     parser.add_argument(
         "-a",
         "--arch",
@@ -265,12 +269,12 @@ def main():
     if args.end_epoch == -1:
         args.end_epoch = args.start_epoch
 
-    for epoch_num in range(args.start_epoch, args.end_epoch + 1):
+    for epoch_num in range(args.start_epoch, args.end_epoch + 1, args.test_freq):
         if args.model:
             model_file = args.model
         else:
-            model_file = "log-of-{}/epoch_{}.pkl".format(
-                os.path.basename(args.file).split(".")[0], epoch_num
+            model_file = "{}/epoch_{}.pkl".format(
+                args.model_dir, epoch_num
             )
         logger.info("Load Model : %s completed", model_file)
 
