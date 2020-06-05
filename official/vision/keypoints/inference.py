@@ -26,7 +26,6 @@ from official.vision.keypoints.test import find_keypoints
 
 logger = mge.get_logger(__name__)
 
-
 def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(

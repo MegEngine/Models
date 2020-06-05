@@ -34,7 +34,11 @@ logger = mge.get_logger(__name__)
 
 def build_dataloader(rank, world_size, data_root, ann_file):
     val_dataset = COCOJoints(
+<<<<<<< HEAD
         data_root, ann_file, image_set="val2017", order=("image", "boxes", "info")
+=======
+        data_root, ann_file, image_set="val", order=("image", "boxes", "info")
+>>>>>>> add readme
     )
     val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
     val_dataloader = DataLoader(
@@ -233,7 +237,11 @@ def make_parser():
             "simplebaseline_res50",
             "Simplebaseline_res101",
             "Simplebaseline_res152",
+<<<<<<< HEAD
             "mspn_4stage",
+=======
+            "mspn_4stage"
+>>>>>>> add readme
         ],
     )
     parser.add_argument(
@@ -252,6 +260,7 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
+<<<<<<< HEAD
     dt_path = os.path.join(cfg.data_root, "person_detection_results", args.dt_file)
     dets = json.load(open(dt_path, "r"))
 
@@ -259,6 +268,10 @@ def main():
         cfg.data_root, "annotations", "person_keypoints_val2017.json"
     )
     eval_gt = COCO(gt_path)
+=======
+    dets = json.load(open(args.dt_path, "r"))
+    eval_gt = COCO(args.gt_path)
+>>>>>>> add readme
     gt = eval_gt.dataset
 
     dets = [

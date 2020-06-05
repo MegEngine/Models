@@ -38,12 +38,12 @@ ${COCO_DATA_ROOT}
 |   |-- person_keypoints_val2017.json
 |-- person_detection_results
 |   |-- COCO_val2017_detections_AP_H_56_person.json
-|-- |-- train2017
-    |   |-- 000000000009.jpg
-    |   |-- 000000000025.jpg
-    |   |-- 000000000030.jpg
-    |   |-- ... 
-    |-- val2017
+|-- train2017
+|   |   |-- 000000000009.jpg
+|   |   |-- 000000000025.jpg
+|   |   |-- 000000000030.jpg
+|   |   |-- ... 
+|-- val2017
         |-- 000000000139.jpg
         |-- 000000000285.jpg
         |-- 000000000632.jpg
@@ -76,33 +76,29 @@ python3 train.py --arch mspn_4stage \
                  --multi_scale_supervision True
 
 ```
-训练MSPN:
-```bash
-python3 train.py --arch mspn_4stage \
-                 --data_root /path/to/COCO/images \
-                 --ann_file /path/to/person_keypoints.json \
-                 --batch_size 32 \
-                 --lr 0.0005 \
-                 --ngpus 8 \
-                 --epochs 200 \
-                 --continue /path/to/model
-
-```
 
 ## 如何测试
 
-模型训练好之后，可以通过如下命令测试模型在COCOval2017验证集的性能：
-
+模型训练好之后，可以通过如下命令测试指定模型在COCOval2017验证集的性能：
 ```bash
 python3 test.py --arch name/of/network \
                 --model /path/to/model.pkl \
                 --dt_file /name/human/detection/results
 ```
-
 `test.py`的命令行参数如下：
 - `--arch`, 网络的名字;
 - `--model`, 待检测的模;
 - `--dt_path`，人体检测结果.
+
+也可以连续验证多个模型的性能:
+
+```bash
+python3 test.py --arch name/of/network \
+                --model_dir path/of/saved/models \
+                --start_epoch num/of/start/epoch \
+                --end_epoch num/of/end/epoch \
+                --test_freq test/frequence
+```
 
 ## 如何使用
 
@@ -123,5 +119,5 @@ python3 inference.py --arch /name/of/tested/network \
 
 ## 参考文献
 
-- [Simple Baselines for Human Pose Estimation and Tracking](https://arxiv.org/pdf/1804.06208.pdf), Bin Xiao, Haiping Wu, and Yichen Wei
+- [Simple Baselines for Human Pose Estimation and Tracking](https://arxiv.org/pdf/1804.06208.pdf) Bin Xiao, Haiping Wu, and Yichen Wei
 - [Rethinking on Multi-Stage Networks for Human Pose Estimation](https://arxiv.org/pdf/1901.00148.pdf) Wenbo Li1, Zhicheng Wang, Binyi Yin, Qixiang Peng, Yuming Du, Tianzi Xiao, Gang Yu, Hongtao Lu, Yichen Wei and Jian Sun
