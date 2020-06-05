@@ -51,14 +51,14 @@ def main():
     parser.add_argument("-s", "--save", default="/data/models", type=str)
     parser.add_argument("--data_root", default='/data/coco_data', type=str)
     parser.add_argument(
-        "--ann_root", default='/data/coco_data/person_keypoints_trainvalminusminival2014.json', type=str
+        "--ann_file", default='/data/coco/annotations/person_keypoints_train2017.json', type=str
     )
     parser.add_argument(
-        "--c", default=None, type=str
+        "--continue", default=None, type=str
     )
 
     parser.add_argument("-b", "--batch-size", default=64, type=int)
-    parser.add_argument("--initial_lr", default=5e-4, type=float)
+    parser.add_argument("--lr", default=5e-4, type=float)
     parser.add_argument("--lr_ratio", default=0.1, type=float)
     parser.add_argument("--warm_epochs", default=1, type=float)
     parser.add_argument("--weight-decay", default=0, type=float)
@@ -69,7 +69,7 @@ def main():
     parser.add_argument("--extend_boxes", default=True, type=bool)
 
     parser.add_argument("-n", "--ngpus", default=8, type=int)
-    parser.add_argument("-w", "--workers", default=12, type=int)
+    parser.add_argument("-w", "--workers", default=8, type=int)
     parser.add_argument("--report-freq", default=10, type=int)
 
     args = parser.parse_args()
@@ -133,7 +133,7 @@ def worker(rank, world_size, args):
     # Build train datasets
     logger.info("preparing dataset..")
     train_dataset = COCOJoints(
-        args.data_root, args.ann_root, image_set='train', order=("image", "keypoints", "boxes", "info"))
+        args.data_root, args.ann_file, image_set='train', order=("image", "keypoints", "boxes", "info"))
     train_sampler = data.RandomSampler(
         train_dataset, batch_size=args.batch_size, drop_last=True
     )

@@ -218,9 +218,9 @@ def make_parser():
     parser.add_argument("-n", "--ngpus", default=8, type=int)
     parser.add_argument("-d", "--data_root", default="/", type=str)
     parser.add_argument(
-        "-gt", "--gt_path", default="/data/coco_data/person_keypoints_minival2014.json", type=str)
+        "-gt", "--gt_path", default="/data/coco/annotations/person_keypoints_val2017.json", type=str)
     parser.add_argument(
-        "-dt", "--dt_path", default="/data/coco_data/coco_minival2014_494.eval.coco", type=str)
+        "-dt", "--dt_path", default="/data/coco/person_detection_results/COCO_val2017_detections_AP_H_56_person.json", type=str)
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
     parser.add_argument("-ee", "--end_epoch", default=-1, type=int)
     parser.add_argument(
