@@ -5,7 +5,9 @@
 本目录使用了在COCO val2017上的Human AP为56.4的人体检测结果，最后在COCO val2017上人体关节点估计结果为
 |Methods|Backbone|Input Size| AP | Ap .5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
 |---|:---:|---|---|---|---|---|---|---|---|---|---|---|
-| SimpleBaseline |Res50|256x192| 70.4 |0.886 | 0.783 | 0.671 | 0.772 | 0.763 | 0.929 | 0.834 | 0.721 | 0.824 |
+| SimpleBaseline |Res50 |256x192| 71.2 | 0.887 | 0.779 | 0.673 | 0.785 | 0.782 | 0.932 | 0.839 | 0.730 | 0.854 |
+| SimpleBaseline |Res101|256x192| 72.2 | 0.891 | 0.795 | 0.687 | 0.795 | 0.794 | 0.936 | 0.855 | 0.745 | 0.863 |
+| SimpleBaseline |Res152|256x192| 72.4 | 0.888 | 0.794 | 0.688 | 0.795 | 0.795 | 0.934 | 0.856 | 0.746 | 0.863 |
 
 
 ## 安装和环境配置
@@ -52,7 +54,8 @@ ${COCO_DATA_ROOT}
 
 3、开始训练:
 
-`train.py`的命令行参数如下：
+`train.py`的命令行参数如下:
+- `--arch`, 训练的模型的名字
 - `--data_root`，COCO数据集里`images`的路径；
 - `--ann_file`, COCO数据集里标注文件的`json`路径
 - `--batch_size`，训练时采用的batch size, 默认32；
@@ -62,7 +65,8 @@ ${COCO_DATA_ROOT}
 - `--lr`, 初始学习率；
 
 ```bash
-python3 train.py --data_root /path/to/COCO images \
+python3 train.py --arch name/of/model \
+                 --data_root /path/to/COCO/images \
                  --ann_file /path/to/person_keypoints.json \
                  --batch_size 32 \
                  --lr 0.0003 \
@@ -76,13 +80,15 @@ python3 train.py --data_root /path/to/COCO images \
 模型训练好之后，可以通过如下命令测试模型在COCOval2017验证集的性能：
 
 ```bash
-python3 test.py --data_root /path/to/COCO/images \
+python3 test.py --arch name/of/model \
+                --data_root /path/to/COCO/images \
                 --model /path/to/model.pkl \
                 --gt_path /path/to/ground/truth/annotations
                 --dt_path /path/to/human/detection/results
 ```
 
 `test.py`的命令行参数如下：
+- `--arch`, 训练的模型的名字
 - `--data_root`，COCO数据集里`images`的路径;
 - `--gt_path`, COCO数据集里验证集的标注文件
 - `--dt_path`，人体检测结果；
@@ -90,15 +96,15 @@ python3 test.py --data_root /path/to/COCO/images \
 
 ## 如何使用
 
-模型训练好之后，可以通过如下命令测试单张图片，得到分割结果：
+模型训练好之后，可以通过如下命令测试单张图片(先使用预训练的RetainNet检测出人的框），得到人体姿态可视化结果：
 
 ```bash
-python3 inference.py --model_path /path/to/model \
+python3 inference.py --model /path/to/model \
                      --image_path /path/to/image.jpg
 ```
 
 `inference.py`的命令行参数如下：
-- `--model_path`，载入训练好的模型；
+- `--model`，载入训练好的模型；
 - `--image_path`，载入待测试的图像
 
 ## 参考文献
