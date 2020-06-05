@@ -6,12 +6,25 @@
 | Model | top1 acc (float32) | FPS* (float32) | top1 acc (int8) | FPS* (int8) |
 | --- | --- | --- | --- | --- |
 | ResNet18 |  69.824  | 10.5   | 69.754 | 16.3 |
-| ShufflenetV1 (1.5x) | 71.954  |  17.3 | | 25.3 |
-| MobilenetV2 | 72.820  |  13.1  |  | 17.4 |
+| ShufflenetV1 (1.5x) | 71.954  |  17.3 | 70.656 | 25.3 |
+| MobilenetV2 | 72.820  |  13.1  | 71.378 | 17.4 |
 
 **: FPS is measured on Intel(R) Xeon(R) Gold 6130 CPU @ 2.10GHz, single 224x224 image*
 
+*We finetune mobile models with QAT for 30 epochs, training longer may yield better accuracy*
+
 量化模型使用时，统一读取0-255的uint8图片，减去128的均值，转化为int8，输入网络。
+
+
+#### (Optional) Download Pretrained Models
+```
+wget https://data.megengine.org.cn/models/weights/mobilenet_v2_normal_72820.pkl 
+wget https://data.megengine.org.cn/models/weights/mobilenet_v2_qat_71378.pkl
+wget https://data.megengine.org.cn/models/weights/resnet18_normal_69824.pkl
+wget https://data.megengine.org.cn/models/weights/resnet18_qat_69754.pkl
+wget https://data.megengine.org.cn/models/weights/shufflenet_v1_x1_5_g3_normal_71954.pkl
+wget https://data.megengine.org.cn/models/weights/shufflenet_v1_x1_5_g3_qat_70656.pkl
+```
 
 ## Quantization Aware Training (QAT)
 
