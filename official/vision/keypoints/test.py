@@ -150,7 +150,6 @@ def find_keypoints(pred, bbox):
         results[i, 0] = x
         results[i, 1] = y
         results[i, 2] = skeleton_score
-
     return results
 
 
