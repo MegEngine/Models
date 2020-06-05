@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
@@ -7,8 +6,6 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-=======
->>>>>>> fix code style
 import megengine as mge
 from megengine.data.dataset.vision.meta_vision import VisionDataset
 from megengine.data import Collator
@@ -19,7 +16,6 @@ import os.path as osp
 import json
 from collections import defaultdict, OrderedDict
 
-<<<<<<< HEAD
 
 class COCOJoints(VisionDataset):
     """
@@ -27,13 +23,6 @@ class COCOJoints(VisionDataset):
     The output of __getitem__ function here should be a single person instead of a single image. 
     """
 
-=======
-class COCOJoints(VisionDataset):
-    '''
-    we cannot use the official implementation of COCO dataset here.
-    The output of __getitem__ function here should be a single person instead of a single image. 
-    '''
->>>>>>> fix code style
     supported_order = ("image", "keypoints", "boxes", "info")
 
     keypoint_names = (
@@ -61,13 +50,9 @@ class COCOJoints(VisionDataset):
     min_box_area = 1500
     min_bbox_score = 1e-10
 
-<<<<<<< HEAD
     def __init__(
         self, root, ann_file, order, image_set="train", remove_untypical_ann=True
     ):
-=======
-    def __init__(self, root, ann_file, order, image_set = 'train', remove_untypical_ann=True):
->>>>>>> fix code style
 
         super(COCOJoints, self).__init__(
             root, order=order, supported_order=self.supported_order
@@ -78,10 +63,6 @@ class COCOJoints(VisionDataset):
         self.image_set = image_set
         self.order = order
 
-<<<<<<< HEAD
-=======
-
->>>>>>> fix code style
         if isinstance(ann_file, str):
             with open(ann_file, "r") as f:
                 dataset = json.load(f)
@@ -114,29 +95,17 @@ class COCOJoints(VisionDataset):
 
             if remove_untypical_ann:
                 if "keypoints" in ann.keys() and "keypoints" in self.order:
-<<<<<<< HEAD
                     joints = np.array(ann["keypoints"]).reshape(self.keypoint_num, 3)
                     if np.sum(joints[:, -1]) == 0 or ann["num_keypoints"] == 0:
-=======
-                    joints = np.array(ann["keypoints"]).reshape(
-                        self.keypoint_num, 3)
-                    if np.sum(joints[:, -1]) == 0 or ann['num_keypoints'] == 0:
->>>>>>> fix code style
                         continue
 
                 if "bbox" in ann.keys() and "bbox" in self.order:
                     x, y, h, w = ann["bbox"]
                     if (
-<<<<<<< HEAD
                         h < self.min_bbox_h
                         or w < self.min_bbox_w
                         or h * w < self.min_bbox_area
                     ):
-=======
-                            h < self.min_bbox_h or
-                            w < self.min_bbox_w or
-                            h*w < self.min_bbox_area):
->>>>>>> fix code style
                         continue
 
                 if "score" in ann.keys() and "score" in self.order:
@@ -145,11 +114,6 @@ class COCOJoints(VisionDataset):
 
             selected_anns.append(ann)
         self.anns = selected_anns
-<<<<<<< HEAD
-
-=======
-      
->>>>>>> fix code style
     def __len__(self):
         return len(self.anns)
 
@@ -162,11 +126,6 @@ class COCOJoints(VisionDataset):
 
         ann = self.anns[index]
         img_id = ann["image_id"]
-<<<<<<< HEAD
-
-=======
-        
->>>>>>> fix code style
         target = []
         for k in self.order:
             if k == "image":
@@ -177,47 +136,28 @@ class COCOJoints(VisionDataset):
                 target.append(image)
 
             elif k == "keypoints":
-<<<<<<< HEAD
                 joints = (
                     np.array(ann["keypoints"])
                     .reshape(len(self.keypoint_names), 3)
                     .astype(np.float)
                 )
-=======
-                joints = np.array(ann["keypoints"]).reshape(
-                    len(self.keypoint_names), 3).astype(np.float)
->>>>>>> fix code style
                 joints = joints[np.newaxis]
                 target.append(joints)
 
             elif k == "boxes":
                 x, y, w, h = np.array(ann["bbox"]).reshape(4)
-<<<<<<< HEAD
                 bbox = [x, y, x + w, y + h]
-=======
-                bbox = [
-                    x,
-                    y,
-                    x + w,
-                    y + h
-                ]
->>>>>>> fix code style
                 bbox = np.array(bbox, dtype=np.float32)
                 target.append(bbox[np.newaxis])
 
             elif k == "info":
                 info = self.imgs[img_id]
-<<<<<<< HEAD
                 info = [
                     info["height"],
                     info["width"],
                     info["file_name"],
                     ann["image_id"],
                 ]
-=======
-                info = [info["height"], info["width"],
-                        info["file_name"], ann["image_id"]]
->>>>>>> fix code style
                 if "score" in ann.keys():
                     info.append(ann["score"])
                 target.append(info)
@@ -226,7 +166,6 @@ class COCOJoints(VisionDataset):
 
 
 class HeatmapCollator(Collator):
-<<<<<<< HEAD
     def __init__(
         self,
         image_shape,
@@ -236,18 +175,11 @@ class HeatmapCollator(Collator):
         heat_kernel,
         heat_range=255,
     ):
-=======
-    def __init__(self, image_shape, heatmap_shape, keypoint_num, heat_thre, heat_kernel, heat_range=255):
->>>>>>> fix code style
         super().__init__()
         self.image_shape = image_shape
         self.heatmap_shape = heatmap_shape
         self.keypoint_num = keypoint_num
-<<<<<<< HEAD
         self.heat_thr = heat_thr
-=======
-        self.heat_thre = heat_thre
->>>>>>> fix code style
         self.heat_kernel = heat_kernel
         self.heat_range = heat_range
 
@@ -273,7 +205,6 @@ class HeatmapCollator(Collator):
 
             joints = (keypoints[0, :, :2] + 0.5) / self.stride - 0.5
             heat_valid = np.array(keypoints[0, :, -1]).astype(np.float32)
-<<<<<<< HEAD
             dis = (self.grid_x - joints[:, 0, np.newaxis, np.newaxis]) ** 2 + (
                 self.grid_y - joints[:, 1, np.newaxis, np.newaxis]
             ) ** 2
@@ -293,24 +224,6 @@ class HeatmapCollator(Collator):
                     / maxi[:, None, None][maxi > 1e-5]
                     * self.heat_range
                 )
-=======
-            dis = (
-                self.grid_x - joints[:, 0, np.newaxis, np.newaxis])**2 + \
-                (self.grid_y - joints[:, 1, np.newaxis, np.newaxis])**2
-            heatmaps = []
-            for k in self.heat_kernel:
-                heatmap = np.exp(
-                    -dis / 2 / k**2
-                )
-                heatmap[heatmap < self.heat_thre] = 0
-                heatmap[heat_valid == 0] = 0
-                sum_for_norm = heatmap.sum((1, 2))
-                heatmap[sum_for_norm > 0] = heatmap[sum_for_norm > 0] / \
-                    sum_for_norm[sum_for_norm > 0][:, None, None]
-                maxi = np.max(heatmap, (1, 2))
-                heatmap[maxi > 1e-5] = heatmap[maxi > 1e-5] / \
-                    maxi[:, None, None][maxi > 1e-5] * self.heat_range
->>>>>>> fix code style
                 heatmaps.append(heatmap)
 
             batch_data["heatmap"].append(np.array(heatmaps))
@@ -320,8 +233,4 @@ class HeatmapCollator(Collator):
         for key, v in batch_data.items():
             if key != "info":
                 batch_data[key] = np.ascontiguousarray(v).astype(np.float32)
-<<<<<<< HEAD
         return batch_data
-=======
-        return batch_data
->>>>>>> fix code style
