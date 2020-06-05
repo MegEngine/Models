@@ -23,10 +23,19 @@ from megengine.data.dataset import COCO as COCODataset
 import megengine.data.transform as T
 from tqdm import tqdm
 
+<<<<<<< HEAD
 from official.vision.keypoints.dataset import COCOJoints
 from official.vision.keypoints.transforms import RandomBoxAffine, ExtendBoxes
 from official.vision.keypoints.config import Config as cfg
 import official.vision.keypoints.models as M
+=======
+import sys
+sys.path.insert(0, '../../../')
+from dataset import COCOJoints
+from transforms import RandomAffine, ExtendBoxes
+from config import Config as cfg
+import models as M
+>>>>>>> fix code style
 
 
 logger = mge.get_logger(__name__)
@@ -34,9 +43,15 @@ logger = mge.get_logger(__name__)
 
 def build_dataloader(rank, world_size, data_root, ann_file):
     val_dataset = COCOJoints(
+<<<<<<< HEAD
         data_root, ann_file, image_set="val", order=("image", "boxes", "info")
     )
     val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
+=======
+        data_root, ann_file, image_set='val', order=("image", "boxes", "info"))
+    val_sampler = SequentialSampler(
+        val_dataset, 1, world_size=world_size, rank=rank)
+>>>>>>> fix code style
     val_dataloader = DataLoader(
         val_dataset,
         sampler=val_sampler,
@@ -47,20 +62,36 @@ def build_dataloader(rank, world_size, data_root, ann_file):
                 ExtendBoxes(
                     cfg.test_x_ext,
                     cfg.test_y_ext,
+<<<<<<< HEAD
                     cfg.input_shape[1] / cfg.input_shape[0],
                     random_extend_prob=0,
                 ),
                 RandomBoxAffine(
+=======
+                    cfg.w_h_ratio,
+                    random_extend_prob=0
+                ),
+                RandomAffine(
+>>>>>>> fix code style
                     degrees=(0, 0),
                     scale=(1, 1),
                     output_shape=cfg.input_shape,
                     rotate_prob=0,
+<<<<<<< HEAD
                     scale_prob=0,
                 ),
                 T.ToMode(),
             ],
             order=("image", "boxes", "info"),
         ),
+=======
+                    scale_prob=0
+                ),
+                T.ToMode()
+            ],
+            order=("image", "boxes", "info"),
+        )
+>>>>>>> fix code style
     )
     return val_dataloader
 
@@ -71,6 +102,7 @@ def find_keypoints(pred, bbox):
     heat_prob = heat_prob / cfg.heat_range + 1
 
     border = cfg.test_aug_border
+<<<<<<< HEAD
     pred_aug = np.zeros(
         (pred.shape[0], pred.shape[1] + 2 * border, pred.shape[2] + 2 * border),
         dtype=np.float32,
@@ -80,6 +112,15 @@ def find_keypoints(pred, bbox):
         pred_aug[i] = cv2.GaussianBlur(
             pred_aug[i], (cfg.test_gaussian_kernel, cfg.test_gaussian_kernel), 0
         )
+=======
+    pred_aug = np.zeros((
+        pred.shape[0], pred.shape[1] + 2*border, pred.shape[2] + 2*border),
+        dtype=np.float32)
+    pred_aug[:, border:-border, border:-border] = pred.copy()
+    for i in range(pred_aug.shape[0]):
+        pred_aug[i] = cv2.GaussianBlur(
+            pred_aug[i], (cfg.test_gaussian_kernel, cfg.test_gaussian_kernel), 0)
+>>>>>>> fix code style
 
     results = np.zeros((pred_aug.shape[0], 3), dtype=np.float32)
     for i in range(pred_aug.shape[0]):
@@ -128,16 +169,26 @@ def find_keypoints(pred, bbox):
         else:
             y -= border
             x -= border
+<<<<<<< HEAD
         x = max(0, min(x, cfg.output_shape[1] - 1))
         y = max(0, min(y, cfg.output_shape[0] - 1))
         skeleton_score = heat_prob[i, int(round(y)), int(round(x))]
 
         stride = cfg.input_shape[1] / cfg.output_shape[1]
 
+=======
+        x = max(0, min(x, cfg.output_shape[1]-1))
+        y = max(0, min(y, cfg.output_shape[0]-1))
+        skeleton_score = heat_prob[i, int(round(y)), int(round(x))]
+
+        stride = cfg.input_shape[1] / cfg.output_shape[1]
+        
+>>>>>>> fix code style
         x = (x + 0.5) * stride - 0.5
         y = (y + 0.5) * stride - 0.5
 
         bbox_top_leftx, bbox_top_lefty, bbox_bottom_rightx, bbox_bottom_righty = bbox
+<<<<<<< HEAD
         x = (
             x / cfg.input_shape[1] * (bbox_bottom_rightx - bbox_top_leftx)
             + bbox_top_leftx
@@ -146,11 +197,21 @@ def find_keypoints(pred, bbox):
             y / cfg.input_shape[0] * (bbox_bottom_righty - bbox_top_lefty)
             + bbox_top_lefty
         )
+=======
+        x = x / cfg.input_shape[1] * \
+            (bbox_bottom_rightx - bbox_top_leftx) + bbox_top_leftx
+        y = y / cfg.input_shape[0] * \
+            (bbox_bottom_righty - bbox_top_lefty) + bbox_top_lefty
+>>>>>>> fix code style
 
         results[i, 0] = x
         results[i, 1] = y
         results[i, 2] = skeleton_score
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> fix code style
     return results
 
 
@@ -161,7 +222,11 @@ def find_results(func, img, bbox, info):
     fliped_pred = outs[1][cfg.keypoint_flip_order][:, :, ::-1]
     pred = (pred + fliped_pred) / 2
 
+<<<<<<< HEAD
     results = find_keypoints(pred, bbox)
+=======
+    results = find_keypoints(pred,bbox)
+>>>>>>> fix code style
 
     final_score = float(results[:, -1].mean() * info[-1])
     image_id = int(info[-2])
@@ -172,13 +237,24 @@ def find_results(func, img, bbox, info):
         "image_id": image_id,
         "category_id": 1,
         "score": final_score,
+<<<<<<< HEAD
         "keypoints": keypoints,
+=======
+        "keypoints": keypoints
+
+>>>>>>> fix code style
     }
     return instance
 
 
 def worker(
+<<<<<<< HEAD
     arch, model_file, data_root, ann_file, worker_id, total_worker, result_queue,
+=======
+    arch, model_file, data_root,
+    ann_file, worker_id,
+    total_worker, result_queue,
+>>>>>>> fix code style
 ):
     """
     :param net_file: network description file
@@ -192,8 +268,13 @@ def worker(
 
     @jit.trace(symbolic=True, opt_level=2)
     def val_func():
+<<<<<<< HEAD
         pred = model.predict()
         return pred
+=======
+        pred = model(model.inputs["image"])
+        return pred[-1][-1]
+>>>>>>> fix code style
 
     model = getattr(M, arch)()
     model.eval()
@@ -204,14 +285,25 @@ def worker(
         img, bbox, info = data_dict
         fliped_img = img[:, :, :, ::-1] - np.zeros_like(img)
         data = np.concatenate([img, fliped_img], 0)
+<<<<<<< HEAD
         model.inputs["image"].set_value(np.ascontiguousarray(data).astype(np.float32))
         instance = find_results(val_func, img, bbox[0, 0], info)
 
         result_queue.put_nowait(instance)
+=======
+        model.inputs["image"].set_value(
+            np.ascontiguousarray(data).astype(np.float32))
+        instance = find_results(val_func, img, bbox[0, 0], info)
+
+        result_queue.put_nowait(
+            instance
+        )
+>>>>>>> fix code style
 
 
 def make_parser():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument("-n", "--ngpus", default=8, type=int)
     parser.add_argument("-d", "--data_root", default="/", type=str)
     parser.add_argument(
@@ -226,11 +318,21 @@ def make_parser():
         default="/data/coco/person_detection_results/COCO_val2017_detections_AP_H_56_person.json",
         type=str,
     )
+=======
+    parser.add_argument("-b", "--batch_size", default=1, type=int)
+    parser.add_argument("-n", "--ngpus", default=8, type=int)
+    parser.add_argument("-d", "--data_root", default="/", type=str)
+    parser.add_argument(
+        "-gt", "--gt_path", default="/data/coco_data/person_keypoints_minival2014.json", type=str)
+    parser.add_argument(
+        "-dt", "--dt_path", default="/data/coco_data/coco_minival2014_494.eval.coco", type=str)
+>>>>>>> fix code style
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
     parser.add_argument("-ee", "--end_epoch", default=-1, type=int)
     parser.add_argument(
         "-a",
         "--arch",
+<<<<<<< HEAD
         default="simplebaseline_res50",
         type=str,
         choices=[
@@ -245,6 +347,18 @@ def make_parser():
         default="/data/models/simplebaseline_res50_256x192/epoch_199.pkl",
         type=str,
     )
+=======
+        default="SimpleBaseline_Res50",
+        type=str,
+        choices=[
+            "SimpleBaseline_Res50",
+            "SimpleBaseline_Res101",
+            "SimpleBaseline_Res152", 
+        ],
+    )
+    parser.add_argument(
+        "-m", "--model", default="/data/models/HRNet_W32/epoch_22.pkl", type=str)
+>>>>>>> fix code style
     return parser
 
 
@@ -255,6 +369,7 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
+<<<<<<< HEAD
     dets = json.load(open(args.dt_path, "r"))
     eval_gt = COCO(args.gt_path)
     gt = eval_gt.dataset
@@ -263,6 +378,17 @@ def main():
         i for i in dets if (i["image_id"] in eval_gt.imgs and i["category_id"] == 1)
     ]
     ann_file = {"images": gt["images"], "annotations": dets}
+=======
+    dets = json.load(open(args.dt_path, 'r'))
+    eval_gt = COCO(args.gt_path)
+    gt = eval_gt.dataset
+
+    dets = [i for i in dets if (i['image_id'] in eval_gt.imgs and i['category_id']==1)]
+    ann_file = {
+        "images": gt["images"],
+        "annotations": dets
+    }
+>>>>>>> fix code style
 
     if args.end_epoch == -1:
         args.end_epoch = args.start_epoch
@@ -300,7 +426,13 @@ def main():
         for p in procs:
             p.join()
 
+<<<<<<< HEAD
         json_path = "log-of-{}_epoch_{}.json".format(args.arch, epoch_num)
+=======
+        json_path = "log-of-{}_epoch_{}.json".format(
+            args.arch, epoch_num
+        )
+>>>>>>> fix code style
         all_results = json.dumps(all_results)
         with open(json_path, "w") as fo:
             fo.write(all_results)
@@ -330,4 +462,8 @@ def main():
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     main()
+=======
+    main()
+>>>>>>> fix code style
