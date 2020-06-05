@@ -48,8 +48,8 @@ def get_config(arch: str):
 
 class ShufflenetFinetuneConfig(ShufflenetConfig):
     BATCH_SIZE = 128 // 2
-    LEARNING_RATE = 0.03125
-    EPOCHS = 120
+    LEARNING_RATE = 0.003125 // 2
+    EPOCHS = 30
 
 
 class ResnetFinetuneConfig(ResnetConfig):
