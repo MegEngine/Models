@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
@@ -14,6 +13,3 @@ from .simplebaseline import (
 )
 
 from .mspn import mspn_4stage
-=======
-from models.simplebaseline import SimpleBaseline_Res50, SimpleBaseline_Res101, SimpleBaseline_Res152 
->>>>>>> fix code style
