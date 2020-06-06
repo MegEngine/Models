@@ -117,12 +117,3 @@ def SimpleBaseline_Res152(**kwargs):
     
     model = SimpleBaseline(backbone='resnet152', cfg=cfg, **kwargs)
     return model
-
-     
-
-
-        
-
-
-
-    
