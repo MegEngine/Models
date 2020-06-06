@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
@@ -7,22 +6,13 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-=======
->>>>>>> fix code style
 import megengine as mge
 import megengine.functional as F
 import megengine.hub as hub
 import megengine.module as M
-<<<<<<< HEAD
 import official.vision.classification.resnet.model as resnet
 
 import numpy as np
-=======
-import official.vision.classification.resnet.model as Resnets
-
-import numpy as np
-from functools import partial
->>>>>>> fix code style
 
 
 class DeconvLayers(M.Module):
@@ -31,7 +21,6 @@ class DeconvLayers(M.Module):
         _body = []
         for i in range(num_layers):
             kernel = kernels[i]
-<<<<<<< HEAD
             padding = (
                 kernel // 3
             )  # padding=0 when kernel=2 and padding=1 when kernel=4 or kernel=3
@@ -39,15 +28,6 @@ class DeconvLayers(M.Module):
                 M.ConvTranspose2d(nf1, nf2s[i], kernel, 2, padding, bias=bias),
                 norm(nf2s[i]),
                 M.ReLU(),
-=======
-            padding = kernel // 3
-            _body += [
-                M.ConvTranspose2d(
-                    nf1, nf2s[i], kernel, 2, padding, bias=bias
-                ),
-                norm(nf2s[i]),
-                M.ReLU()
->>>>>>> fix code style
             ]
             nf1 = nf2s[i]
         self.body = M.Sequential(*_body)
@@ -57,55 +37,31 @@ class DeconvLayers(M.Module):
 
 
 class SimpleBaseline(M.Module):
-<<<<<<< HEAD
     def __init__(self, backbone, cfg):
         super(SimpleBaseline, self).__init__()
         norm = M.BatchNorm2d
         self.backbone = getattr(resnet, backbone)(
             norm=norm, pretrained=cfg.backbone_pretrained
         )
-=======
-    def __init__(self, backbone, cfg, pretrained=False):
-
-        norm = partial(M.BatchNorm2d, momentum=cfg.bn_momentum)
-        self.backbone = getattr(Resnets, backbone)(norm=norm, pretrained=pretrained)
->>>>>>> fix code style
         del self.backbone.fc
 
         self.cfg = cfg
 
         self.deconv_layers = DeconvLayers(
-<<<<<<< HEAD
             cfg.initial_deconv_channels,
-=======
-            cfg.initial_deconv_channels, 
->>>>>>> fix code style
             cfg.deconv_channels,
             cfg.deconv_kernel_sizes,
             cfg.num_deconv_layers,
             cfg.deconv_with_bias,
-<<<<<<< HEAD
             norm,
         )
         self.last_layer = M.Conv2d(cfg.deconv_channels[-1], cfg.keypoint_num, 3, 1, 1)
-=======
-            norm
-        )
-        self.last_layer = M.Conv2d(
-            cfg.deconv_channels[-1], 
-            cfg.keypoint_num,
-            3,
-            1, 
-            1
-        )
->>>>>>> fix code style
 
         self._initialize_weights()
 
         self.inputs = {
             "image": mge.tensor(dtype="float32"),
             "heatmap": mge.tensor(dtype="float32"),
-<<<<<<< HEAD
             "heat_valid": mge.tensor(dtype="float32"),
         }
 
@@ -119,21 +75,6 @@ class SimpleBaseline(M.Module):
     def predict(self):
         return self.forward(self.inputs["image"])
 
-=======
-            "heat_valid": mge.tensor(dtype="float32")
-        }
-
-    def cal_loss(self):
-        out = self.forward(self.inputs['image'])
-        valid = self.inputs['heat_valid'][:,:,None, None]
-        label = self.inputs['heatmap'][:,0]
-        loss = F.square_loss(out*valid, label*valid)
-        return loss
-    
-    def predict(self):
-        return self.forward(self.inputs['image'])
-    
->>>>>>> fix code style
     def _initialize_weights(self):
 
         for k, m in self.deconv_layers.named_modules():
@@ -149,27 +90,18 @@ class SimpleBaseline(M.Module):
         M.init.zeros_(self.last_layer.bias)
 
     def forward(self, x):
-<<<<<<< HEAD
         f = self.backbone.extract_features(x)["res5"]
-=======
-        f = self.backbone.extract_features(x)['res5']
->>>>>>> fix code style
         f = self.deconv_layers(f)
         pred = self.last_layer(f)
         return pred
 
-<<<<<<< HEAD
 
 class SimpleBaseline_Config:
-=======
-class SimpleBaseline_Config():
->>>>>>> fix code style
     initial_deconv_channels = 2048
     num_deconv_layers = 3
     deconv_channels = [256, 256, 256]
     deconv_kernel_sizes = [4, 4, 4]
     deconv_with_bias = False
-<<<<<<< HEAD
     keypoint_num = 17
     backbone_pretrained = True
 
@@ -202,33 +134,4 @@ def simplebaseline_res152(**kwargs):
 
     model = SimpleBaseline(backbone="resnet152", cfg=cfg, **kwargs)
     return model
-=======
-    bn_momentum = 0.1
-    keypoint_num = 17  
 
-cfg = SimpleBaseline_Config()
-
-def SimpleBaseline_Res50(**kwargs): 
-    
-    model = SimpleBaseline(backbone='resnet50', cfg=cfg, **kwargs)
-    return model
-
-def SimpleBaseline_Res101(**kwargs):
-    
-    model = SimpleBaseline(backbone='resnet101', cfg=cfg, **kwargs)
-    return model
-
-def SimpleBaseline_Res152(**kwargs):
-    
-    model = SimpleBaseline(backbone='resnet152', cfg=cfg, **kwargs)
-    return model
-
-     
-
-
-        
-
-
-
-    
->>>>>>> fix code style
