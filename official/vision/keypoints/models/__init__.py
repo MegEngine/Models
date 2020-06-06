@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
@@ -11,3 +12,6 @@ from .simplebaseline import (
     simplebaseline_res101,
     simplebaseline_res152,
 )
+=======
+from .simplebaseline import SimpleBaseline_Res50, SimpleBaseline_Res101, SimpleBaseline_Res152 
+>>>>>>> fix hubconf
