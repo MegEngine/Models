@@ -14,7 +14,7 @@ class DeconvLayers(M.Module):
         _body = []
         for i in range(num_layers):
             kernel = kernels[i]
-            padding = kernel // 3
+            padding = kernel // 3 # padding=0 when kernel=2 and padding=1 when kernel=4
             _body += [
                 M.ConvTranspose2d(
                     nf1, nf2s[i], kernel, 2, padding, bias=bias
