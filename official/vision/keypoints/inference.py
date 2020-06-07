@@ -139,10 +139,11 @@ def main():
             extend_w = w * (1 + cfg.test_x_ext)
             extend_h = h * (1 + cfg.test_y_ext)
 
-            if extend_w / extend_h > cfg.w_h_ratio:
-                extend_h = extend_w / cfg.w_h_ratio
+            w_h_ratio = cfg.input_shape[1] / cfg.input_shape[0]
+            if extend_w / extend_h > w_h_ratio:
+                extend_h = extend_w / w_h_ratio
             else:
-                extend_w = extend_h * cfg.w_h_ratio
+                extend_w = extend_h * w_h_ratio
 
             trans = get_affine_transform(
                 np.array([center_x, center_y]),

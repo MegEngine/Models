@@ -152,7 +152,7 @@ def worker(rank, world_size, args):
            ExtendBoxes(
                 cfg.x_ext,
                 cfg.y_ext,
-                cfg.w_h_ratio
+                cfg.input_shape[1] / cfg.input_shape[0]
                 )
             )
     transforms +=  [RandomHorizontalFlip(

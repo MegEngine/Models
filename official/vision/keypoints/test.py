@@ -49,7 +49,7 @@ def build_dataloader(rank, world_size, data_root, ann_file):
                 ExtendBoxes(
                     cfg.test_x_ext,
                     cfg.test_y_ext,
-                    cfg.w_h_ratio,
+                    cfg.input_shape[1]/cfg.input_shape[0],
                     random_extend_prob=0
                 ),
                 RandomAffine(
