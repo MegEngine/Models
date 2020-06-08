@@ -114,10 +114,6 @@ class COCOJoints(VisionDataset):
 
             selected_anns.append(ann)
         self.anns = selected_anns
-<<<<<<< HEAD
-=======
-
->>>>>>> format code
     def __len__(self):
         return len(self.anns)
 
@@ -130,10 +126,6 @@ class COCOJoints(VisionDataset):
 
         ann = self.anns[index]
         img_id = ann["image_id"]
-<<<<<<< HEAD
-=======
-
->>>>>>> format code
         target = []
         for k in self.order:
             if k == "image":

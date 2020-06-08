@@ -12,6 +12,7 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from .simplebaseline import (
 <<<<<<< HEAD
+<<<<<<< HEAD
     simplebaseline_res50,
     simplebaseline_res101,
     simplebaseline_res152,
@@ -23,5 +24,10 @@ from .simplebaseline import SimpleBaseline_Res50, SimpleBaseline_Res101, SimpleB
     SimpleBaseline_Res50,
     SimpleBaseline_Res101,
     SimpleBaseline_Res152,
+=======
+    simplebaseline_res50,
+    simplebaseline_res101,
+    simplebaseline_res152,
+>>>>>>> add comments
 )
 >>>>>>> format code
