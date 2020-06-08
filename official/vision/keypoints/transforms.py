@@ -71,6 +71,9 @@ class HalfBodyTransform(VisionTransform):
     """
     Randomly select only half of the body (upper or lower) of an annotated person.
     It aims to help the model generalize better to obstructed cases.
+    :param upper_body_ids: id of upper body.
+    :param lower_body_ids: id of lower body.
+    :param prob: probability that this transform is performed.
     """
 
     def __init__(self, upper_body_ids, lower_body_ids, prob=0.3, order=None):
@@ -149,7 +152,11 @@ class HalfBodyTransform(VisionTransform):
 class ExtendBoxes(VisionTransform):
     """
     Randomly extends the bounding box for each person,
-    and transforms the width/height ratio to fixed value
+    and transforms the width/height ratio to fixed value.
+    :param extend_x: ratio that width is extended.
+    :param extend_y: ratio that height is extended.
+    :param w_h_ratio: width/height ratio.
+    :param random_extend_prob: probability that boxes are randomly extended, in which case extend_x and extend_y are the maximum ratios.
     """
 
     def __init__(self, extend_x, extend_y, w_h_ratio, random_extend_prob=1, order=None):
@@ -203,7 +210,13 @@ class RandomBoxAffine(VisionTransform):
     """
     Randomly scale and rotate the image, then crop out and the person according to its bounding box.
     The cropped person is then resized to disired size.
-    This process is completed mainly by cv2.warpAffinne 
+    This process is completed mainly by cv2.warpAffine.
+    :param degrees: tuple, minmum and maximum of rotated angles.
+    :param scale: tuple, minmum and maximum of scales.
+    :param ouput_shape: the final desired shape.
+    :param scale_prob: probability that image is scaled.
+    :param rotate_prob: probability that image is rotated.
+    :param bordervalue: value that is used to pad image.
     """
 
     def __init__(

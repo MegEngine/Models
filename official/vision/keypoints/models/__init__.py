@@ -7,7 +7,7 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from .simplebaseline import (
-    SimpleBaseline_Res50,
-    SimpleBaseline_Res101,
-    SimpleBaseline_Res152,
+    simplebaseline_res50,
+    simplebaseline_res101,
+    simplebaseline_res152,
 )
