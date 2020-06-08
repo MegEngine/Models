@@ -27,11 +27,35 @@ class Config:
 
 cfg = Config()
 
+# pre-defined colors for at most 20 categories
+class_colors = [
+    [0, 0, 0],  # background
+    [0, 0, 128],
+    [0, 128, 0],
+    [0, 128, 128],
+    [128, 0, 0],
+    [128, 0, 128],
+    [128, 128, 0],
+    [128, 128, 128],
+    [0, 0, 64],
+    [0, 0, 192],
+    [0, 128, 64],
+    [0, 128, 192],
+    [128, 0, 64],
+    [128, 0, 192],
+    [128, 128, 64],
+    [128, 128, 192],
+    [0, 64, 0],
+    [0, 64, 128],
+    [0, 192, 0],
+    [0, 192, 128],
+    [128, 64, 0],
+]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_path", type=str, default=None, help="inference image")
-    parser.add_argument("--model_path", type=str, default=None, help="inference model")
+    parser.add_argument("-i", "--image_path", type=str, default=None, help="inference image")
+    parser.add_argument("-m", "--model_path", type=str, default=None, help="inference model")
     args = parser.parse_args()
 
     net = load_model(args.model_path)
@@ -42,7 +66,6 @@ def main():
         img = cv2.imread(args.image_path)
     pred = inference(img, net)
     cv2.imwrite("out.jpg", pred)
-
 
 def load_model(model_path):
     model_dict = mge.load(model_path)
@@ -73,7 +96,6 @@ def inference(img, net):
         pred.astype("uint8"), (oriw, orih), interpolation=cv2.INTER_NEAREST
     )
 
-    class_colors = dataset.PascalVOC.class_colors
     out = np.zeros((orih, oriw, 3))
     nids = np.unique(pred)
     for t in nids:

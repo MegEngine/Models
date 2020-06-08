@@ -23,32 +23,16 @@ from official.vision.segmentation.deeplabv3plus import (
     DeepLabV3Plus,
     softmax_cross_entropy,
 )
+from official.vision.segmentation.utils import import_config_from_file
 
 logger = mge.get_logger(__name__)
 
 
-class Config:
-    ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname("__file__")))
-    MODEL_SAVE_DIR = os.path.join(ROOT_DIR, "log")
-    LOG_DIR = MODEL_SAVE_DIR
-    if not os.path.isdir(MODEL_SAVE_DIR):
-        os.makedirs(MODEL_SAVE_DIR)
-
-    DATA_WORKERS = 4
-    DATA_TYPE = "trainaug"
-
-    IGNORE_INDEX = 255
-    NUM_CLASSES = 21
-    IMG_SIZE = 512
-    IMG_MEAN = [103.530, 116.280, 123.675]
-    IMG_STD = [57.375, 57.120, 58.395]
-
-
-cfg = Config()
-
-
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-c", "--config", type=str, required=True, help="configuration file"
+    )
     parser.add_argument(
         "-d", "--dataset_dir", type=str, default="/data/datasets/VOC2012",
     )
@@ -57,19 +41,6 @@ def main():
     )
     parser.add_argument(
         "-n", "--ngpus", type=int, default=8, help="batchsize for training"
-    )
-    parser.add_argument(
-        "-b", "--batch_size", type=int, default=8, help="batchsize for training"
-    )
-    parser.add_argument(
-        "-lr",
-        "--base_lr",
-        type=float,
-        default=0.002,
-        help="base learning rate for training",
-    )
-    parser.add_argument(
-        "-e", "--train_epochs", type=int, default=100, help="epochs for training"
     )
     parser.add_argument(
         "-r", "--resume", type=str, default=None, help="resume model file"
@@ -92,6 +63,8 @@ def main():
 
 
 def worker(rank, world_size, args):
+    cfg = import_config_from_file(args.config)
+
     if world_size > 1:
         dist.init_process_group(
             master_ip="localhost",
@@ -103,11 +76,11 @@ def worker(rank, world_size, args):
         logger.info("Init process group done")
 
     logger.info("Prepare dataset")
-    train_loader, epoch_size = build_dataloader(args.batch_size, args.dataset_dir)
-    batch_iter = epoch_size // (args.batch_size * world_size)
+    train_loader, epoch_size = build_dataloader(cfg.BATCH_SIZE, args.dataset_dir, cfg)
+    batch_iter = epoch_size // (cfg.BATCH_SIZE * world_size)
 
     net = DeepLabV3Plus(class_num=cfg.NUM_CLASSES, pretrained=args.weight_file)
-    base_lr = args.base_lr * world_size
+    base_lr = cfg.LEARNING_RATE * world_size
     optimizer = optim.SGD(
         net.parameters(requires_grad=True),
         lr=base_lr,
@@ -116,15 +89,15 @@ def worker(rank, world_size, args):
     )
 
     @jit.trace(symbolic=True, opt_level=2)
-    def train_func(input_data, label, net=None, optimizer=None):
+    def train_func(data, label, net=None, optimizer=None):
         net.train()
-        pred = net(input_data)
+        pred = net(data)
         loss = softmax_cross_entropy(pred, label, ignore_index=cfg.IGNORE_INDEX)
         optimizer.backward(loss)
         return pred, loss
 
     begin_epoch = 0
-    end_epoch = args.train_epochs
+    end_epoch = cfg.EPOCHS
     if args.resume is not None:
         pretrained = mge.load(args.resume)
         begin_epoch = pretrained["epoch"] + 1
@@ -135,11 +108,11 @@ def worker(rank, world_size, args):
     max_itr = end_epoch * batch_iter
 
     image = mge.tensor(
-        np.zeros([args.batch_size, 3, cfg.IMG_SIZE, cfg.IMG_SIZE]).astype(np.float32),
+        np.zeros([cfg.BATCH_SIZE, 3, cfg.IMG_HEIGHT, cfg.IMG_WIDTH]).astype(np.float32),
         dtype="float32",
     )
     label = mge.tensor(
-        np.zeros([args.batch_size, cfg.IMG_SIZE, cfg.IMG_SIZE]).astype(np.int32),
+        np.zeros([cfg.BATCH_SIZE, cfg.IMG_HEIGHT, cfg.IMG_WIDTH]).astype(np.int32),
         dtype="int32",
     )
     exp_name = os.path.abspath(os.path.dirname(__file__)).split("/")[-1]
@@ -184,10 +157,22 @@ def worker(rank, world_size, args):
             logger.info("save epoch%d", epoch)
 
 
-def build_dataloader(batch_size, dataset_dir):
-    train_dataset = dataset.PascalVOC(
-        dataset_dir, cfg.DATA_TYPE, order=["image", "mask"]
-    )
+def build_dataloader(batch_size, dataset_dir, cfg):
+    if cfg.DATASET == "VOC2012":
+        train_dataset = dataset.PascalVOC(
+            dataset_dir,
+            cfg.DATA_TYPE,
+            order=["image", "mask"]
+        )
+    elif cfg.DATASET == "Cityscapes":
+        train_dataset = dataset.Cityscapes(
+            dataset_dir,
+            "train",
+            mode='gtFine',
+            order=["image", "mask"]
+        )
+    else:
+        raise ValueError("Unsupported dataset {}".format(cfg.DATASET))
     train_sampler = data.RandomSampler(train_dataset, batch_size, drop_last=True)
     train_dataloader = data.DataLoader(
         train_dataset,
@@ -197,7 +182,7 @@ def build_dataloader(batch_size, dataset_dir):
                 T.RandomHorizontalFlip(0.5),
                 T.RandomResize(scale_range=(0.5, 2)),
                 T.RandomCrop(
-                    output_size=(cfg.IMG_SIZE, cfg.IMG_SIZE),
+                    output_size=(cfg.IMG_HEIGHT, cfg.IMG_WIDTH),
                     padding_value=[0, 0, 0],
                     padding_maskvalue=255,
                 ),
