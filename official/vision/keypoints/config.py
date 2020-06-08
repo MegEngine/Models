@@ -7,6 +7,7 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 class Config:
+<<<<<<< HEAD
     ##############3## train ##############################################
     lr_ratio = 0.1
     warm_epochs = 1
@@ -14,6 +15,8 @@ class Config:
 
     half_body_transform = True
     extend_boxes = True
+=======
+>>>>>>> format code
 
     ################## data ###############################################
     # basic

@@ -112,14 +112,22 @@ python3 test.py --arch name/of/network \
 模型训练好之后，可以通过如下命令测试单张图片(先使用预训练的RetainNet检测出人的框），得到人体姿态可视化结果：
 
 ```bash
+<<<<<<< HEAD
 python3 inference.py --arch /name/of/tested/network \
                      --model /path/to/model \
+=======
+python3 inference.py --model /path/to/model \
+>>>>>>> format code
                      --image /path/to/image.jpg
 ```
 
 `inference.py`的命令行参数如下：
+<<<<<<< HEAD
 - `--arch`, 网络的名字;
 - `--model`，载入训练好的模型;
+=======
+- `--model`，载入训练好的模型；
+>>>>>>> format code
 - `--image`，载入待测试的图像
 
 ## 参考文献
