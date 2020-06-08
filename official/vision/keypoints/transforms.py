@@ -1,10 +1,24 @@
+# -*- coding: utf-8 -*-
+# MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
+#
+# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from megengine.data.transform import VisionTransform, RandomHorizontalFlip
 from megengine.data.transform.vision import functional as F
 import cv2
 import numpy as np
 
+
 def get_dir(src_point, rot_rad):
     # borrowed from SimpleBaseline (https://github.com/microsoft/human-pose-estimation.pytorch/blob/master/lib/utils/transforms.py)
+    # ------------------------------------------------------------------------------
+    # Copyright (c) Microsoft
+    # Licensed under the MIT License.
+    # Written by Bin Xiao (Bin.Xiao@microsoft.com)
+    # ------------------------------------------------------------------------------
     sn, cs = np.sin(rot_rad), np.cos(rot_rad)
     src_result = [0, 0]
     src_result[0] = src_point[0] * cs - src_point[1] * sn
@@ -14,8 +28,14 @@ def get_dir(src_point, rot_rad):
 
 def get_3rd_point(a, b):
     # borrowed from SimpleBaseline (https://github.com/microsoft/human-pose-estimation.pytorch/blob/master/lib/utils/transforms.py)
+    # ------------------------------------------------------------------------------
+    # Copyright (c) Microsoft
+    # Licensed under the MIT License.
+    # Written by Bin Xiao (Bin.Xiao@microsoft.com)
+    # ------------------------------------------------------------------------------
     direct = a - b
     return b + np.array([-direct[1], direct[0]], dtype=np.float32)
+
 
 def get_affine_transform(center, bbox_shape, scale, rot, output_shape, inv=0):
 
@@ -48,10 +68,10 @@ def get_affine_transform(center, bbox_shape, scale, rot, output_shape, inv=0):
 
 
 class HalfBodyTransform(VisionTransform):
-    '''
-    This transform randomly select only half of the body (upper or lower) of an annotated person.
+    """
+    Randomly select only half of the body (upper or lower) of an annotated person.
     It aims to help the model generalize better to obstructed cases.
-    '''
+    """
 
     def __init__(self, upper_body_ids, lower_body_ids, prob=0.3, order=None):
         super(HalfBodyTransform, self).__init__()
@@ -95,8 +115,9 @@ class HalfBodyTransform(VisionTransform):
             if np.random.randn() < 0.5 and len(upper_joints) > 3:
                 selected_joints = upper_joints
             else:
-                selected_joints = lower_joints \
-                    if len(lower_joints) > 3 else upper_joints
+                selected_joints = (
+                    lower_joints if len(lower_joints) > 3 else upper_joints
+                )
 
             selected_joints = np.array(selected_joints, np.float32)
             if len(selected_joints) < 3:
@@ -111,18 +132,26 @@ class HalfBodyTransform(VisionTransform):
                 w = right_bottom[0] - left_top[0]
                 h = right_bottom[1] - left_top[1]
 
-                boxes[0] = np.array([
-                    center[0] - w/2,
-                    center[1] - h/2,
-                    center[0] + w/2,
-                    center[1] + h/2
-                ], dtype=np.float32)
+                boxes[0] = np.array(
+                    [
+                        center[0] - w / 2,
+                        center[1] - h / 2,
+                        center[0] + w / 2,
+                        center[1] + h / 2,
+                    ],
+                    dtype=np.float32,
+                )
                 return boxes
         else:
             return boxes
 
 
 class ExtendBoxes(VisionTransform):
+    """
+    Randomly extends the bounding box for each person,
+    and transforms the width/height ratio to fixed value
+    """
+
     def __init__(self, extend_x, extend_y, w_h_ratio, random_extend_prob=1, order=None):
         super(ExtendBoxes, self).__init__()
         self.extend_x = extend_x
@@ -158,21 +187,36 @@ class ExtendBoxes(VisionTransform):
             else:
                 extend_w = extend_h * 1.0 * self.w_h_ratio
 
-            boxes[i] = np.array([
-                center_x - extend_w / 2,
-                center_y - extend_h / 2,
-                center_x + extend_w / 2,
-                center_y + extend_h / 2
-            ], dtype=np.float32)
+            boxes[i] = np.array(
+                [
+                    center_x - extend_w / 2,
+                    center_y - extend_h / 2,
+                    center_x + extend_w / 2,
+                    center_y + extend_h / 2,
+                ],
+                dtype=np.float32,
+            )
         return boxes
 
 
-class RandomAffine(VisionTransform):
-    def __init__(self,
-                 degrees, scale,  output_shape, rotate_prob=1,
-                 scale_prob=1, bordervalue=0, order=None
-                 ):
-        super(RandomAffine, self).__init__(order)
+class RandomBoxAffine(VisionTransform):
+    """
+    Randomly scale and rotate the image, then crop out and the person according to its bounding box.
+    The cropped person is then resized to disired size.
+    This process is completed mainly by cv2.warpAffinne 
+    """
+
+    def __init__(
+        self,
+        degrees,
+        scale,
+        output_shape,
+        rotate_prob=1,
+        scale_prob=1,
+        bordervalue=0,
+        order=None,
+    ):
+        super(RandomBoxAffine, self).__init__(order)
 
         self.degrees_range = degrees
         self.scale_range = scale
@@ -186,29 +230,22 @@ class RandomAffine(VisionTransform):
         scale = 1
         is_scale = np.random.random() < self.scale_prob
         if is_scale:
-            scale = np.random.uniform(
-                self.scale_range[0], self.scale_range[1])
+            scale = np.random.uniform(self.scale_range[0], self.scale_range[1])
 
         degree = 0
         is_rotate = np.random.random() < self.rotate_prob
         if is_rotate:
-            degree = np.random.uniform(
-                self.degrees_range[0], self.degrees_range[1])
+            degree = np.random.uniform(self.degrees_range[0], self.degrees_range[1])
 
         bbox = input[self.order.index("boxes")][0]
 
-        center = np.array([
-            (bbox[0] + bbox[2]) / 2,
-            (bbox[1] + bbox[3]) / 2
-        ], dtype=np.float32)
-        bbox_shape = np.array([
-            bbox[3] - bbox[1],
-            bbox[2] - bbox[0]
-        ], dtype=np.float32)
+        center = np.array(
+            [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32
+        )
+        bbox_shape = np.array([bbox[3] - bbox[1], bbox[2] - bbox[0]], dtype=np.float32)
 
         self.trans = get_affine_transform(
-            center, bbox_shape,  scale,
-            degree, self.output_shape
+            center, bbox_shape, scale, degree, self.output_shape
         )
         return super().apply(input)
 
@@ -217,21 +254,25 @@ class RandomAffine(VisionTransform):
             image,
             self.trans,
             (int(self.output_shape[1]), int(self.output_shape[0])),
-            flags=cv2.INTER_LINEAR, borderValue=self.bordervalue)
+            flags=cv2.INTER_LINEAR,
+            borderValue=self.bordervalue,
+        )
         return img
 
     def _apply_keypoints(self, keypoints):
         keypoints_copy = keypoints.copy()
-        keypoints_copy[:,:,2] = 1
-        pt = np.matmul(keypoints_copy[:,:,None], self.trans.transpose(1,0))[:,:,0,:2]
-        keypoints_copy[:,:,:2] = pt
-        keypoints_copy[:,:,2] = keypoints[:,:,2]
+        keypoints_copy[:, :, 2] = 1
+        pt = np.matmul(keypoints_copy[:, :, None], self.trans.transpose(1, 0))[
+            :, :, 0, :2
+        ]
+        keypoints_copy[:, :, :2] = pt
+        keypoints_copy[:, :, 2] = keypoints[:, :, 2]
         delete_pt = (
-            pt[:,:,0] < 0) + (
-            pt[:,:,0] > self.output_shape[1] - 1) + (
-            pt[:,:,1] < 0) + (
-            pt[:,:,1] > self.output_shape[0] - 1) + (
-            keypoints[:,:,2] == 0
+            (pt[:, :, 0] < 0)
+            + (pt[:, :, 0] > self.output_shape[1] - 1)
+            + (pt[:, :, 1] < 0)
+            + (pt[:, :, 1] > self.output_shape[0] - 1)
+            + (keypoints[:, :, 2] == 0)
         )
         keypoints_copy[delete_pt] = 0
         return keypoints_copy

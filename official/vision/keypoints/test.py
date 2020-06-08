@@ -23,12 +23,10 @@ from megengine.data.dataset import COCO as COCODataset
 import megengine.data.transform as T
 from tqdm import tqdm
 
-import sys
-sys.path.insert(0, '../../../')
-from dataset import COCOJoints
-from transforms import RandomAffine, ExtendBoxes
-from config import Config as cfg
-import models as M
+from official.vision.keypoints.dataset import COCOJoints
+from official.vision.keypoints.transforms import RandomBoxAffine, ExtendBoxes
+from official.vision.keypoints.config import Config as cfg
+import official.vision.keypoints.models as M
 
 
 logger = mge.get_logger(__name__)
@@ -36,9 +34,9 @@ logger = mge.get_logger(__name__)
 
 def build_dataloader(rank, world_size, data_root, ann_file):
     val_dataset = COCOJoints(
-        data_root, ann_file, image_set='val', order=("image", "boxes", "info"))
-    val_sampler = SequentialSampler(
-        val_dataset, 1, world_size=world_size, rank=rank)
+        data_root, ann_file, image_set="val", order=("image", "boxes", "info")
+    )
+    val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
     val_dataloader = DataLoader(
         val_dataset,
         sampler=val_sampler,
@@ -49,20 +47,20 @@ def build_dataloader(rank, world_size, data_root, ann_file):
                 ExtendBoxes(
                     cfg.test_x_ext,
                     cfg.test_y_ext,
-                    cfg.input_shape[1]/cfg.input_shape[0],
-                    random_extend_prob=0
+                    cfg.input_shape[1] / cfg.input_shape[0],
+                    random_extend_prob=0,
                 ),
-                RandomAffine(
+                RandomBoxAffine(
                     degrees=(0, 0),
                     scale=(1, 1),
                     output_shape=cfg.input_shape,
                     rotate_prob=0,
-                    scale_prob=0
+                    scale_prob=0,
                 ),
-                T.ToMode()
+                T.ToMode(),
             ],
             order=("image", "boxes", "info"),
-        )
+        ),
     )
     return val_dataloader
 
@@ -73,13 +71,15 @@ def find_keypoints(pred, bbox):
     heat_prob = heat_prob / cfg.heat_range + 1
 
     border = cfg.test_aug_border
-    pred_aug = np.zeros((
-        pred.shape[0], pred.shape[1] + 2*border, pred.shape[2] + 2*border),
-        dtype=np.float32)
+    pred_aug = np.zeros(
+        (pred.shape[0], pred.shape[1] + 2 * border, pred.shape[2] + 2 * border),
+        dtype=np.float32,
+    )
     pred_aug[:, border:-border, border:-border] = pred.copy()
     for i in range(pred_aug.shape[0]):
         pred_aug[i] = cv2.GaussianBlur(
-            pred_aug[i], (cfg.test_gaussian_kernel, cfg.test_gaussian_kernel), 0)
+            pred_aug[i], (cfg.test_gaussian_kernel, cfg.test_gaussian_kernel), 0
+        )
 
     results = np.zeros((pred_aug.shape[0], 3), dtype=np.float32)
     for i in range(pred_aug.shape[0]):
@@ -128,25 +128,29 @@ def find_keypoints(pred, bbox):
         else:
             y -= border
             x -= border
-        x = max(0, min(x, cfg.output_shape[1]-1))
-        y = max(0, min(y, cfg.output_shape[0]-1))
+        x = max(0, min(x, cfg.output_shape[1] - 1))
+        y = max(0, min(y, cfg.output_shape[0] - 1))
         skeleton_score = heat_prob[i, int(round(y)), int(round(x))]
 
         stride = cfg.input_shape[1] / cfg.output_shape[1]
-        
+
         x = (x + 0.5) * stride - 0.5
         y = (y + 0.5) * stride - 0.5
 
         bbox_top_leftx, bbox_top_lefty, bbox_bottom_rightx, bbox_bottom_righty = bbox
-        x = x / cfg.input_shape[1] * \
-            (bbox_bottom_rightx - bbox_top_leftx) + bbox_top_leftx
-        y = y / cfg.input_shape[0] * \
-            (bbox_bottom_righty - bbox_top_lefty) + bbox_top_lefty
+        x = (
+            x / cfg.input_shape[1] * (bbox_bottom_rightx - bbox_top_leftx)
+            + bbox_top_leftx
+        )
+        y = (
+            y / cfg.input_shape[0] * (bbox_bottom_righty - bbox_top_lefty)
+            + bbox_top_lefty
+        )
 
         results[i, 0] = x
         results[i, 1] = y
         results[i, 2] = skeleton_score
-    
+
     return results
 
 
@@ -157,7 +161,7 @@ def find_results(func, img, bbox, info):
     fliped_pred = outs[1][cfg.keypoint_flip_order][:, :, ::-1]
     pred = (pred + fliped_pred) / 2
 
-    results = find_keypoints(pred,bbox)
+    results = find_keypoints(pred, bbox)
 
     final_score = float(results[:, -1].mean() * info[-1])
     image_id = int(info[-2])
@@ -168,16 +172,13 @@ def find_results(func, img, bbox, info):
         "image_id": image_id,
         "category_id": 1,
         "score": final_score,
-        "keypoints": keypoints
-
+        "keypoints": keypoints,
     }
     return instance
 
 
 def worker(
-    arch, model_file, data_root,
-    ann_file, worker_id,
-    total_worker, result_queue,
+    arch, model_file, data_root, ann_file, worker_id, total_worker, result_queue,
 ):
     """
     :param net_file: network description file
@@ -203,39 +204,47 @@ def worker(
         img, bbox, info = data_dict
         fliped_img = img[:, :, :, ::-1] - np.zeros_like(img)
         data = np.concatenate([img, fliped_img], 0)
-        model.inputs["image"].set_value(
-            np.ascontiguousarray(data).astype(np.float32))
+        model.inputs["image"].set_value(np.ascontiguousarray(data).astype(np.float32))
         instance = find_results(val_func, img, bbox[0, 0], info)
 
-        result_queue.put_nowait(
-            instance
-        )
+        result_queue.put_nowait(instance)
 
 
 def make_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--batch_size", default=1, type=int)
     parser.add_argument("-n", "--ngpus", default=8, type=int)
     parser.add_argument("-d", "--data_root", default="/", type=str)
     parser.add_argument(
-        "-gt", "--gt_path", default="/data/coco/annotations/person_keypoints_val2017.json", type=str)
+        "-gt",
+        "--gt_path",
+        default="/data/coco/annotations/person_keypoints_val2017.json",
+        type=str,
+    )
     parser.add_argument(
-        "-dt", "--dt_path", default="/data/coco/person_detection_results/COCO_val2017_detections_AP_H_56_person.json", type=str)
+        "-dt",
+        "--dt_path",
+        default="/data/coco/person_detection_results/COCO_val2017_detections_AP_H_56_person.json",
+        type=str,
+    )
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
     parser.add_argument("-ee", "--end_epoch", default=-1, type=int)
     parser.add_argument(
         "-a",
         "--arch",
-        default="SimpleBaseline_Res50",
+        default="simplebaseline_res50",
         type=str,
         choices=[
-            "SimpleBaseline_Res50",
-            "SimpleBaseline_Res101",
-            "SimpleBaseline_Res152", 
+            "simplebaseline_res50",
+            "Simplebaseline_res101",
+            "Simplebaseline_res152",
         ],
     )
     parser.add_argument(
-        "-m", "--model", default="/data/models/HRNet_W32/epoch_22.pkl", type=str)
+        "-m",
+        "--model",
+        default="/data/models/simplebaseline_res50_256x192/epoch_199.pkl",
+        type=str,
+    )
     return parser
 
 
@@ -246,15 +255,14 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
-    dets = json.load(open(args.dt_path, 'r'))
+    dets = json.load(open(args.dt_path, "r"))
     eval_gt = COCO(args.gt_path)
     gt = eval_gt.dataset
 
-    dets = [i for i in dets if (i['image_id'] in eval_gt.imgs and i['category_id']==1)]
-    ann_file = {
-        "images": gt["images"],
-        "annotations": dets
-    }
+    dets = [
+        i for i in dets if (i["image_id"] in eval_gt.imgs and i["category_id"] == 1)
+    ]
+    ann_file = {"images": gt["images"], "annotations": dets}
 
     if args.end_epoch == -1:
         args.end_epoch = args.start_epoch
@@ -292,9 +300,7 @@ def main():
         for p in procs:
             p.join()
 
-        json_path = "log-of-{}_epoch_{}.json".format(
-            args.arch, epoch_num
-        )
+        json_path = "log-of-{}_epoch_{}.json".format(args.arch, epoch_num)
         all_results = json.dumps(all_results)
         with open(json_path, "w") as fo:
             fo.write(all_results)

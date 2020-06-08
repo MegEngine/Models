@@ -100,12 +100,12 @@ python3 test.py --arch name/of/model \
 
 ```bash
 python3 inference.py --model /path/to/model \
-                     --image_path /path/to/image.jpg
+                     --image /path/to/image.jpg
 ```
 
 `inference.py`的命令行参数如下：
 - `--model`，载入训练好的模型；
-- `--image_path`，载入待测试的图像
+- `--image`，载入待测试的图像
 
 ## 参考文献
 

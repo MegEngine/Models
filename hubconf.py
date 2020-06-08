@@ -40,7 +40,7 @@ from official.vision.segmentation.deeplabv3plus import (
 )
 
 from official.vision.keypoints.models import (
-        SimpleBaseline_Res50,
-        SimpleBaseline_Res101,
-        SimpleBaseline_Res152,
+        simplebaseline_res50,
+        simplebaseline_res101,
+        simplebaseline_res152,
 )
