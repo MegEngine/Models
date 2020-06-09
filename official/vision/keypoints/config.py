@@ -8,6 +8,7 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 class Config:
     ##############3## train ##############################################
+<<<<<<< HEAD
     initial_lr = 3e-4
     lr_ratio = 0.1
 
@@ -15,6 +16,14 @@ class Config:
     epochs = 200
     warm_epochs = 1
     weight_decay = 1e-5
+=======
+    lr_ratio = 0.1
+    warm_epochs = 1
+    weight_decay = 1e-5
+
+    half_body_transform = True
+    extend_boxes = True
+>>>>>>> simlify args
 
     ################## data ###############################################
     # path
