@@ -74,6 +74,7 @@ python3 train.py --arch simplebaseline_res50 \
                  --ngpus 8 \
                  --epochs 200 \
                  --continue /path/to/model
+<<<<<<< HEAD
 ```
 训练MSPN:
 ```bash
@@ -86,6 +87,8 @@ python3 train.py --arch mspn_4stage \
                  --epochs 200 \
                  --continue /path/to/model
 
+=======
+>>>>>>> simlify args
 ```
 
 ## 如何测试
@@ -113,21 +116,31 @@ python3 test.py --arch name/of/network \
 
 ```bash
 <<<<<<< HEAD
+<<<<<<< HEAD
 python3 inference.py --arch /name/of/tested/network \
                      --model /path/to/model \
 =======
 python3 inference.py --model /path/to/model \
 >>>>>>> format code
+=======
+python3 inference.py --arch /name/of/tested/model \
+                     --model /path/to/model \
+>>>>>>> simlify args
                      --image /path/to/image.jpg
 ```
 
 `inference.py`的命令行参数如下：
+<<<<<<< HEAD
 <<<<<<< HEAD
 - `--arch`, 网络的名字;
 - `--model`，载入训练好的模型;
 =======
 - `--model`，载入训练好的模型；
 >>>>>>> format code
+=======
+- `--arch`, 网络的名字;
+- `--model`，载入训练好的模型;
+>>>>>>> simlify args
 - `--image`，载入待测试的图像
 
 ## 参考文献
