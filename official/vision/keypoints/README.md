@@ -61,7 +61,7 @@ ${COCO_DATA_ROOT}
 - `--batch_size`，训练时采用的batch size, 默认32；
 - `--ngpus`, 训练时采用的gpu数量，默认8; 当设置为1时，表示单卡训练
 - `--continue`, 是否从已训好的模型继续训练；
-- `--train_epochs`, 需要训练的epoch数量；
+- `--epochs`, 需要训练的epoch数量；
 - `--lr`, 初始学习率；
 
 ```bash
@@ -71,8 +71,8 @@ python3 train.py --arch name/of/model \
                  --batch_size 32 \
                  --lr 0.0003 \
                  --ngpus 8 \
-                 --train_epochs 200 \
-                 --resume /path/to/model
+                 --epochs 200 \
+                 --continue /path/to/model
 ```
 
 ## 如何测试
@@ -90,7 +90,7 @@ python3 test.py --arch name/of/model \
 `test.py`的命令行参数如下：
 - `--arch`, 训练的模型的名字
 - `--data_root`，COCO数据集里`images`的路径;
-- `--gt_path`, COCO数据集里验证集的标注文件
+- `--gt_path`, COCO数据集里验证集的标注文件;
 - `--dt_path`，人体检测结果；
 - `--model`, 待检测的模型
 
@@ -99,12 +99,14 @@ python3 test.py --arch name/of/model \
 模型训练好之后，可以通过如下命令测试单张图片(先使用预训练的RetainNet检测出人的框），得到人体姿态可视化结果：
 
 ```bash
-python3 inference.py --model /path/to/model \
+python3 inference.py --arch /name/of/tested/model \
+                     --model /path/to/model \
                      --image /path/to/image.jpg
 ```
 
 `inference.py`的命令行参数如下：
-- `--model`，载入训练好的模型；
+- `--arch`, 网络的名字;
+- `--model`，载入训练好的模型;
 - `--image`，载入待测试的图像
 
 ## 参考文献

@@ -61,14 +61,9 @@ def main():
 
     parser.add_argument("-b", "--batch_size", default=64, type=int)
     parser.add_argument("--lr", default=6e-4, type=float)
-    parser.add_argument("--lr_ratio", default=0.1, type=float)
-    parser.add_argument("--warm_epochs", default=1, type=float)
-    parser.add_argument("--weight_decay", default=1e-5, type=float)
     parser.add_argument("--epochs", default=200, type=int)
 
     parser.add_argument("--multi_scale_supervision", default=True, type=bool)
-    parser.add_argument("--half_body_transform", default=True, type=bool)
-    parser.add_argument("--extend_boxes", default=True, type=bool)
 
     parser.add_argument("-n", "--ngpus", default=8, type=int)
     parser.add_argument("-w", "--workers", default=8, type=int)
@@ -86,7 +81,7 @@ def main():
 
     if world_size > 1:
         # scale learning rate by number of gpus
-        args.initial_lr *= world_size
+        args.lr *= world_size
         # start distributed training, dispatch sub-processes
         processes = []
         for rank in range(world_size):
@@ -125,8 +120,8 @@ def worker(rank, world_size, args):
 
     optimizer = optim.Adam(
         model.parameters(requires_grad=True),
-        lr=args.initial_lr,
-        weight_decay=args.weight_decay,
+        lr=args.lr,
+        weight_decay=cfg.weight_decay,
     )
     # Build train datasets
     logger.info("preparing dataset..")
@@ -141,13 +136,13 @@ def worker(rank, world_size, args):
     )
 
     transforms = [T.Normalize(mean=cfg.IMG_MEAN, std=cfg.IMG_STD)]
-    if args.half_body_transform:
+    if cfg.half_body_transform:
         transforms.append(
             HalfBodyTransform(
                 cfg.upper_body_ids, cfg.lower_body_ids, cfg.prob_half_body
             )
         )
-    if args.extend_boxes:
+    if cfg.extend_boxes:
         transforms.append(
             ExtendBoxes(cfg.x_ext, cfg.y_ext, cfg.input_shape[1] / cfg.input_shape[0])
         )
@@ -209,13 +204,13 @@ def train(model, data_queue, optimizer, args, epoch=0):
 
         for param_group in optimizer.param_groups:
             current_step = epoch * len(data_queue) + step
-            if current_step < args.warm_epochs * len(data_queue):
-                lr_factor = args.lr_ratio + (
-                    1 - args.lr_ratio
-                ) * current_step / args.warm_epochs / len(data_queue)
+            if current_step < cfg.warm_epochs * len(data_queue):
+                lr_factor = cfg.lr_ratio + (
+                    1 - cfg.lr_ratio
+                ) * current_step / cfg.warm_epochs / len(data_queue)
             else:
-                lr_factor = 1 - (current_step - len(data_queue) * args.warm_epochs) / (
-                    len(data_queue) * (args.epochs - args.warm_epochs)
+                lr_factor = 1 - (current_step - len(data_queue) * cfg.warm_epochs) / (
+                    len(data_queue) * (args.epochs - cfg.warm_epochs)
                 )
 
             lr = args.initial_lr * lr_factor
