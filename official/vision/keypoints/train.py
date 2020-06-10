@@ -119,9 +119,7 @@ def worker(rank, world_size, args):
         start_epoch = file["epoch"]
 
     optimizer = optim.Adam(
-        model.parameters(requires_grad=True),
-        lr=args.lr,
-        weight_decay=cfg.weight_decay,
+        model.parameters(requires_grad=True), lr=args.lr, weight_decay=cfg.weight_decay,
     )
     # Build train datasets
     logger.info("preparing dataset..")

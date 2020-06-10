@@ -6,6 +6,12 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# ---------------------------------------------------------------------
+# Part of the following code in this file refs to human-pose-estimation.pytorch
+# MIT License.
+#
+# Copyright (c) Microsoft
+# ---------------------------------------------------------------------
 from megengine.data.transform import VisionTransform, RandomHorizontalFlip
 from megengine.data.transform.vision import functional as F
 import cv2
@@ -13,12 +19,6 @@ import numpy as np
 
 
 def get_dir(src_point, rot_rad):
-    # borrowed from SimpleBaseline (https://github.com/microsoft/human-pose-estimation.pytorch/blob/master/lib/utils/transforms.py)
-    # ------------------------------------------------------------------------------
-    # Copyright (c) Microsoft
-    # Licensed under the MIT License.
-    # Written by Bin Xiao (Bin.Xiao@microsoft.com)
-    # ------------------------------------------------------------------------------
     sn, cs = np.sin(rot_rad), np.cos(rot_rad)
     src_result = [0, 0]
     src_result[0] = src_point[0] * cs - src_point[1] * sn
@@ -27,12 +27,6 @@ def get_dir(src_point, rot_rad):
 
 
 def get_3rd_point(a, b):
-    # borrowed from SimpleBaseline (https://github.com/microsoft/human-pose-estimation.pytorch/blob/master/lib/utils/transforms.py)
-    # ------------------------------------------------------------------------------
-    # Copyright (c) Microsoft
-    # Licensed under the MIT License.
-    # Written by Bin Xiao (Bin.Xiao@microsoft.com)
-    # ------------------------------------------------------------------------------
     direct = a - b
     return b + np.array([-direct[1], direct[0]], dtype=np.float32)
 
