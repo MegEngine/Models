@@ -38,3 +38,9 @@ from official.vision.segmentation.deeplabv3plus import (
     deeplabv3plus_res101,
     DeepLabV3Plus,
 )
+
+from official.vision.keypoints.models import (
+        simplebaseline_res50,
+        simplebaseline_res101,
+        simplebaseline_res152,
+)
