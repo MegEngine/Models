@@ -237,6 +237,7 @@ def make_parser():
             "simplebaseline_res50",
             "Simplebaseline_res101",
             "Simplebaseline_res152",
+            "mspn_4stage"
         ],
     )
     parser.add_argument(

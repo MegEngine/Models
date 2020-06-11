@@ -5,10 +5,10 @@
 本目录使用了在COCO val2017上的Human AP为56.4的人体检测结果，最后在COCO val2017上人体关节点估计结果为
 |Methods|Backbone|Input Size| AP | Ap .5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
 |---|:---:|---|---|---|---|---|---|---|---|---|---|---|
-| SimpleBaseline |Res50 |256x192| 71.2 | 0.887 | 0.779 | 0.673 | 0.785 | 0.782 | 0.932 | 0.839 | 0.730 | 0.854 |
-| SimpleBaseline |Res101|256x192| 72.2 | 0.891 | 0.795 | 0.687 | 0.795 | 0.794 | 0.936 | 0.855 | 0.745 | 0.863 |
-| SimpleBaseline |Res152|256x192| 72.4 | 0.888 | 0.794 | 0.688 | 0.795 | 0.795 | 0.934 | 0.856 | 0.746 | 0.863 |
-
+| SimpleBaseline |Res50 |256x192| 0.712 | 0.887 | 0.779 | 0.673 | 0.785 | 0.782 | 0.932 | 0.839 | 0.730 | 0.854 |
+| SimpleBaseline |Res101|256x192| 0.722 | 0.891 | 0.795 | 0.687 | 0.795 | 0.794 | 0.936 | 0.855 | 0.745 | 0.863 |
+| SimpleBaseline |Res152|256x192| 0.724 | 0.888 | 0.794 | 0.688 | 0.795 | 0.795 | 0.934 | 0.856 | 0.746 | 0.863 |
+| MSPN_4stage |MSPN|256x192| 0.752 | 0.900 | 0.819 | 0.716 | 0.825 | 0.819 | 0.943 | 0.875 | 0.770 | 0.887 |
 
 ## 安装和环境配置
 
@@ -55,7 +55,7 @@ ${COCO_DATA_ROOT}
 3、开始训练:
 
 `train.py`的命令行参数如下:
-- `--arch`, 训练的模型的名字
+- `--arch`, 训练的网络的名字
 - `--data_root`，COCO数据集里`images`的路径；
 - `--ann_file`, COCO数据集里标注文件的`json`路径
 - `--batch_size`，训练时采用的batch size, 默认32；
@@ -64,8 +64,9 @@ ${COCO_DATA_ROOT}
 - `--epochs`, 需要训练的epoch数量；
 - `--lr`, 初始学习率；
 
+例如训练SimpleBaseline_Res50:
 ```bash
-python3 train.py --arch name/of/model \
+python3 train.py --arch simplebaseline_res50 \
                  --data_root /path/to/COCO/images \
                  --ann_file /path/to/person_keypoints.json \
                  --batch_size 32 \
@@ -74,13 +75,25 @@ python3 train.py --arch name/of/model \
                  --epochs 200 \
                  --continue /path/to/model
 ```
+训练MSPN:
+```bash
+python3 train.py --arch mspn_4stage \
+                 --data_root /path/to/COCO/images \
+                 --ann_file /path/to/person_keypoints.json \
+                 --batch_size 32 \
+                 --lr 0.0005 \
+                 --ngpus 8 \
+                 --epochs 200 \
+                 --continue /path/to/model
+
+```
 
 ## 如何测试
 
 模型训练好之后，可以通过如下命令测试模型在COCOval2017验证集的性能：
 
 ```bash
-python3 test.py --arch name/of/model \
+python3 test.py --arch name/of/network \
                 --data_root /path/to/COCO/images \
                 --model /path/to/model.pkl \
                 --gt_path /path/to/ground/truth/annotations
@@ -88,7 +101,7 @@ python3 test.py --arch name/of/model \
 ```
 
 `test.py`的命令行参数如下：
-- `--arch`, 训练的模型的名字
+- `--arch`, 网络的名字
 - `--data_root`，COCO数据集里`images`的路径;
 - `--gt_path`, COCO数据集里验证集的标注文件;
 - `--dt_path`，人体检测结果；
@@ -99,7 +112,7 @@ python3 test.py --arch name/of/model \
 模型训练好之后，可以通过如下命令测试单张图片(先使用预训练的RetainNet检测出人的框），得到人体姿态可视化结果：
 
 ```bash
-python3 inference.py --arch /name/of/tested/model \
+python3 inference.py --arch /name/of/tested/network \
                      --model /path/to/model \
                      --image /path/to/image.jpg
 ```
