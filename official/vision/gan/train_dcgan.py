@@ -30,8 +30,8 @@ dataloader = data.DataLoader(
 
 netG = dcgan.DCGANGeneratorCIFAR()
 netD = dcgan.DCGANDiscriminatorCIFAR()
-optD = optim.Adam(netD.parameters(), 1e-4, betas=(0.0, 0.9))
-optG = optim.Adam(netG.parameters(), 1e-4, betas=(0.0, 0.9))
+optD = optim.Adam(netD.parameters(), 2e-4, betas=(0.0, 0.9))
+optG = optim.Adam(netG.parameters(), 2e-4, betas=(0.0, 0.9))
 
 LOG_DIR = "./log/dcgan_example"
 
