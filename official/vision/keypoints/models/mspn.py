@@ -241,7 +241,6 @@ class MSPN(M.Module):
             outputs.append(multi_scale_heatmaps)
         return outputs
 
-
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/mspn_4stage_256x192_0_255_75_2.pkl"
 )

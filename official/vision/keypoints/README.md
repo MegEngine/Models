@@ -76,6 +76,18 @@ python3 train.py --arch mspn_4stage \
                  --multi_scale_supervision True
 
 ```
+训练MSPN:
+```bash
+python3 train.py --arch mspn_4stage \
+                 --data_root /path/to/COCO/images \
+                 --ann_file /path/to/person_keypoints.json \
+                 --batch_size 32 \
+                 --lr 0.0005 \
+                 --ngpus 8 \
+                 --epochs 200 \
+                 --continue /path/to/model
+
+```
 
 ## 如何测试
 
