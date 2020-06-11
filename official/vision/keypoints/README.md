@@ -74,21 +74,6 @@ python3 train.py --arch simplebaseline_res50 \
                  --ngpus 8 \
                  --epochs 200 \
                  --continue /path/to/model
-<<<<<<< HEAD
-```
-训练MSPN:
-```bash
-python3 train.py --arch mspn_4stage \
-                 --data_root /path/to/COCO/images \
-                 --ann_file /path/to/person_keypoints.json \
-                 --batch_size 32 \
-                 --lr 0.0005 \
-                 --ngpus 8 \
-                 --epochs 200 \
-                 --continue /path/to/model
-
-=======
->>>>>>> simlify args
 ```
 训练MSPN:
 ```bash
@@ -127,40 +112,17 @@ python3 test.py --arch name/of/network \
 模型训练好之后，可以通过如下命令测试单张图片(先使用预训练的RetainNet检测出人的框），得到人体姿态可视化结果：
 
 ```bash
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 python3 inference.py --arch /name/of/tested/network \
                      --model /path/to/model \
-=======
-python3 inference.py --model /path/to/model \
->>>>>>> format code
-=======
-python3 inference.py --arch /name/of/tested/model \
-=======
-python3 inference.py --arch /name/of/tested/network \
->>>>>>> add mspn
-                     --model /path/to/model \
->>>>>>> simlify args
                      --image /path/to/image.jpg
 ```
 
 `inference.py`的命令行参数如下：
-<<<<<<< HEAD
-<<<<<<< HEAD
 - `--arch`, 网络的名字;
 - `--model`，载入训练好的模型;
-=======
-- `--model`，载入训练好的模型；
->>>>>>> format code
-=======
-- `--arch`, 网络的名字;
-- `--model`，载入训练好的模型;
->>>>>>> simlify args
 - `--image`，载入待测试的图像
 
 ## 参考文献
 
 - [Simple Baselines for Human Pose Estimation and Tracking](https://arxiv.org/pdf/1804.06208.pdf), Bin Xiao, Haiping Wu, and Yichen Wei
 - [Rethinking on Multi-Stage Networks for Human Pose Estimation](https://arxiv.org/pdf/1901.00148.pdf) Wenbo Li1, Zhicheng Wang, Binyi Yin, Qixiang Peng, Yuming Du, Tianzi Xiao, Gang Yu, Hongtao Lu, Yichen Wei and Jian Sun
-
