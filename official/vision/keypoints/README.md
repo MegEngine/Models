@@ -90,6 +90,18 @@ python3 train.py --arch mspn_4stage \
 =======
 >>>>>>> simlify args
 ```
+训练MSPN:
+```bash
+python3 train.py --arch mspn_4stage \
+                 --data_root /path/to/COCO/images \
+                 --ann_file /path/to/person_keypoints.json \
+                 --batch_size 32 \
+                 --lr 0.0005 \
+                 --ngpus 8 \
+                 --epochs 200 \
+                 --continue /path/to/model
+
+```
 
 ## 如何测试
 
@@ -117,6 +129,7 @@ python3 test.py --arch name/of/network \
 ```bash
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 python3 inference.py --arch /name/of/tested/network \
                      --model /path/to/model \
 =======
@@ -124,6 +137,9 @@ python3 inference.py --model /path/to/model \
 >>>>>>> format code
 =======
 python3 inference.py --arch /name/of/tested/model \
+=======
+python3 inference.py --arch /name/of/tested/network \
+>>>>>>> add mspn
                      --model /path/to/model \
 >>>>>>> simlify args
                      --image /path/to/image.jpg

@@ -43,4 +43,5 @@ from official.vision.keypoints.models import (
         simplebaseline_res50,
         simplebaseline_res101,
         simplebaseline_res152,
+        mspn_4stage
 )

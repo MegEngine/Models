@@ -17,6 +17,7 @@ from .simplebaseline import (
     simplebaseline_res101,
     simplebaseline_res152,
 )
+<<<<<<< HEAD
 =======
 from .simplebaseline import SimpleBaseline_Res50, SimpleBaseline_Res101, SimpleBaseline_Res152 
 >>>>>>> fix hubconf
@@ -31,3 +32,9 @@ from .simplebaseline import SimpleBaseline_Res50, SimpleBaseline_Res101, SimpleB
 >>>>>>> add comments
 )
 >>>>>>> format code
+=======
+
+from .mspn import (
+    mspn_4stage,
+)
+>>>>>>> add mspn
