@@ -12,6 +12,4 @@ from .simplebaseline import (
     simplebaseline_res152,
 )
 
-from .mspn import (
-    mspn_4stage,
-)
+from .mspn import mspn_4stage
