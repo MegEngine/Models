@@ -34,7 +34,11 @@ from .simplebaseline import SimpleBaseline_Res50, SimpleBaseline_Res101, SimpleB
 >>>>>>> format code
 =======
 
+<<<<<<< HEAD
 from .mspn import (
     mspn_4stage,
 )
 >>>>>>> add mspn
+=======
+from .mspn import mspn_4stage
+>>>>>>> format code
