@@ -85,11 +85,11 @@ class ResnetBody(M.Module):
         return outputs
 
 
-class SingleStageModule(M.Module):
+class SingleStage(M.Module):
     def __init__(
         self, block, init_channel, layers, channels, mid_channel, norm=M.BatchNorm2d
     ):
-        super(SingleStageModule, self).__init__()
+        super(SingleStage, self).__init__()
         self.down = ResnetBody(block, init_channel, layers, channels, norm)
         channel = block.expansion * channels[-1]
         self.up1 = M.Sequential(
@@ -169,7 +169,7 @@ class MSPN(M.Module):
         self.stages = {}
         for i in range(nr_stg):
             init_channel = 64
-            self.stages["Stage_{}_body".format(i)] = SingleStageModule(
+            self.stages["Stage_{}_body".format(i)] = SingleStage(
                 block, init_channel, layers, channels, mid_channel, norm
             )
             tail = {}
