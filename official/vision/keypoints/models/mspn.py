@@ -14,10 +14,9 @@ import math
 import official.vision.classification.resnet.model as resnet
 
 import numpy as np
-from functools import partial
 
 
-class resnet_body(M.Module):
+class ResnetBody(M.Module):
     def __init__(
         self,
         block,
@@ -27,7 +26,7 @@ class resnet_body(M.Module):
         zero_init_residual=False,
         norm=M.BatchNorm2d,
     ):
-
+        super(ResnetBody, self).__init__()
         self.in_channels = init_channel
         self.layer1 = self._make_layer(
             block, channels[0], layers[0], stride=1, norm=norm
@@ -86,12 +85,12 @@ class resnet_body(M.Module):
         return outputs
 
 
-class Single_Stage_Module(M.Module):
+class SingleStageModule(M.Module):
     def __init__(
         self, block, init_channel, layers, channels, mid_channel, norm=M.BatchNorm2d
     ):
-
-        self.down = resnet_body(block, init_channel, layers, channels, norm)
+        super(SingleStageModule, self).__init__()
+        self.down = ResnetBody(block, init_channel, layers, channels, norm)
         channel = block.expansion * channels[-1]
         self.up1 = M.Sequential(
             M.Conv2d(channel, mid_channel, 1, 1, 0), norm(mid_channel)
@@ -147,9 +146,10 @@ class Single_Stage_Module(M.Module):
 
 class MSPN(M.Module):
     def __init__(self, block, layers, channels, mid_channel, keypoint_num, nr_stg):
+        super(MSPN, self).__init__()
 
         block = getattr(resnet, block)
-        norm = partial(M.BatchNorm2d, momentum=0.9)
+        norm = M.BatchNorm2d
 
         self.nr_stg = nr_stg
         self.keypoint_num = keypoint_num
@@ -169,7 +169,7 @@ class MSPN(M.Module):
         self.stages = {}
         for i in range(nr_stg):
             init_channel = 64
-            self.stages["Stage_{}_body".format(i)] = Single_Stage_Module(
+            self.stages["Stage_{}_body".format(i)] = SingleStageModule(
                 block, init_channel, layers, channels, mid_channel, norm
             )
             tail = {}
