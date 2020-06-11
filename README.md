@@ -89,7 +89,11 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
  |  Deeplabv3plus | Resnet101   | 79.0          | 79.8        |
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ### 人体关节点检测
+=======
+### 人体关节点
+>>>>>>> update readme
 =======
 ### 人体关节点
 >>>>>>> update readme
