@@ -188,7 +188,7 @@ class MSPN(M.Module):
             "heat_valid": mge.tensor(dtype="float32"),
         }
 
-    def cal_loss(self):
+    def calc_loss(self):
         outs = self.forward(self.inputs["image"])
 
         loss = 0
