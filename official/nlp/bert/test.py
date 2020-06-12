@@ -12,16 +12,16 @@ import megengine.functional as F
 from megengine.jit import trace
 from tqdm import tqdm
 
-from config import get_args
 from model import BertForSequenceClassification, create_hub_bert
 from mrpc_dataset import MRPCDataset
-
-args = get_args()
+# pylint: disable=import-outside-toplevel
+import config_args
+args = config_args.get_args()
 logger = mge.get_logger(__name__)
 
 
 @trace(symbolic=True)
-def net_eval(input_ids, segment_ids, input_mask, label_ids, opt=None, net=None):
+def net_eval(input_ids, segment_ids, input_mask, label_ids, net=None):
     net.eval()
     results = net(input_ids, segment_ids, input_mask, label_ids)
     logits, loss = results
@@ -39,7 +39,7 @@ def eval(dataloader, net):
 
     sum_loss, sum_accuracy, total_steps, total_examples = 0, 0, 0, 0
 
-    for step, batch in enumerate(tqdm(dataloader, desc="Iteration")):
+    for _, batch in enumerate(tqdm(dataloader, desc="Iteration")):
         input_ids, input_mask, segment_ids, label_ids = tuple(
             mge.tensor(t) for t in batch
         )
