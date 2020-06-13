@@ -39,7 +39,7 @@ class DeconvLayers(M.Module):
 
 class SimpleBaseline(M.Module):
     def __init__(self, backbone, cfg, pretrained=False):
-
+        super(SimpleBaseline, self).__init__()
         norm = partial(M.BatchNorm2d, momentum=cfg.bn_momentum)
         self.backbone = getattr(resnet, backbone)(norm=norm, pretrained=pretrained)
         del self.backbone.fc
