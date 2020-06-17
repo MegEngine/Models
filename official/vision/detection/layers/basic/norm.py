@@ -58,7 +58,7 @@ class FrozenBatchNorm2d(M.Module):
 def get_norm(norm, out_channels=None):
     """
     Args:
-        norm (str): currently support "BN" and "FrozenBN"
+        norm (str): currently support "BN", "SyncBN" and "FrozenBN"
 
     Returns:
         M.Module or None: the normalization layer
@@ -66,7 +66,11 @@ def get_norm(norm, out_channels=None):
     if isinstance(norm, str):
         if len(norm) == 0:
             return None
-        norm = {"BN": M.BatchNorm2d, "FrozenBN": FrozenBatchNorm2d}[norm]
+        norm = {
+            "BN": M.BatchNorm2d,
+            "SyncBN": M.SyncBatchNorm,
+            "FrozenBN": FrozenBatchNorm2d
+        }[norm]
     if out_channels is not None:
         return norm(out_channels)
     else:

@@ -11,17 +11,22 @@ from megengine import hub
 from official.vision.detection import models
 
 
-@hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/"
-    "retinanet_d3f58dce_res50_1x_800size_36dot0.pkl"
-)
-def retinanet_res50_coco_1x_800size(batch_size=1, **kwargs):
+class CustomRetinaNetConfig(models.RetinaNetConfig):
+    def __init__(self):
+        super().__init__()
+
+        self.resnet_norm = "SyncBN"
+        self.fpn_norm = "SyncBN"
+        self.backbone_freeze_at = 0
+
+
+def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     r"""
-    RetinaNet trained from COCO dataset.
+    RetinaNet with SyncBN trained from COCO dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
     """
-    return models.RetinaNet(models.RetinaNetConfig(), batch_size=batch_size, **kwargs)
+    return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
 
 
 Net = models.RetinaNet
-Cfg = models.RetinaNetConfig
+Cfg = CustomRetinaNetConfig

@@ -235,7 +235,10 @@ def worker(
     model = current_network.Net(current_network.Cfg(), batch_size=1)
     model.eval()
     evaluator = DetEvaluator(model)
-    model.load_state_dict(mge.load(model_file)["state_dict"])
+    state_dict = mge.load(model_file)
+    if "state_dict" in state_dict:
+        state_dict = state_dict["state_dict"]
+    model.load_state_dict(state_dict)
 
     loader = build_dataloader(worker_id, total_worker, data_dir, model.cfg)
     for data_dict in loader:

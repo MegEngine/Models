@@ -19,23 +19,25 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
         self.train_dataset = dict(
             name="objects365",
             root="train",
-            ann_file="annotations/objects365_train_20190423.json"
+            ann_file="annotations/objects365_train_20190423.json",
         )
         self.test_dataset = dict(
             name="objects365",
             root="val",
-            ann_file="annotations/objects365_val_20190423.json"
+            ann_file="annotations/objects365_val_20190423.json",
         )
+        self.num_classes = 365
 
         # ------------------------ training cfg ---------------------- #
         self.nr_images_epoch = 400000
 
 
 def retinanet_objects365_res50_1x_800size(batch_size=1, **kwargs):
-    r"""ResNet-18 model from
+    r"""
+    RetinaNet trained from Objects365 dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
     """
-    return models.RetinaNet(RetinaNetConfig(), batch_size=batch_size, **kwargs)
+    return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
 
 
 Net = models.RetinaNet
