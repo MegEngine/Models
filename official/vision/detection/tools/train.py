@@ -232,14 +232,35 @@ def main():
         worker(0, 1, args)
 
 
+def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):
+    def _compute_aspect_ratios(dataset):
+        aspect_ratios = []
+        for i in range(len(dataset)):
+            info = dataset.get_img_info(i)
+            aspect_ratios.append(info["height"] / info["width"])
+        return aspect_ratios
+
+    def _quantize(x, bins):
+        return list(map(lambda y: bisect.bisect_right(sorted(bins), y), x))
+
+    if len(aspect_grouping) == 0:
+        return Infinite(RandomSampler(train_dataset, batch_size, drop_last=True))
+
+    aspect_ratios = _compute_aspect_ratios(train_dataset)
+    group_ids = _quantize(aspect_ratios, aspect_grouping)
+    return Infinite(GroupedRandomSampler(train_dataset, batch_size, group_ids))
+
+
 def build_dataloader(batch_size, data_dir, cfg):
     train_dataset = data_mapper[cfg.train_dataset["name"]](
         os.path.join(data_dir, cfg.train_dataset["name"], cfg.train_dataset["root"]),
-        os.path.join(data_dir, cfg.train_dataset["name"], cfg.train_dataset["ann_file"]),
+        os.path.join(
+            data_dir, cfg.train_dataset["name"], cfg.train_dataset["ann_file"]
+        ),
         remove_images_without_annotations=True,
         order=["image", "boxes", "boxes_category", "info"],
     )
-    train_sampler = Infinite(RandomSampler(train_dataset, batch_size, drop_last=True))
+    train_sampler = build_sampler(train_dataset, batch_size)
     train_dataloader = DataLoader(
         train_dataset,
         sampler=train_sampler,
@@ -257,6 +278,45 @@ def build_dataloader(batch_size, data_dir, cfg):
         num_workers=2,
     )
     return {"train": train_dataloader}
+
+
+class GroupedRandomSampler(RandomSampler):
+    def __init__(
+        self,
+        dataset,
+        batch_size,
+        group_ids,
+        indices=None,
+        world_size=None,
+        rank=None,
+        seed=None,
+    ):
+        super().__init__(dataset, batch_size, False, indices, world_size, rank, seed)
+        self.group_ids = group_ids
+        assert len(group_ids) == len(dataset)
+        groups = np.unique(self.group_ids).tolist()
+
+        # buffer the indices of each group until batch size is reached
+        self.buffer_per_group = {k: [] for k in groups}
+
+    def batch(self):
+        indices = list(self.sample())
+        if self.world_size > 1:
+            indices = self.scatter(indices)
+
+        batch_index = []
+        for ind in indices:
+            group_id = self.group_ids[ind]
+            group_buffer = self.buffer_per_group[group_id]
+            group_buffer.append(ind)
+            if len(group_buffer) == self.batch_size:
+                batch_index.append(group_buffer)
+                self.buffer_per_group[group_id] = []
+
+        return iter(batch_index)
+
+    def __len__(self):
+        raise NotImplementedError("len() of GroupedRandomSampler is not well-defined.")
 
 
 class DetectionPadCollator(Collator):

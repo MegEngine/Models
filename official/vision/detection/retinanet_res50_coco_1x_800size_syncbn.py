@@ -19,18 +19,6 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
         self.fpn_norm = "SyncBN"
         self.backbone_freeze_at = 0
 
-        # ------------------------ data cfg -------------------------- #
-        self.train_dataset = dict(
-            name="coco",
-            root="train2017",
-            ann_file="annotations/instances_train2017.json",
-        )
-        self.test_dataset = dict(
-            name="coco",
-            root="val2017",
-            ann_file="annotations/instances_val2017.json",
-        )
-
 
 def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     r"""
