@@ -34,7 +34,7 @@ logger = mge.get_logger(__name__)
 
 def build_dataloader(rank, world_size, data_root, ann_file):
     val_dataset = COCOJoints(
-        data_root, ann_file, image_set="val", order=("image", "boxes", "info")
+        data_root, ann_file, image_set="val2017", order=("image", "boxes", "info")
     )
     val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
     val_dataloader = DataLoader(
@@ -213,17 +213,10 @@ def worker(
 def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--ngpus", default=8, type=int)
-    parser.add_argument("-d", "--data_root", default="/", type=str)
-    parser.add_argument(
-        "-gt",
-        "--gt_path",
-        default="/data/coco/annotations/person_keypoints_val2017.json",
-        type=str,
-    )
     parser.add_argument(
         "-dt",
-        "--dt_path",
-        default="/data/coco/person_detection_results/COCO_val2017_detections_AP_H_56_person.json",
+        "--dt_file",
+        default="COCO_val2017_detections_AP_H_56_person.json",
         type=str,
     )
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
@@ -256,8 +249,11 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
-    dets = json.load(open(args.dt_path, "r"))
-    eval_gt = COCO(args.gt_path)
+    dt_path = os.path.join(cfg.data_root, "person_detection_results", args.dt_file)
+    dets = json.load(open(dt_path, "r"))
+
+    gt_path = os.path.join(cfg.data_root, "annotations", "person_keypoints_val2017.json")
+    eval_gt = COCO(gt_path)
     gt = eval_gt.dataset
 
     dets = [
@@ -286,7 +282,7 @@ def main():
                 args=(
                     args.arch,
                     model_file,
-                    args.data_root,
+                    cfg.data_root,
                     ann_file,
                     i,
                     args.ngpus,

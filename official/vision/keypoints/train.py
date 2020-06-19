@@ -50,19 +50,9 @@ def main():
             "mspn_4stage"
         ],
     )
-    parser.add_argument("--pretrained", default=True, type=bool)
     parser.add_argument("-s", "--save", default="/data/models", type=str)
-    parser.add_argument("--data_root", default="/data/coco/images/", type=str)
-    parser.add_argument(
-        "--ann_file",
-        default="/data/coco/annotations/person_keypoints_train2017.json",
-        type=str,
-    )
-    parser.add_argument("--continue", default=None, type=str)
-
-    parser.add_argument("-b", "--batch_size", default=64, type=int)
-    parser.add_argument("--lr", default=6e-4, type=float)
-    parser.add_argument("--epochs", default=200, type=int)
+    
+    parser.add_argument("--resume", default=None, type=str)
 
     parser.add_argument("--multi_scale_supervision", default=True, type=bool)
 
@@ -82,7 +72,7 @@ def main():
 
     if world_size > 1:
         # scale learning rate by number of gpus
-        args.lr *= world_size
+        cfg.initial_lr *= world_size
         # start distributed training, dispatch sub-processes
         processes = []
         for rank in range(world_size):
@@ -111,27 +101,28 @@ def worker(rank, world_size, args):
     model_name = "{}_{}x{}".format(args.arch, cfg.input_shape[0], cfg.input_shape[1])
     save_dir = os.path.join(args.save, model_name)
 
-    model = getattr(M, args.arch)(pretrained=args.pretrained)
+    model = getattr(M, args.arch)()
     model.train()
     start_epoch = 0
-    if args.c is not None:
-        file = mge.load(args.c)
+    if args.resume is not None:
+        file = mge.load(args.resume)
         model.load_state_dict(file["state_dict"])
         start_epoch = file["epoch"]
 
     optimizer = optim.Adam(
-        model.parameters(requires_grad=True), lr=args.lr, weight_decay=cfg.weight_decay,
+        model.parameters(requires_grad=True), lr=cfg.initial_lr, weight_decay=cfg.weight_decay,
     )
     # Build train datasets
     logger.info("preparing dataset..")
+    ann_file = os.path.join(cfg.data_root, "annotations","person_keypoints_train2017.json")
     train_dataset = COCOJoints(
-        args.data_root,
-        args.ann_file,
-        image_set="train",
+        cfg.data_root,
+        ann_file,
+        image_set="train2017",
         order=("image", "keypoints", "boxes", "info"),
     )
     train_sampler = data.RandomSampler(
-        train_dataset, batch_size=args.batch_size, drop_last=True
+        train_dataset, batch_size=cfg.batch_size, drop_last=True
     )
 
     transforms = [T.Normalize(mean=cfg.IMG_MEAN, std=cfg.IMG_STD)]
@@ -168,14 +159,14 @@ def worker(rank, world_size, args):
             cfg.input_shape,
             cfg.output_shape,
             cfg.keypoint_num,
-            cfg.heat_thre,
+            cfg.heat_thr,
             cfg.heat_kernel if args.multi_scale_supervision else cfg.heat_kernel[-1:],
             cfg.heat_range,
         ),
     )
 
     # Start training
-    for epoch in range(start_epoch, args.epochs):
+    for epoch in range(start_epoch, cfg.epochs):
         loss = train(model, train_queue, optimizer, args, epoch=epoch)
         logger.info("Epoch %d Train %.6f ", epoch, loss)
 
@@ -209,10 +200,10 @@ def train(model, data_queue, optimizer, args, epoch=0):
                 ) * current_step / cfg.warm_epochs / len(data_queue)
             else:
                 lr_factor = 1 - (current_step - len(data_queue) * cfg.warm_epochs) / (
-                    len(data_queue) * (args.epochs - cfg.warm_epochs)
+                    len(data_queue) * (cfg.epochs - cfg.warm_epochs)
                 )
 
-            lr = args.initial_lr * lr_factor
+            lr = cfg.initial_lr * lr_factor
             param_group["lr"] = lr
 
         lr = optimizer.param_groups[0]["lr"]
