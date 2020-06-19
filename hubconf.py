@@ -45,3 +45,5 @@ from official.vision.keypoints.models import (
         simplebaseline_res152,
         mspn_4stage
 )
+
+from official.vision.keypoints.inference import KeypointEvaluator
