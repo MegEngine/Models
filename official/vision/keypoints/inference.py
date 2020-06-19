@@ -52,25 +52,25 @@ def make_parser():
         type=str,
     )
     parser.add_argument(
-        "-image", "--image", default="/data/test_keyoint.jpeg", type=str
+        "-image", "--image", default="/data/test_keypoint.jpeg", type=str
     )
     return parser
 
 class KeypointEvaluator():
     def __init__(self, detect_model, det_func, keypoint_model, keypoint_func):
 
-        self.detect_model = detect_model
+        self.detector = detect_model
         self.det_func = det_func
 
         self.keypoint_model = keypoint_model
         self.keypoint_func = keypoint_func
     
-    def detect_persons(image, detector, det_func):
+    def detect_persons(self, image):
 
         data, im_info = DetEvaluator.process_inputs(
-        ori_img.copy(),
-        detector.cfg.test_image_short_size,
-        detector.cfg.test_image_max_size,
+        image.copy(),
+        self.detector.cfg.test_image_short_size,
+        self.detector.cfg.test_image_max_size,
         )
 
         self.detector.inputs["im_info"].set_value(im_info)
@@ -148,7 +148,7 @@ class KeypointEvaluator():
         return all_keypoints
 
     @staticmethod
-    def vis_skeletons(img, keypoints):
+    def vis_skeletons(img, all_keypoints):
         canvas = img.copy()
         for keypoints in all_keypoints:
             for ind, skeleton in enumerate(cfg.vis_skeletons):
@@ -198,7 +198,7 @@ def main():
         return pred
 
     evaluator = KeypointEvaluator(
-        detect_model,
+        detector,
         det_func,
         keypoint_model,
         keypoint_func
@@ -213,7 +213,7 @@ def main():
     all_keypoints = evaluator.predict(image, person_boxes)
 
     logger.info("Visualizing")
-    canvas = evaluator.vis_skeleton(image, all_keypoints)
+    canvas = evaluator.vis_skeletons(image, all_keypoints)
     cv2.imwrite("vis_skeleton.jpg", canvas)
 
 if __name__ == "__main__":
