@@ -38,8 +38,7 @@ ${COCO_DATA_ROOT}
 |   |-- person_keypoints_val2017.json
 |-- person_detection_results
 |   |-- COCO_val2017_detections_AP_H_56_person.json
-|-- images
-    |-- train2017
+|-- |-- train2017
     |   |-- 000000000009.jpg
     |   |-- 000000000025.jpg
     |   |-- 000000000030.jpg
@@ -51,40 +50,30 @@ ${COCO_DATA_ROOT}
         |-- ... 
 ```
 
+更改[config.py](.config.py)中的`data_root`为${COCO_DATA_ROOT}
 
 3、开始训练:
 
 `train.py`的命令行参数如下:
 - `--arch`, 训练的网络的名字
-- `--data_root`，COCO数据集里`images`的路径；
-- `--ann_file`, COCO数据集里标注文件的`json`路径
-- `--batch_size`，训练时采用的batch size, 默认32；
-- `--ngpus`, 训练时采用的gpu数量，默认8; 当设置为1时，表示单卡训练
-- `--continue`, 是否从已训好的模型继续训练；
-- `--epochs`, 需要训练的epoch数量；
-- `--lr`, 初始学习率；
+- `--resume`, 是否从已训好的模型继续训练
+- `--ngpus`, 使用的GPU数量
+- `--multi_scale_supervision`, 是否使用多尺度监督；
 
 例如训练SimpleBaseline_Res50:
 ```bash
 python3 train.py --arch simplebaseline_res50 \
-                 --data_root /path/to/COCO/images \
-                 --ann_file /path/to/person_keypoints.json \
-                 --batch_size 32 \
-                 --lr 0.0003 \
+                 --resume /path/to/model \
                  --ngpus 8 \
-                 --epochs 200 \
-                 --continue /path/to/model
+                 --multi_scale_supervision False
+                 
 ```
 训练MSPN:
 ```bash
 python3 train.py --arch mspn_4stage \
-                 --data_root /path/to/COCO/images \
-                 --ann_file /path/to/person_keypoints.json \
-                 --batch_size 32 \
-                 --lr 0.0005 \
+                 --resume /path/to/model \
                  --ngpus 8 \
-                 --epochs 200 \
-                 --continue /path/to/model
+                 --multi_scale_supervision True
 
 ```
 
@@ -94,18 +83,14 @@ python3 train.py --arch mspn_4stage \
 
 ```bash
 python3 test.py --arch name/of/network \
-                --data_root /path/to/COCO/images \
                 --model /path/to/model.pkl \
-                --gt_path /path/to/ground/truth/annotations
-                --dt_path /path/to/human/detection/results
+                --dt_file /name/human/detection/results
 ```
 
 `test.py`的命令行参数如下：
-- `--arch`, 网络的名字
-- `--data_root`，COCO数据集里`images`的路径;
-- `--gt_path`, COCO数据集里验证集的标注文件;
-- `--dt_path`，人体检测结果；
-- `--model`, 待检测的模型
+- `--arch`, 网络的名字;
+- `--model`, 待检测的模;
+- `--dt_path`，人体检测结果.
 
 ## 如何使用
 
@@ -113,14 +98,16 @@ python3 test.py --arch name/of/network \
 
 ```bash
 python3 inference.py --arch /name/of/tested/network \
+                     --detector /name/of/human/detector \
                      --model /path/to/model \
                      --image /path/to/image.jpg
 ```
 
 `inference.py`的命令行参数如下：
 - `--arch`, 网络的名字;
+- `--detector`, 人体检测器的名字;
 - `--model`，载入训练好的模型;
-- `--image`，载入待测试的图像
+- `--image`，载入待测试的图像.
 
 ## 参考文献
 
