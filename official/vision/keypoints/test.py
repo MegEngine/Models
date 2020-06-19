@@ -230,7 +230,7 @@ def make_parser():
             "simplebaseline_res50",
             "Simplebaseline_res101",
             "Simplebaseline_res152",
-            "mspn_4stage"
+            "mspn_4stage",
         ],
     )
     parser.add_argument(
@@ -252,7 +252,9 @@ def main():
     dt_path = os.path.join(cfg.data_root, "person_detection_results", args.dt_file)
     dets = json.load(open(dt_path, "r"))
 
-    gt_path = os.path.join(cfg.data_root, "annotations", "person_keypoints_val2017.json")
+    gt_path = os.path.join(
+        cfg.data_root, "annotations", "person_keypoints_val2017.json"
+    )
     eval_gt = COCO(gt_path)
     gt = eval_gt.dataset
 

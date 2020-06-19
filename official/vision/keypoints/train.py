@@ -47,11 +47,11 @@ def main():
             "simplebaseline_res50",
             "simplebaseline_res101",
             "simplebaseline_res152",
-            "mspn_4stage"
+            "mspn_4stage",
         ],
     )
     parser.add_argument("-s", "--save", default="/data/models", type=str)
-    
+
     parser.add_argument("--resume", default=None, type=str)
 
     parser.add_argument("--multi_scale_supervision", default=True, type=bool)
@@ -110,11 +110,15 @@ def worker(rank, world_size, args):
         start_epoch = file["epoch"]
 
     optimizer = optim.Adam(
-        model.parameters(requires_grad=True), lr=cfg.initial_lr, weight_decay=cfg.weight_decay,
+        model.parameters(requires_grad=True),
+        lr=cfg.initial_lr,
+        weight_decay=cfg.weight_decay,
     )
     # Build train datasets
     logger.info("preparing dataset..")
-    ann_file = os.path.join(cfg.data_root, "annotations","person_keypoints_train2017.json")
+    ann_file = os.path.join(
+        cfg.data_root, "annotations", "person_keypoints_train2017.json"
+    )
     train_dataset = COCOJoints(
         cfg.data_root,
         ann_file,

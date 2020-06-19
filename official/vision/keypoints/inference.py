@@ -56,7 +56,8 @@ def make_parser():
     )
     return parser
 
-class KeypointEvaluator():
+
+class KeypointEvaluator:
     def __init__(self, detect_model, det_func, keypoint_model, keypoint_func):
 
         self.detector = detect_model
@@ -64,13 +65,13 @@ class KeypointEvaluator():
 
         self.keypoint_model = keypoint_model
         self.keypoint_func = keypoint_func
-    
+
     def detect_persons(self, image):
 
         data, im_info = DetEvaluator.process_inputs(
-        image.copy(),
-        self.detector.cfg.test_image_short_size,
-        self.detector.cfg.test_image_max_size,
+            image.copy(),
+            self.detector.cfg.test_image_short_size,
+            self.detector.cfg.test_image_max_size,
         )
 
         self.detector.inputs["im_info"].set_value(im_info)
@@ -136,11 +137,11 @@ class KeypointEvaluator():
         keypoints = find_keypoints(pred, bbox)
 
         return keypoints
-    
+
     def predict(self, image, bboxes):
-        normalized_img = (
-            image - np.array(cfg.IMG_MEAN).reshape(1, 1, 3)) / np.array(
-                cfg.IMG_STD).reshape(1, 1, 3)
+        normalized_img = (image - np.array(cfg.IMG_MEAN).reshape(1, 1, 3)) / np.array(
+            cfg.IMG_STD
+        ).reshape(1, 1, 3)
         all_keypoints = []
         for bbox in bboxes:
             keypoints = self.predict_single_person(normalized_img, bbox)
@@ -173,6 +174,7 @@ class KeypointEvaluator():
                 canvas = cv2.addWeighted(canvas, 0.4, cur_canvas, 0.6, 0)
         return canvas
 
+
 def main():
 
     parser = make_parser()
@@ -197,13 +199,8 @@ def main():
         pred = keypoint_model.predict()
         return pred
 
-    evaluator = KeypointEvaluator(
-        detector,
-        det_func,
-        keypoint_model,
-        keypoint_func
-        )
-        
+    evaluator = KeypointEvaluator(detector, det_func, keypoint_model, keypoint_func)
+
     image = cv2.imread(args.image)
 
     logger.info("Detecting Humans")
@@ -215,6 +212,7 @@ def main():
     logger.info("Visualizing")
     canvas = evaluator.vis_skeletons(image, all_keypoints)
     cv2.imwrite("vis_skeleton.jpg", canvas)
+
 
 if __name__ == "__main__":
     main()

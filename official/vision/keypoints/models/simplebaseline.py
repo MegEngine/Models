@@ -13,7 +13,6 @@ import megengine.module as M
 import official.vision.classification.resnet.model as resnet
 
 import numpy as np
-from functools import partial
 
 
 class DeconvLayers(M.Module):
@@ -40,8 +39,10 @@ class DeconvLayers(M.Module):
 class SimpleBaseline(M.Module):
     def __init__(self, backbone, cfg):
         super(SimpleBaseline, self).__init__()
-        norm = partial(M.BatchNorm2d, momentum=cfg.bn_momentum)
-        self.backbone = getattr(resnet, backbone)(norm=norm, pretrained=cfg.use_pretrained_resnet)
+        norm = M.BatchNorm2d
+        self.backbone = getattr(resnet, backbone)(
+            norm=norm, pretrained=cfg.use_pretrained_resnet
+        )
         del self.backbone.fc
 
         self.cfg = cfg
@@ -101,7 +102,6 @@ class SimpleBaseline_Config:
     deconv_channels = [256, 256, 256]
     deconv_kernel_sizes = [4, 4, 4]
     deconv_with_bias = False
-    bn_momentum = 0.9
     keypoint_num = 17
     use_pretrained_resnet = True
 
