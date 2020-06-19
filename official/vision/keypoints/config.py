@@ -8,15 +8,18 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 class Config:
     ##############3## train ##############################################
+    initial_lr = 3e-4
     lr_ratio = 0.1
+
+    batch_size = 32
+    epochs = 200
     warm_epochs = 1
     weight_decay = 1e-5
 
-    half_body_transform = True
-    extend_boxes = True
-
     ################## data ###############################################
-    # basic
+    # path
+    data_root='/data/coco_data/'
+    
     # normalize
     IMG_MEAN = [0.485 * 255, 0.456 * 255, 0.406 * 255]
     IMG_STD = [0.229 * 255, 0.224 * 255, 0.225 * 255]
@@ -27,11 +30,15 @@ class Config:
 
     # heat maps
     keypoint_num = 17
-    heat_kernel = 1.5
+    heat_kernel = [2.6, 2.0, 1.7, 1.4]
     heat_thr = 1e-2
     heat_range = 255
 
     ##################### augumentation #####################################
+
+    half_body_transform = True
+    extend_boxes = True
+
     # extend
     x_ext = 0.6
     y_ext = 0.6
