@@ -21,8 +21,8 @@ class Config:
     data_root = "/data/coco_data/"
 
     # normalize
-    img_mean = [0.406 * 255, 0.456 * 255, 0.485 * 255]
-    img_std = [0.225 * 255, 0.224 * 255, 0.229 * 255]
+    img_mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+    img_std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
     # shape
     input_shape = (256, 192)
