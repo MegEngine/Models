@@ -127,7 +127,6 @@ class COCOJoints(VisionDataset):
 
         ann = self.anns[index]
         img_id = ann["image_id"]
-
         target = []
         for k in self.order:
             if k == "image":

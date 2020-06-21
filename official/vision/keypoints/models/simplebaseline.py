@@ -13,7 +13,6 @@ import megengine.module as M
 import official.vision.classification.resnet.model as resnet
 
 import numpy as np
-from functools import partial
 
 
 class DeconvLayers(M.Module):
@@ -38,10 +37,12 @@ class DeconvLayers(M.Module):
 
 
 class SimpleBaseline(M.Module):
-    def __init__(self, backbone, cfg, pretrained=False):
-
-        norm = partial(M.BatchNorm2d, momentum=cfg.bn_momentum)
-        self.backbone = getattr(resnet, backbone)(norm=norm, pretrained=pretrained)
+    def __init__(self, backbone, cfg):
+        super(SimpleBaseline, self).__init__()
+        norm = M.BatchNorm2d
+        self.backbone = getattr(resnet, backbone)(
+            norm=norm, pretrained=cfg.backbone_pretrained
+        )
         del self.backbone.fc
 
         self.cfg = cfg
@@ -67,7 +68,7 @@ class SimpleBaseline(M.Module):
     def calc_loss(self):
         out = self.forward(self.inputs["image"])
         valid = self.inputs["heat_valid"][:, :, None, None]
-        label = self.inputs["heatmap"][:, 0]
+        label = self.inputs["heatmap"][:, -1]
         loss = F.square_loss(out * valid, label * valid)
         return loss
 
@@ -101,8 +102,8 @@ class SimpleBaseline_Config:
     deconv_channels = [256, 256, 256]
     deconv_kernel_sizes = [4, 4, 4]
     deconv_with_bias = False
-    bn_momentum = 0.1
     keypoint_num = 17
+    backbone_pretrained = True
 
 
 cfg = SimpleBaseline_Config()
