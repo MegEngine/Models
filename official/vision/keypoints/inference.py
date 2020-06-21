@@ -139,8 +139,8 @@ class KeypointEvaluator:
         return keypoints
 
     def predict(self, image, bboxes):
-        normalized_img = (image - np.array(cfg.IMG_MEAN).reshape(1, 1, 3)) / np.array(
-            cfg.IMG_STD
+        normalized_img = (image - np.array(cfg.img_mean).reshape(1, 1, 3)) / np.array(
+            cfg.img_std
         ).reshape(1, 1, 3)
         all_keypoints = []
         for bbox in bboxes:

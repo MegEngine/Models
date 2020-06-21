@@ -41,7 +41,7 @@ class SimpleBaseline(M.Module):
         super(SimpleBaseline, self).__init__()
         norm = M.BatchNorm2d
         self.backbone = getattr(resnet, backbone)(
-            norm=norm, pretrained=cfg.use_pretrained_resnet
+            norm=norm, pretrained=cfg.backbone_pretrained
         )
         del self.backbone.fc
 
@@ -103,7 +103,7 @@ class SimpleBaseline_Config:
     deconv_kernel_sizes = [4, 4, 4]
     deconv_with_bias = False
     keypoint_num = 17
-    use_pretrained_resnet = True
+    backbone_pretrained = True
 
 
 cfg = SimpleBaseline_Config()

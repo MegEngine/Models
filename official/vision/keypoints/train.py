@@ -129,7 +129,7 @@ def worker(rank, world_size, args):
         train_dataset, batch_size=cfg.batch_size, drop_last=True
     )
 
-    transforms = [T.Normalize(mean=cfg.IMG_MEAN, std=cfg.IMG_STD)]
+    transforms = [T.Normalize(mean=cfg.img_mean, std=cfg.img_std)]
     if cfg.half_body_transform:
         transforms.append(
             HalfBodyTransform(

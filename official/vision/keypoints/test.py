@@ -43,7 +43,7 @@ def build_dataloader(rank, world_size, data_root, ann_file):
         num_workers=4,
         transform=T.Compose(
             transforms=[
-                T.Normalize(mean=cfg.IMG_MEAN, std=cfg.IMG_STD),
+                T.Normalize(mean=cfg.img_mean, std=cfg.img_mean),
                 ExtendBoxes(
                     cfg.test_x_ext,
                     cfg.test_y_ext,
