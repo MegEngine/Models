@@ -243,7 +243,7 @@ class MSPN(M.Module):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/mspn_4stage_256x192_0_255_75_2.pkl"
+        "https://data.megengine.org.cn/models/weights/keypoint_models/mspn_4stage_0_255_75_2.pkl"
 )
 def mspn_4stage(**kwargs):
     model = MSPN(
