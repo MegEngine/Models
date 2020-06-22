@@ -79,18 +79,26 @@ python3 train.py --arch mspn_4stage \
 
 ## 如何测试
 
-模型训练好之后，可以通过如下命令测试模型在COCOval2017验证集的性能：
-
+模型训练好之后，可以通过如下命令测试指定模型在COCOval2017验证集的性能：
 ```bash
 python3 test.py --arch name/of/network \
                 --model /path/to/model.pkl \
                 --dt_file /name/human/detection/results
 ```
-
 `test.py`的命令行参数如下：
 - `--arch`, 网络的名字;
 - `--model`, 待检测的模;
 - `--dt_path`，人体检测结果.
+
+也可以连续验证多个模型的性能:
+
+```bash
+python3 test.py --arch name/of/network \
+                --model_dir path/of/saved/models \
+                --start_epoch num/of/start/epoch \
+                --end_epoch num/of/end/epoch \
+                --test_freq test/frequence
+```
 
 ## 如何使用
 
