@@ -38,12 +38,12 @@ ${COCO_DATA_ROOT}
 |   |-- person_keypoints_val2017.json
 |-- person_detection_results
 |   |-- COCO_val2017_detections_AP_H_56_person.json
-|-- |-- train2017
-    |   |-- 000000000009.jpg
-    |   |-- 000000000025.jpg
-    |   |-- 000000000030.jpg
-    |   |-- ... 
-    |-- val2017
+|-- train2017
+|   |   |-- 000000000009.jpg
+|   |   |-- 000000000025.jpg
+|   |   |-- 000000000030.jpg
+|   |   |-- ... 
+|-- val2017
         |-- 000000000139.jpg
         |-- 000000000285.jpg
         |-- 000000000632.jpg
@@ -111,5 +111,5 @@ python3 inference.py --arch /name/of/tested/network \
 
 ## 参考文献
 
-- [Simple Baselines for Human Pose Estimation and Tracking](https://arxiv.org/pdf/1804.06208.pdf), Bin Xiao, Haiping Wu, and Yichen Wei
+- [Simple Baselines for Human Pose Estimation and Tracking](https://arxiv.org/pdf/1804.06208.pdf) Bin Xiao, Haiping Wu, and Yichen Wei
 - [Rethinking on Multi-Stage Networks for Human Pose Estimation](https://arxiv.org/pdf/1901.00148.pdf) Wenbo Li1, Zhicheng Wang, Binyi Yin, Qixiang Peng, Yuming Du, Tianzi Xiao, Gang Yu, Hongtao Lu, Yichen Wei and Jian Sun
