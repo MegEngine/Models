@@ -74,6 +74,11 @@ python3 train.py -a resnet18 -d /path/to/imagenet --mode normal
 python3 finetune.py -a resnet18 -d /path/to/imagenet --checkpoint /path/to/resnet18.normal/checkpoint.pkl --mode qat
 ```
 
+## Step 2. Calibration
+```
+python3 finetune.py -a resnet18 -d /path/to/imagenet --checkpoint /path/to/resnet18.normal/checkpoint.pkl --mode calibration
+```
+
 ## Step 3. Test QAT model on ImageNet Testset
 
 ```
