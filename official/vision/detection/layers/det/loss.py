@@ -151,6 +151,8 @@ def get_smooth_l1_base(
         in_loss = 0.5 * x ** 2 * sigma2
         out_loss = abs_x - 0.5 / sigma2
 
+    # FIXME: F.where cannot handle 0-shape tensor yet
+    # loss = F.where(abs_x < cond_point, in_loss, out_loss)
     in_mask = abs_x < cond_point
     out_mask = 1 - in_mask
     loss = in_loss * in_mask + out_loss * out_mask

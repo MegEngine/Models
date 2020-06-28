@@ -211,11 +211,13 @@ class RetinaNetConfig:
             name="coco",
             root="train2017",
             ann_file="annotations/instances_train2017.json",
+            remove_images_without_annotations=True,
         )
         self.test_dataset = dict(
             name="coco",
             root="val2017",
             ann_file="annotations/instances_val2017.json",
+            remove_images_without_annotations=False,
         )
         self.train_image_short_size = 800
         self.train_image_max_size = 1333
@@ -248,7 +250,7 @@ class RetinaNetConfig:
         self.max_epoch = 18
         self.warm_iters = 500
         self.lr_decay_rate = 0.1
-        self.lr_decay_sates = [12, 16, 17]
+        self.lr_decay_stages = [12, 16, 17]
 
         # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800

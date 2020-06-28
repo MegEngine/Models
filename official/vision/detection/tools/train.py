@@ -8,6 +8,7 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
 import bisect
+import copy
 import functools
 import importlib
 import multiprocessing as mp
@@ -92,12 +93,21 @@ def worker(rank, world_size, args):
                 * model.batch_size
                 * (
                     model.cfg.lr_decay_rate
-                    ** bisect.bisect_right(model.cfg.lr_decay_sates, epoch_id)
+                    ** bisect.bisect_right(model.cfg.lr_decay_stages, epoch_id)
                 )
             )
 
         tot_steps = model.cfg.nr_images_epoch // (model.batch_size * world_size)
-        train_one_epoch(model, train_loader, opt, tot_steps, rank, epoch_id, world_size)
+        train_one_epoch(
+            model,
+            train_loader,
+            opt,
+            tot_steps,
+            rank,
+            epoch_id,
+            world_size,
+            args.enable_sublinear,
+        )
         if rank == 0:
             save_path = "log-of-{}/epoch_{}.pkl".format(
                 os.path.basename(args.file).split(".")[0], epoch_id
@@ -115,7 +125,7 @@ def adjust_learning_rate(optimizer, epoch_id, step, model, world_size):
         * model.batch_size
         * (
             model.cfg.lr_decay_rate
-            ** bisect.bisect_right(model.cfg.lr_decay_sates, epoch_id)
+            ** bisect.bisect_right(model.cfg.lr_decay_stages, epoch_id)
         )
     )
     # Warm up
@@ -125,8 +135,19 @@ def adjust_learning_rate(optimizer, epoch_id, step, model, world_size):
             param_group["lr"] = base_lr * lr_factor
 
 
-def train_one_epoch(model, data_queue, opt, tot_steps, rank, epoch_id, world_size):
-    @jit.trace(symbolic=True, opt_level=2)
+def train_one_epoch(
+    model,
+    data_queue,
+    opt,
+    tot_steps,
+    rank,
+    epoch_id,
+    world_size,
+    enable_sublinear=False,
+):
+    sublinear_cfg = jit.SublinearMemoryConfig() if enable_sublinear else None
+
+    @jit.trace(symbolic=True, opt_level=2, sublinear_memory_config=sublinear_cfg)
     def propagate():
         loss_dict = model(model.inputs)
         opt.backward(loss_dict["total_loss"])
@@ -180,6 +201,7 @@ def make_parser():
     parser.add_argument(
         "-d", "--dataset_dir", default="/data/datasets", type=str,
     )
+    parser.add_argument("--enable_sublinear", action="store_true")
 
     return parser
 
@@ -234,6 +256,20 @@ def main():
         worker(0, 1, args)
 
 
+def build_dataset(data_dir, cfg):
+    data_cfg = copy.deepcopy(cfg.train_dataset)
+    data_name = data_cfg.pop("name")
+
+    data_cfg["root"] = os.path.join(data_dir, data_name, data_cfg["root"])
+
+    if "ann_file" in data_cfg:
+        data_cfg["ann_file"] = os.path.join(data_dir, data_name, data_cfg["ann_file"])
+
+    data_cfg["order"] = ["image", "boxes", "boxes_category", "info"]
+
+    return data_mapper[data_name](**data_cfg)
+
+
 def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):
     def _compute_aspect_ratios(dataset):
         aspect_ratios = []
@@ -254,14 +290,7 @@ def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):
 
 
 def build_dataloader(batch_size, data_dir, cfg):
-    train_dataset = data_mapper[cfg.train_dataset["name"]](
-        os.path.join(data_dir, cfg.train_dataset["name"], cfg.train_dataset["root"]),
-        os.path.join(
-            data_dir, cfg.train_dataset["name"], cfg.train_dataset["ann_file"]
-        ),
-        remove_images_without_annotations=True,
-        order=["image", "boxes", "boxes_category", "info"],
-    )
+    train_dataset = build_dataset(data_dir, cfg)
     train_sampler = build_sampler(train_dataset, batch_size)
     train_dataloader = DataLoader(
         train_dataset,

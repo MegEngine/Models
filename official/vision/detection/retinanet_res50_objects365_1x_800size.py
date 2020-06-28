@@ -18,11 +18,13 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
             name="objects365",
             root="train",
             ann_file="annotations/objects365_train_20190423.json",
+            remove_images_without_annotations=True,
         )
         self.test_dataset = dict(
             name="objects365",
             root="val",
             ann_file="annotations/objects365_val_20190423.json",
+            remove_images_without_annotations=False,
         )
         self.num_classes = 365
 
@@ -30,7 +32,7 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
         self.nr_images_epoch = 400000
 
 
-def retinanet_objects365_res50_1x_800size(batch_size=1, **kwargs):
+def retinanet_res50_objects365_1x_800size(batch_size=1, **kwargs):
     r"""
     RetinaNet trained from Objects365 dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
