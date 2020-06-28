@@ -88,7 +88,19 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
  |  :--:          |:--:     |:--:           |:--:         |
  |  Deeplabv3plus | Resnet101   | 79.0          | 79.8        |
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 ### 人体关节点检测
+=======
+### 人体关节点
+>>>>>>> update readme
+=======
+### 人体关节点
+>>>>>>> update readme
+=======
+### 人体关节点检测
+>>>>>>> 3fdaf98eee3169f70ace463d54cd177ee1fcf68e
 
 我们提供了人体关节点检测的经典模型[SimpleBaseline](https://arxiv.org/pdf/1804.06208.pdf)和高精度模型[MSPN](https://arxiv.org/pdf/1901.00148.pdf)，使用在COCO val2017上人体检测AP为56的检测结果，提供的模型在COCO val2017上的关节点检测结果为:
 
