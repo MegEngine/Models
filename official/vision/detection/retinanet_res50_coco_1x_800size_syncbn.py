@@ -23,6 +23,9 @@ def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     r"""
     RetinaNet with SyncBN trained from COCO dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
+    `"FPN" <https://arxiv.org/abs/1612.03144>`_
+    `"COCO" <https://arxiv.org/abs/1405.0312>`_
+    `"SyncBN" <https://arxiv.org/abs/1711.07240>`_
     """
     return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
 

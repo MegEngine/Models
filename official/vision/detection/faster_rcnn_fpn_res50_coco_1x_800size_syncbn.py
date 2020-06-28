@@ -21,7 +21,7 @@ class CustomFasterRCNNFPNConfig(models.FasterRCNNConfig):
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "faster_rcnn_fpn_cf5c020b_res50_1x_800szie_syncbn_37dot6.pkl"
+    "faster_rcnn_fpn_cf5c020b_res50_1x_800size_syncbn_37dot6.pkl"
 )
 def faster_rcnn_fpn_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     r"""
