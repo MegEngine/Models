@@ -41,12 +41,13 @@ from official.vision.detection.retinanet_res50_coco_1x_800size import (
 from official.vision.detection.retinanet_res50_coco_1x_800size_syncbn import (
     retinanet_res50_coco_1x_800size_syncbn,
 )
-from official.vision.detection.retinanet_res50_objects365_1x_800size import (
-    retinanet_res50_objects365_1x_800size,
-)
-from official.vision.detection.retinanet_res50_voc_1x_800size import (
-    retinanet_res50_voc_1x_800size,
-)
+# TODO: need pretrained weights
+# from official.vision.detection.retinanet_res50_objects365_1x_800size import (
+#     retinanet_res50_objects365_1x_800size,
+# )
+# from official.vision.detection.retinanet_res50_voc_1x_800size import (
+#     retinanet_res50_voc_1x_800size,
+# )
 
 from official.vision.detection.models import FasterRCNN, RetinaNet
 from official.vision.detection.tools.test import DetEvaluator
