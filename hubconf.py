@@ -31,9 +31,21 @@ from official.nlp.bert.model import (
 from official.vision.detection.faster_rcnn_fpn_res50_coco_1x_800size import (
     faster_rcnn_fpn_res50_coco_1x_800size,
 )
+from official.vision.detection.faster_rcnn_fpn_res50_coco_1x_800size_syncbn import (
+    faster_rcnn_fpn_res50_coco_1x_800size_syncbn,
+)
 
 from official.vision.detection.retinanet_res50_coco_1x_800size import (
     retinanet_res50_coco_1x_800size,
+)
+from official.vision.detection.retinanet_res50_coco_1x_800size_syncbn import (
+    retinanet_res50_coco_1x_800size_syncbn,
+)
+from official.vision.detection.retinanet_res50_objects365_1x_800size import (
+    retinanet_res50_objects365_1x_800size,
+)
+from official.vision.detection.retinanet_res50_voc_1x_800size import (
+    retinanet_res50_voc_1x_800size,
 )
 
 from official.vision.detection.models import FasterRCNN, RetinaNet
@@ -45,10 +57,10 @@ from official.vision.segmentation.deeplabv3plus import (
 )
 
 from official.vision.keypoints.models import (
-        simplebaseline_res50,
-        simplebaseline_res101,
-        simplebaseline_res152,
-        mspn_4stage
+    simplebaseline_res50,
+    simplebaseline_res101,
+    simplebaseline_res152,
+    mspn_4stage
 )
 
 from official.vision.keypoints.inference import KeypointEvaluator
