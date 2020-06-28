@@ -131,12 +131,12 @@ class FasterRCNNConfig:
         self.train_dataset = dict(
             name="coco",
             root="train2017",
-            ann_file="instances_train2017.json"
+            ann_file="annotations/instances_train2017.json",
         )
         self.test_dataset = dict(
             name="coco",
             root="val2017",
-            ann_file="instances_val2017.json"
+            ann_file="annotations/instances_val2017.json",
         )
         self.num_classes = 80
 
