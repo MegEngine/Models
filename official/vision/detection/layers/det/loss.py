@@ -6,11 +6,9 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import megengine as mge
 import megengine.functional as F
-import numpy as np
 
-from megengine.core import tensor, Tensor
+from megengine.core import Tensor
 
 
 def get_focal_loss(
@@ -112,7 +110,8 @@ def get_smooth_l1_loss(
     if norm_type == "fg":
         loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(fg_mask.sum(), 1)
     elif norm_type == "all":
-        raise NotImplementedError
+        all_mask = (label != ignore_label)
+        loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(all_mask.sum(), 1)
     else:
         raise NotImplementedError
 
@@ -151,5 +150,19 @@ def get_smooth_l1_base(
         abs_x = F.abs(x)
         in_loss = 0.5 * x ** 2 * sigma2
         out_loss = abs_x - 0.5 / sigma2
-    loss = F.where(abs_x < cond_point, in_loss, out_loss)
+
+    in_mask = abs_x < cond_point
+    out_mask = 1 - in_mask
+    loss = in_loss * in_mask + out_loss * out_mask
+    return loss
+
+
+def softmax_loss(score, label, ignore_label=-1):
+    max_score = F.zero_grad(score.max(axis=1, keepdims=True))
+    score -= max_score
+    log_prob = score - F.log(F.exp(score).sum(axis=1, keepdims=True))
+    mask = (label != ignore_label)
+    vlabel = label * mask
+    loss = -(F.indexing_one_hot(log_prob, vlabel.astype("int32"), 1) * mask).sum()
+    loss = loss / F.maximum(mask.sum(), 1)
     return loss

@@ -10,7 +10,10 @@ from .anchor import *
 from .box_utils import *
 from .fpn import *
 from .loss import *
+from .pooler import *
+from .rcnn import *
 from .retinanet import *
+from .rpn import *
 
 _EXCLUDE = {}
 __all__ = [k for k in globals().keys() if k not in _EXCLUDE and not k.startswith("_")]

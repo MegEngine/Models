@@ -1,20 +1,21 @@
-# Megengine RetinaNet
+# Megengine Detection Models
 
 ## 介绍
 
-本目录包含了采用MegEngine实现的经典[RetinaNet](https://arxiv.org/pdf/1708.02002>)网络结构，同时提供了在COCO2017数据集上的完整训练和测试代码。
+本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[Faster R-CNN with FPN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
 
-网络的性能在COCO2017验证集上的测试结果如下：
+网络的性能在COCO2017数据集上的测试结果如下：
 
-| 模型                            | mAP<br>@5-95 | batch<br>/gpu | gpu    | speed<br>(8gpu)   | speed<br>(1gpu) |
-| ---                             | ---          | ---           | ---    | ---               | ---             |
-| retinanet-res50-coco-1x-800size | 36.0         | 2             | 2080ti | 2.27(it/s)        | 3.7(it/s)       |
+| 模型                                  | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu)   | training speed<br>(1gpu) |
+| ---                                   | ---          | ---           | ---    | ---                         | ---                      |
+| retinanet-res50-coco-1x-800size       | 36.0         | 2             | 2080Ti | 2.27(it/s)                  | 3.7(it/s)                |
+| faster-rcnn-fpn-res50-coco-1x-800size | 37.3         | 2             | 2080Ti | 1.9(it/s)                   | 3.1(it/s)                |
 
 * MegEngine v0.4.0
 
 ## 如何使用
 
-模型训练好之后，可以通过如下命令测试单张图片:
+以RetinaNet为例，模型训练好之后，可以通过如下命令测试单张图片:
 
 ```bash
 python3 tools/inference.py -f retinanet_res50_coco_1x_800size.py \
@@ -60,17 +61,33 @@ python3 tools/train.py -f retinanet_res50_coco_1x_800size.py \
 
 `tools/train.py`提供了灵活的命令行选项，包括：
 
-- `-f`, 所需要训练的网络结构描述文件。
+- `-f`, 所需要训练的网络结构描述文件。可以是RetinaNet、Faster R-CNN等.
 - `-n`, 用于训练的devices(gpu)数量，默认使用所有可用的gpu.
 - `-w`, 预训练的backbone网络权重的路径。
 - `--batch_size`，训练时采用的`batch size`, 默认2，表示每张卡训2张图。
 - `--dataset-dir`, COCO2017数据集的上级目录，默认`/data/datasets`。
 
-默认情况下模型会存在 `log-of-retinanet_res50_1x_800size`目录下。
+默认情况下模型会存在 `log-of-模型名`目录下。
+
+5. 编译可能需要的lib
+
+GPU NMS位于tools下的GPU NMS文件夹下面，我们需要进入tools文件夹下进行编译.
+
+首先需要找到MegEngine编译的头文件所在路径，可以通过命令
+
+```bash
+python3 -c "import megengine as mge; print(mge.__file__)"
+```
+将输出结果中__init__.py之前的部分复制(以MegEngine结尾)，将其赋值给shell变量MGE，接下来，运行如下命令进行编译。
+
+```bash
+cd tools
+nvcc -I $MGE/_internal/include -shared -o lib_nms.so -Xcompiler "-fno-strict-aliasing -fPIC" gpu_nms/nms.cu
+```
 
 ## 如何测试
 
-在训练的过程中，可以通过如下命令测试模型在`COCO2017`验证集的性能：
+在得到训练完保存的模型之后，可以通过tools下的test.py文件测试模型在`COCO2017`验证集的性能：
 
 ```bash
 python3 tools/test.py -f retinanet_res50_coco_1x_800size.py \
@@ -89,5 +106,6 @@ python3 tools/test.py -f retinanet_res50_coco_1x_800size.py \
 ## 参考文献
 
 - [Focal Loss for Dense Object Detection](https://arxiv.org/pdf/1708.02002) Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, Piotr Dollár. Proceedings of the IEEE international conference on computer vision. 2017: 2980-2988.
-- [Microsoft COCO: Common Objects in Context](https://arxiv.org/pdf/1405.0312.pdf)  Lin, Tsung-Yi and Maire, Michael and Belongie, Serge and Hays, James and Perona, Pietro and Ramanan, Deva and Dollár, Piotr and Zitnick, C Lawrence
-Lin T Y, Maire M, Belongie S, et al. European conference on computer vision. Springer, Cham, 2014: 740-755.
+- [Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks](https://arxiv.org/pdf/1506.01497.pdf) S. Ren, K. He, R. Girshick, and J. Sun. In: Neural Information Processing Systems(NIPS)(2015).
+- [Feature Pyramid Networks for Object Detection](https://arxiv.org/pdf/1612.03144.pdf) T. Lin, P. Dollár, R. Girshick, K. He, B. Hariharan and S. Belongie. 2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Honolulu, HI, 2017, pp. 936-944, doi: 10.1109/CVPR.2017.106.
+- [Microsoft COCO: Common Objects in Context](https://arxiv.org/pdf/1405.0312.pdf)  Lin, Tsung-Yi and Maire, Michael and Belongie, Serge and Hays, James and Perona, Pietro and Ramanan, Deva and Dollár, Piotr and Zitnick, C Lawrence, Lin T Y, Maire M, Belongie S, et al. European conference on computer vision. Springer, Cham, 2014: 740-755.

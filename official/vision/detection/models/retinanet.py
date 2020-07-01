@@ -123,7 +123,13 @@ class RetinaNet(M.Module):
             )
 
             total = rpn_cls_loss + rpn_bbox_loss
-            return total, rpn_cls_loss, rpn_bbox_loss
+            loss_dict = {
+                "total_loss": total,
+                "loss_cls": rpn_cls_loss,
+                "loss_loc": rpn_bbox_loss
+            }
+            self.cfg.losses_keys = list(loss_dict.keys())
+            return loss_dict
         else:
             # currently not support multi-batch testing
             assert self.batch_size == 1
@@ -231,6 +237,7 @@ class RetinaNetConfig:
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.reg_loss_weight = 1.0 / 4.0
+        self.num_losses = 3
 
         # ------------------------ training cfg ---------------------- #
         self.basic_lr = 0.01 / 16.0  # The basic learning rate for single-image

@@ -128,11 +128,12 @@ def adjust_learning_rate(optimizer, epoch_id, step, model, world_size):
 def train_one_epoch(model, data_queue, opt, tot_steps, rank, epoch_id, world_size):
     @jit.trace(symbolic=True, opt_level=2)
     def propagate():
-        loss_list = model(model.inputs)
-        opt.backward(loss_list[0])
-        return loss_list
+        loss_dict = model(model.inputs)
+        opt.backward(loss_dict["total_loss"])
+        losses = list(loss_dict.values())
+        return losses
 
-    meter = AverageMeter(record_len=3)
+    meter = AverageMeter(record_len=model.cfg.num_losses)
     log_interval = model.cfg.log_interval
     for step in range(tot_steps):
         adjust_learning_rate(opt, epoch_id, step, model, world_size)
@@ -146,17 +147,18 @@ def train_one_epoch(model, data_queue, opt, tot_steps, rank, epoch_id, world_siz
         opt.step()
 
         if rank == 0:
+            loss_str = ", ".join(["{}:%f".format(loss) for loss in model.cfg.losses_keys])
+            log_info_str = "e%d, %d/%d, lr:%f, " + loss_str
             meter.update([loss.numpy() for loss in loss_list])
             if step % log_interval == 0:
                 average_loss = meter.average()
                 logger.info(
-                    "e%d, %d/%d, lr:%f, cls:%f, loc:%f",
+                    log_info_str,
                     epoch_id,
                     step,
                     tot_steps,
                     opt.param_groups[0]["lr"],
-                    average_loss[1],
-                    average_loss[2],
+                    *average_loss,
                 )
                 meter.reset()
 

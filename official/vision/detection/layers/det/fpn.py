@@ -22,7 +22,7 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 # This file has been modified by Megvii ("Megvii Modifications").
-# All Megvii Modifications are Copyright (C) 2014-2019 Megvii Inc. All rights reserved.
+# All Megvii Modifications are Copyright (C) 2014-2020 Megvii Inc. All rights reserved.
 # ---------------------------------------------------------------------
 import math
 from typing import List
@@ -47,6 +47,8 @@ class FPN(M.Module):
         out_channels: int = 256,
         norm: str = "",
         top_block: M.Module = None,
+        strides=[8, 16, 32],
+        channels=[512, 1024, 2048],
     ):
         """
         Args:
@@ -63,8 +65,8 @@ class FPN(M.Module):
         """
         super(FPN, self).__init__()
 
-        in_strides = [8, 16, 32]
-        in_channels = [512, 1024, 2048]
+        in_strides = strides
+        in_channels = channels
 
         use_bias = norm == ""
         self.lateral_convs = list()
@@ -148,15 +150,32 @@ class FPN(M.Module):
                 top_block_in_feature = results[
                     self._out_features.index(self.top_block.in_feature)
                 ]
-            results.extend(self.top_block(top_block_in_feature, results[-1]))
+            results.extend(self.top_block(top_block_in_feature))
 
         return dict(zip(self._out_features, results))
 
     def output_shape(self):
         return {
-            name: layers.ShapeSpec(channels=self._out_feature_channels[name],)
+            name: layers.ShapeSpec(
+                channels=self._out_feature_channels[name],
+                stride=self._out_feature_strides[name],
+            )
             for name in self._out_features
         }
+
+
+class FPNP6(M.Module):
+    """
+    used in FPN, generate a downsampled P6 feature from P5.
+    """
+
+    def __init__(self, in_feature="p5"):
+        super().__init__()
+        self.num_levels = 1
+        self.in_feature = in_feature
+
+    def forward(self, x):
+        return [F.max_pool2d(x, kernel_size=1, stride=2, padding=0)]
 
 
 class LastLevelP6P7(M.Module):
@@ -165,16 +184,16 @@ class LastLevelP6P7(M.Module):
     C5 feature.
     """
 
-    def __init__(self, in_channels: int, out_channels: int):
+    def __init__(self, in_channels: int, out_channels: int, in_feature="res5"):
         super().__init__()
         self.num_levels = 2
-        self.in_feature = "res5"
+        if in_feature == "p5":
+            assert in_channels == out_channels
+        self.in_feature = in_feature
         self.p6 = M.Conv2d(in_channels, out_channels, 3, 2, 1)
         self.p7 = M.Conv2d(out_channels, out_channels, 3, 2, 1)
-        self.use_P5 = in_channels == out_channels
 
-    def forward(self, c5, p5=None):
-        x = p5 if self.use_P5 else c5
+    def forward(self, x):
         p6 = self.p6(x)
         p7 = self.p7(F.relu(p6))
         return [p6, p7]
