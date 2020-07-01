@@ -17,6 +17,7 @@ import megengine.functional as F
 import megengine.jit as jit
 import megengine.quantization as Q
 import numpy as np
+from megengine.quantization.quantize import quantize, quantize_qat
 
 import models
 
@@ -45,16 +46,16 @@ def main():
     model = models.__dict__[args.arch]()
 
     if args.mode != "normal":
-        Q.quantize_qat(model, Q.ema_fakequant_qconfig)
+        quantize_qat(model, Q.ema_fakequant_qconfig)
+
+    if args.mode == "quantized":
+        quantize(model)
 
     if args.checkpoint:
         logger.info("Load pretrained weights from %s", args.checkpoint)
         ckpt = mge.load(args.checkpoint)
         ckpt = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
         model.load_state_dict(ckpt, strict=False)
-
-    if args.mode == "quantized":
-        Q.quantize(model)
 
     if args.image is None:
         path = "../assets/cat.jpg"

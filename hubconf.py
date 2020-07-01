@@ -47,3 +47,5 @@ from official.vision.keypoints.models import (
 )
 
 from official.vision.keypoints.inference import KeypointEvaluator
+
+from official.quantization.models import quantized_resnet18
