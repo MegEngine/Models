@@ -50,8 +50,8 @@ def get_focal_loss(
     class_range = F.arange(1, score.shape[2] + 1)
 
     label = F.add_axis(label, axis=2)
-    pos_part = (1 - score) ** gamma * F.log(score)
-    neg_part = score ** gamma * F.log(1 - score)
+    pos_part = (1 - score) ** gamma * F.log(F.clamp(score, 1e-8))
+    neg_part = score ** gamma * F.log(F.clamp(1 - score, 1e-8))
 
     pos_loss = -(label == class_range) * pos_part * alpha
     neg_loss = -(label != class_range) * (label != ignore_label) * neg_part * (1 - alpha)

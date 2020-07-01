@@ -33,19 +33,19 @@ class FasterRCNN(M.Module):
             for p in bottom_up.layer1.parameters():
                 p.requires_grad = False
 
-        # -------------------------- build the FPN -------------------------- #
+        # ----------------------- build the FPN ----------------------------- #
         out_channels = 256
         self.backbone = layers.FPN(
             bottom_up=bottom_up,
             in_features=["res2", "res3", "res4", "res5"],
             out_channels=out_channels,
-            norm="",
+            norm=cfg.fpn_norm,
             top_block=layers.FPNP6(),
             strides=[4, 8, 16, 32],
             channels=[256, 512, 1024, 2048],
         )
 
-        # -------------------------- build the RPN -------------------------- #
+        # ----------------------- build the RPN ----------------------------- #
         self.RPN = layers.RPN(cfg)
 
         # ----------------------- build the RCNN head ----------------------- #
@@ -122,24 +122,25 @@ class FasterRCNN(M.Module):
 
 
 class FasterRCNNConfig:
-
     def __init__(self):
         self.resnet_norm = "FrozenBN"
+        self.fpn_norm = ""
         self.backbone_freeze_at = 2
 
-        # ------------------------ data cfg --------------------------- #
+        # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(
             name="coco",
             root="train2017",
             ann_file="annotations/instances_train2017.json",
+            remove_images_without_annotations=True,
         )
         self.test_dataset = dict(
             name="coco",
             root="val2017",
             ann_file="annotations/instances_val2017.json",
+            remove_images_without_annotations=False,
         )
         self.num_classes = 80
-
         self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
         self.img_std = np.array([57.375, 57.120, 58.395])
 
@@ -149,9 +150,6 @@ class FasterRCNNConfig:
         self.anchor_aspect_ratios = [0.5, 1, 2]
         self.anchor_offset = -0.5
         self.num_cell_anchors = len(self.anchor_aspect_ratios)
-
-        self.bbox_normalize_means = None
-        self.bbox_normalize_stds = np.array([0.1, 0.1, 0.2, 0.2])
 
         self.rpn_stride = np.array([4, 8, 16, 32, 64]).astype(np.float32)
         self.rpn_in_features = ["p2", "p3", "p4", "p5", "p6"]
@@ -175,12 +173,15 @@ class FasterRCNNConfig:
         self.bg_threshold_high = 0.5
         self.bg_threshold_low = 0.0
 
+        self.rcnn_reg_mean = None
+        self.rcnn_reg_std = np.array([0.1, 0.1, 0.2, 0.2])
         self.rcnn_in_features = ["p2", "p3", "p4", "p5"]
         self.rcnn_stride = [4, 8, 16, 32]
 
         # ------------------------ loss cfg -------------------------- #
         self.rpn_smooth_l1_beta = 3
         self.rcnn_smooth_l1_beta = 1
+        self.num_losses = 5
 
         # ------------------------ training cfg ---------------------- #
         self.train_image_short_size = 800
@@ -188,7 +189,6 @@ class FasterRCNNConfig:
         self.train_prev_nms_top_n = 2000
         self.train_post_nms_top_n = 1000
 
-        self.num_losses = 5
         self.basic_lr = 0.02 / 16.0  # The basic learning rate for single-image
         self.momentum = 0.9
         self.weight_decay = 1e-4
@@ -197,15 +197,14 @@ class FasterRCNNConfig:
         self.max_epoch = 18
         self.warm_iters = 500
         self.lr_decay_rate = 0.1
-        self.lr_decay_sates = [12, 16, 17]
+        self.lr_decay_stages = [12, 16, 17]
 
-        # ------------------------ testing cfg ------------------------- #
+        # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800
         self.test_image_max_size = 1333
         self.test_prev_nms_top_n = 1000
         self.test_post_nms_top_n = 1000
         self.test_max_boxes_per_image = 100
-
         self.test_vis_threshold = 0.3
         self.test_cls_threshold = 0.05
         self.test_nms = 0.5

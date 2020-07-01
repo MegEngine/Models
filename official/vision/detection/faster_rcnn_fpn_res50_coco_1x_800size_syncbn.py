@@ -17,6 +17,7 @@ class CustomFasterRCNNFPNConfig(models.FasterRCNNConfig):
 
         self.resnet_norm = "SyncBN"
         self.fpn_norm = "SyncBN"
+        self.backbone_freeze_at = 0
 
 
 @hub.pretrained(
