@@ -19,8 +19,8 @@ class RCNN(M.Module):
         super().__init__()
         self.cfg = cfg
         self.box_coder = layers.BoxCoder(
-            reg_mean=cfg.bbox_normalize_means,
-            reg_std=cfg.bbox_normalize_stds
+            reg_mean=cfg.rcnn_reg_mean,
+            reg_std=cfg.rcnn_reg_std
         )
 
         # roi head

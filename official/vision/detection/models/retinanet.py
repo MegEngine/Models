@@ -36,7 +36,7 @@ class RetinaNet(M.Module):
         self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         # ----------------------- build the backbone ------------------------ #
-        bottom_up = resnet50(norm=layers.get_norm(self.cfg.resnet_norm))
+        bottom_up = resnet50(norm=layers.get_norm(cfg.resnet_norm))
 
         # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
         if self.cfg.backbone_freeze_at >= 1:
@@ -53,7 +53,7 @@ class RetinaNet(M.Module):
             bottom_up=bottom_up,
             in_features=["res3", "res4", "res5"],
             out_channels=out_channels,
-            norm=self.cfg.fpn_norm,
+            norm=cfg.fpn_norm,
             top_block=layers.LastLevelP6P7(in_channels_p6p7, out_channels),
         )
 
@@ -211,14 +211,14 @@ class RetinaNetConfig:
             name="coco",
             root="train2017",
             ann_file="annotations/instances_train2017.json",
+            remove_images_without_annotations=True,
         )
         self.test_dataset = dict(
             name="coco",
             root="val2017",
             ann_file="annotations/instances_val2017.json",
+            remove_images_without_annotations=False,
         )
-        self.train_image_short_size = 800
-        self.train_image_max_size = 1333
         self.num_classes = 80
         self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
         self.img_std = np.array([57.375, 57.120, 58.395])
@@ -240,6 +240,9 @@ class RetinaNetConfig:
         self.num_losses = 3
 
         # ------------------------ training cfg ---------------------- #
+        self.train_image_short_size = 800
+        self.train_image_max_size = 1333
+
         self.basic_lr = 0.01 / 16.0  # The basic learning rate for single-image
         self.momentum = 0.9
         self.weight_decay = 1e-4
@@ -248,7 +251,7 @@ class RetinaNetConfig:
         self.max_epoch = 18
         self.warm_iters = 500
         self.lr_decay_rate = 0.1
-        self.lr_decay_sates = [12, 16, 17]
+        self.lr_decay_stages = [12, 16, 17]
 
         # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800

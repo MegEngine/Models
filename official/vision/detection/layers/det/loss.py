@@ -50,8 +50,8 @@ def get_focal_loss(
     class_range = F.arange(1, score.shape[2] + 1)
 
     label = F.add_axis(label, axis=2)
-    pos_part = (1 - score) ** gamma * F.log(score)
-    neg_part = score ** gamma * F.log(1 - score)
+    pos_part = (1 - score) ** gamma * F.log(F.clamp(score, 1e-8))
+    neg_part = score ** gamma * F.log(F.clamp(1 - score, 1e-8))
 
     pos_loss = -(label == class_range) * pos_part * alpha
     neg_loss = -(label != class_range) * (label != ignore_label) * neg_part * (1 - alpha)
@@ -151,6 +151,8 @@ def get_smooth_l1_base(
         in_loss = 0.5 * x ** 2 * sigma2
         out_loss = abs_x - 0.5 / sigma2
 
+    # FIXME: F.where cannot handle 0-shape tensor yet
+    # loss = F.where(abs_x < cond_point, in_loss, out_loss)
     in_mask = abs_x < cond_point
     out_mask = 1 - in_mask
     loss = in_loss * in_mask + out_loss * out_mask
