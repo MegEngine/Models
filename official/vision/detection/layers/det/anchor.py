@@ -8,10 +8,10 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from abc import ABCMeta, abstractmethod
 
-import megengine.functional as F
 import numpy as np
 
-from megengine.core import tensor, Tensor
+import megengine.functional as F
+from megengine.core import Tensor, tensor
 
 
 class BaseAnchorGenerator(metaclass=ABCMeta):

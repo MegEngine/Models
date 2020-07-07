@@ -5,6 +5,7 @@ import os
 import struct
 
 import numpy as np
+
 import megengine as mge
 import megengine.functional as F
 from megengine._internal.craniotome import CraniotomeBase

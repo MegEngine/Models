@@ -12,8 +12,9 @@ import os
 import sys
 
 import cv2
-import megengine as mge
 import numpy as np
+
+import megengine as mge
 from megengine import jit
 from megengine.data.dataset import COCO
 

@@ -24,9 +24,9 @@
 # This file has been modified by Megvii ("Megvii Modifications").
 # All Megvii Modifications are Copyright (C) 2014-2020 Megvii Inc. All rights reserved.
 # ---------------------------------------------------------------------
-import megengine.module as M
 import numpy as np
 
+import megengine.module as M
 from megengine.core import Buffer
 
 
