@@ -6,10 +6,11 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import numpy as np
+
 import megengine as mge
 import megengine.functional as F
 import megengine.module as M
-import numpy as np
 
 from official.vision.classification.resnet.model import resnet50
 from official.vision.detection import layers

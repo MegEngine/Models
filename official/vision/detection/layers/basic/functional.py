@@ -6,10 +6,10 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import megengine as mge
-import megengine.functional as F
 import numpy as np
 
+import megengine as mge
+import megengine.functional as F
 from megengine.core import Tensor
 
 

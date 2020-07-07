@@ -14,16 +14,18 @@ import importlib
 import multiprocessing as mp
 import os
 import sys
+import time
 from collections import defaultdict
+from tabulate import tabulate
+
+import numpy as np
 
 import megengine as mge
-import numpy as np
 from megengine import distributed as dist
 from megengine import jit
 from megengine import optimizer as optim
 from megengine.data import Collator, DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-from tabulate import tabulate
 
 from official.vision.detection.tools.data_mapper import data_mapper
 
@@ -81,7 +83,8 @@ def worker(rank, world_size, args):
         weights = mge.load(args.weight_file)
         model.backbone.bottom_up.load_state_dict(weights)
 
-    logger.info("Prepare dataset")
+    if rank == 0:
+        logger.info("Prepare dataset")
     loader = build_dataloader(model.batch_size, args.dataset_dir, model.cfg)
     train_loader = iter(loader["train"])
 
@@ -155,21 +158,32 @@ def train_one_epoch(
         return losses
 
     meter = AverageMeter(record_len=model.cfg.num_losses)
+    time_meter = AverageMeter(record_len=2)
     log_interval = model.cfg.log_interval
     for step in range(tot_steps):
         adjust_learning_rate(opt, epoch_id, step, model, world_size)
+
+        data_tik = time.time()
         mini_batch = next(data_queue)
+        data_tok = time.time()
+
         model.inputs["image"].set_value(mini_batch["data"])
         model.inputs["gt_boxes"].set_value(mini_batch["gt_boxes"])
         model.inputs["im_info"].set_value(mini_batch["im_info"])
 
+        tik = time.time()
         opt.zero_grad()
         loss_list = propagate()
         opt.step()
+        tok = time.time()
+
+        time_meter.update([tok - tik, data_tok - data_tik])
 
         if rank == 0:
+            info_str = "e%d, %d/%d, lr:%f, "
             loss_str = ", ".join(["{}:%f".format(loss) for loss in model.cfg.losses_keys])
-            log_info_str = "e%d, %d/%d, lr:%f, " + loss_str
+            time_str = ", train_time:%.3fs, data_time:%.3fs"
+            log_info_str = info_str + loss_str + time_str
             meter.update([loss.numpy() for loss in loss_list])
             if step % log_interval == 0:
                 average_loss = meter.average()
@@ -180,8 +194,10 @@ def train_one_epoch(
                     tot_steps,
                     opt.param_groups[0]["lr"],
                     *average_loss,
+                    *time_meter.average()
                 )
                 meter.reset()
+                time_meter.reset()
 
 
 def make_parser():

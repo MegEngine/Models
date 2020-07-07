@@ -10,7 +10,6 @@ import math
 from typing import List
 
 import megengine.module as M
-
 from megengine.core import Tensor
 
 from official.vision.detection.layers import basic

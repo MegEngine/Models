@@ -9,7 +9,6 @@
 from abc import ABCMeta, abstractmethod
 
 import megengine.functional as F
-
 from megengine.core import Tensor
 
 
