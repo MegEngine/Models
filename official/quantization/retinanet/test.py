@@ -19,7 +19,6 @@ import megengine as mge
 import numpy as np
 from megengine import jit
 from megengine.data import DataLoader, SequentialSampler
-import megengine.quantization.quantize as quantize
 import megengine.quantization as Q
 from tqdm import tqdm
 
@@ -241,12 +240,12 @@ def worker(
     if test_mode != "fp32":
         # QAT
         model.head.disable_quantize()
-        quantize.quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
+        Q.quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
 
     model.load_state_dict(mge.load(model_file)["state_dict"], strict=True)
 
     if test_mode == "quantized":
-        quantize.quantize(model)
+        Q.quantize(model)
     model.eval()
     evaluator = DetEvaluator(model)
 

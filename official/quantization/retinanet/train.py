@@ -22,6 +22,7 @@ from megengine import jit
 from megengine import optimizer as optim
 from megengine.data import Collator, DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
+import megengine.quantization as Q
 from tabulate import tabulate
 
 from official.vision.detection.tools.data_mapper import data_mapper
@@ -64,6 +65,20 @@ def worker(rank, world_size, args):
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
 
     model = current_network.Net(current_network.Cfg(), batch_size=args.batch_size)
+    if rank == 0:
+        logger.info("loading model...")
+    if args.weight_file is not None:
+        weights = mge.load(args.weight_file)
+        if "state_dict" in weights:
+            weights = weights["state_dict"]
+        if args.mode == "fp32":
+            model.backbone.bottom_up.load_state_dict(weights)
+        elif args.mode == "qat":
+            model.load_state_dict(weights)
+            # QAT
+            model.head.disable_quantize()
+            Q.quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
+
     params = model.parameters(requires_grad=True)
     model.train()
 
@@ -76,11 +91,8 @@ def worker(rank, world_size, args):
         weight_decay=model.cfg.weight_decay,
     )
 
-    if args.weight_file is not None:
-        weights = mge.load(args.weight_file)
-        model.backbone.bottom_up.load_state_dict(weights)
-
-    logger.info("Prepare dataset")
+    if rank == 0:
+        logger.info("Prepare dataset")
     loader = build_dataloader(model.batch_size, args.dataset_dir, model.cfg)
     train_loader = iter(loader["train"])
 
@@ -179,6 +191,9 @@ def make_parser():
     parser.add_argument(
         "-d", "--dataset_dir", default="/data/datasets", type=str,
     )
+    parser.add_argument(
+        "--mode", default="fp32", type=str,
+    )
 
     return parser
 
@@ -203,6 +218,7 @@ def main():
     args = parser.parse_args()
 
     # ------------------------ begin training -------------------------- #
+    assert args.mode in ["fp32", "qat"]
     valid_nr_dev = mge.get_device_count("gpu")
     if args.ngpus == -1:
         world_size = valid_nr_dev

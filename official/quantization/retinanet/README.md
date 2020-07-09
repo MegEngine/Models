@@ -58,13 +58,13 @@ inference_func.dump(...)
 ## Step 1. Train a fp32 model
 
 ```
-python3 train.py -f retinanet_res18_coco_1x_800size.py -w path/to/resnet18_normal_69824.pkl
+python3 train.py -f retinanet_res18_coco_1x_800size.py -w path/to/resnet18_normal_69824.pkl --mode fp32
 ```
 
 ## Step 2. Finetune fp32 model with quantization aware training(QAT)
 
 ```
-python3 finetune.py -f retinanet_res18_coco_1x_800size_finetune.py -w path/to/retinanet_weights/ckpt.pkl
+python3 train.py -f retinanet_res18_coco_1x_800size_finetune.py -w path/to/retinanet_weights/ckpt.pkl --mode qat
 ```
 
 ## Step 3. Test QAT model on COCO Testset
