@@ -15,7 +15,7 @@ from official.vision.detection import models
     "https://data.megengine.org.cn/models/weights/"
     "faster_rcnn_fpn_ec2e80b9_res50_1x_800size_37dot3.pkl"
 )
-def faster_rcnn_fpn_res50_coco_1x_800size(batch_size=1, **kwargs):
+def faster_rcnn_res50_coco_1x_800size(batch_size=1, **kwargs):
     r"""
     Faster-RCNN FPN trained from COCO dataset.
     `"Faster-RCNN" <https://arxiv.org/abs/1506.01497>`_

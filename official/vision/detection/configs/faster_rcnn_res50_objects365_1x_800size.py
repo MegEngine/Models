@@ -9,7 +9,7 @@
 from official.vision.detection import models
 
 
-class CustomRetinaNetConfig(models.RetinaNetConfig):
+class CustomFasterRCNNConfig(models.FasterRCNNConfig):
     def __init__(self):
         super().__init__()
 
@@ -32,13 +32,14 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
         self.nr_images_epoch = 400000
 
 
-def retinanet_res50_objects365_1x_800size(batch_size=1, **kwargs):
+def faster_rcnn_res50_objects365_1x_800size(batch_size=1, **kwargs):
     r"""
-    RetinaNet trained from Objects365 dataset.
-    `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
+    Faster-RCNN FPN trained from Objects365 dataset.
+    `"Faster-RCNN" <https://arxiv.org/abs/1506.01497>`_
+    `"FPN" <https://arxiv.org/abs/1612.03144>`_
     """
-    return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
+    return models.FasterRCNN(CustomFasterRCNNConfig(), batch_size=batch_size, **kwargs)
 
 
-Net = models.RetinaNet
-Cfg = CustomRetinaNetConfig
+Net = models.FasterRCNN
+Cfg = CustomFasterRCNNConfig

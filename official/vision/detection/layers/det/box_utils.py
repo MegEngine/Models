@@ -8,6 +8,8 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from abc import ABCMeta, abstractmethod
 
+import numpy as np
+
 import megengine.functional as F
 from megengine.core import Tensor
 
@@ -29,15 +31,19 @@ class BoxCoderBase(metaclass=ABCMeta):
 
 
 class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
-    def __init__(self, reg_mean=None, reg_std=None):
+    def __init__(
+        self,
+        reg_mean=np.array([0.0, 0.0, 0.0, 0.0]),
+        reg_std=np.array([1.0, 1.0, 1.0, 1.0]),
+    ):
         """
         Args:
             reg_mean(np.ndarray): [x0_mean, x1_mean, y0_mean, y1_mean] or None
             reg_std(np.ndarray):  [x0_std, x1_std, y0_std, y1_std] or None
 
         """
-        self.reg_mean = reg_mean[None, :] if reg_mean is not None else None
-        self.reg_std = reg_std[None, :] if reg_std is not None else None
+        self.reg_mean = reg_mean[None, :]
+        self.reg_std = reg_std[None, :]
         super().__init__()
 
     @staticmethod
@@ -82,17 +88,13 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
         target_dh = F.log(gt_height / bbox_height)
         target = self._concat_new_axis(target_dx, target_dy, target_dw, target_dh)
 
-        if self.reg_mean is not None:
-            target -= self.reg_mean
-        if self.reg_std is not None:
-            target /= self.reg_std
+        target -= self.reg_mean
+        target /= self.reg_std
         return target
 
     def decode(self, anchors: Tensor, deltas: Tensor) -> Tensor:
-        if self.reg_std is not None:
-            deltas *= self.reg_std
-        if self.reg_mean is not None:
-            deltas += self.reg_mean
+        deltas *= self.reg_std
+        deltas += self.reg_mean
 
         (
             anchor_width,
@@ -158,7 +160,7 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     if return_ignore:
         overlaps_ignore = F.maximum(inter / b_area_box, 0)
         gt_ignore_mask = F.add_axis((gt[:, 4] == -1), 0).broadcast(*area_target_shape)
-        overlaps *= (1 - gt_ignore_mask)
+        overlaps *= 1 - gt_ignore_mask
         overlaps_ignore *= gt_ignore_mask
         return overlaps, overlaps_ignore
 

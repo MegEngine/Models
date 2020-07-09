@@ -45,7 +45,7 @@ class FPN(M.Module):
         bottom_up: M.Module,
         in_features: List[str],
         out_channels: int = 256,
-        norm: str = "",
+        norm: str = None,
         top_block: M.Module = None,
         strides=[8, 16, 32],
         channels=[512, 1024, 2048],

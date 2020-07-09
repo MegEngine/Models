@@ -18,7 +18,7 @@ import megengine as mge
 from megengine import jit
 from megengine.data.dataset import COCO
 
-from official.vision.detection.tools.test import DetEvaluator
+from official.vision.detection.tools.utils import DetEvaluator
 
 logger = mge.get_logger(__name__)
 

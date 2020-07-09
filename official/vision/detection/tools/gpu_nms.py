@@ -11,7 +11,7 @@ import megengine.functional as F
 from megengine._internal.craniotome import CraniotomeBase
 from megengine.core.tensor import wrap_io_tensor
 
-_so_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib_nms.so')
+_so_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib_nms.so")
 _so_lib = ctypes.CDLL(_so_path)
 
 _TYPE_POINTER = ctypes.c_void_p
@@ -50,10 +50,13 @@ class NMSCran(CraniotomeBase):
         mask_tensor_ptr = outputs[2].pubapi_dev_tensor_ptr
 
         _so_lib.NMSForwardGpu(
-            box_tensor_ptr, mask_tensor_ptr,
-            output_tensor_ptr, output_num_tensor_ptr,
-            self._iou_threshold, self._max_output,
-            self._host_device
+            box_tensor_ptr,
+            mask_tensor_ptr,
+            output_tensor_ptr,
+            output_num_tensor_ptr,
+            self._iou_threshold,
+            self._max_output,
+            self._host_device,
         )
 
     def grad(self, wrt_idx, inputs, outputs, out_grad):
@@ -63,7 +66,7 @@ class NMSCran(CraniotomeBase):
         return [np.int32, np.int32, np.int32]
 
     def get_serialize_params(self):
-        return ('nms', struct.pack('fi', self._iou_threshold, self._max_output))
+        return ("nms", struct.pack("fi", self._iou_threshold, self._max_output))
 
     def infer_shape(self, inp_shapes):
         nr_box = inp_shapes[0][0]
@@ -72,9 +75,10 @@ class NMSCran(CraniotomeBase):
         # here we compute the number of int32 used in mask_outputs.
         # In original version, we compute the bytes only.
         mask_size = int(
-            nr_box * (
-                nr_box // threadsPerBlock + int((nr_box % threadsPerBlock) > 0)
-            ) * 8 / 4
+            nr_box
+            * (nr_box // threadsPerBlock + int((nr_box % threadsPerBlock) > 0))
+            * 8
+            / 4
         )
         return [[output_size], [1], [mask_size]]
 
@@ -87,9 +91,11 @@ def gpu_nms(box, iou_threshold, max_output):
 
 def batched_nms(boxes, scores, idxs, iou_threshold, num_keep, use_offset=False):
     if use_offset:
-        boxes_offset = mge.tensor(
-            [0, 0, 1, 1], device=boxes.device
-        ).reshape(1, 4).broadcast(boxes.shapeof(0), 4)
+        boxes_offset = (
+            mge.tensor([0, 0, 1, 1], device=boxes.device)
+            .reshape(1, 4)
+            .broadcast(boxes.shapeof(0), 4)
+        )
         boxes = boxes - boxes_offset
     max_coordinate = boxes.max()
     offsets = idxs * (max_coordinate + 1)

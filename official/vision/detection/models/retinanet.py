@@ -12,7 +12,7 @@ import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 
-from official.vision.classification.resnet.model import resnet50
+import official.vision.classification.resnet.model as resnet
 from official.vision.detection import layers
 
 
@@ -31,13 +31,15 @@ class RetinaNet(M.Module):
             anchor_scales=self.cfg.anchor_scales,
             anchor_ratios=self.cfg.anchor_ratios,
         )
-        self.box_coder = layers.BoxCoder(reg_mean=cfg.reg_mean, reg_std=cfg.reg_std)
+        self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
         self.stride_list = np.array([8, 16, 32, 64, 128]).astype(np.float32)
         self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         # ----------------------- build the backbone ------------------------ #
-        bottom_up = resnet50(norm=layers.get_norm(cfg.resnet_norm))
+        bottom_up = getattr(resnet, cfg.backbone)(
+            norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
+        )
 
         # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
         if self.cfg.backbone_freeze_at >= 1:
@@ -119,7 +121,12 @@ class RetinaNet(M.Module):
                 gamma=self.cfg.focal_loss_gamma,
             )
             rpn_bbox_loss = (
-                layers.get_smooth_l1_loss(all_level_box_delta, box_gt_delta, box_gt_cls)
+                layers.get_smooth_l1_loss(
+                    all_level_box_delta,
+                    box_gt_delta,
+                    box_gt_cls,
+                    self.cfg.smooth_l1_beta,
+                )
                 * self.cfg.reg_loss_weight
             )
 
@@ -127,7 +134,7 @@ class RetinaNet(M.Module):
             loss_dict = {
                 "total_loss": total,
                 "loss_cls": rpn_cls_loss,
-                "loss_loc": rpn_bbox_loss
+                "loss_loc": rpn_bbox_loss,
             }
             self.cfg.losses_keys = list(loss_dict.keys())
             return loss_dict
@@ -203,8 +210,10 @@ class RetinaNet(M.Module):
 
 class RetinaNetConfig:
     def __init__(self):
+        self.backbone = "resnet50"
+        self.backbone_pretrained = True
         self.resnet_norm = "FrozenBN"
-        self.fpn_norm = ""
+        self.fpn_norm = None
         self.backbone_freeze_at = 2
 
         # ------------------------ data cfg -------------------------- #
@@ -223,8 +232,8 @@ class RetinaNetConfig:
         self.num_classes = 80
         self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
         self.img_std = np.array([57.375, 57.120, 58.395])
-        self.reg_mean = None
-        self.reg_std = np.array([0.1, 0.1, 0.2, 0.2])
+        self.reg_mean = np.array([0.0, 0.0, 0.0, 0.0])
+        self.reg_std = np.array([1.0, 1.0, 1.0, 1.0])
 
         self.anchor_ratios = np.array([0.5, 1, 2])
         self.anchor_scales = np.array([2 ** 0, 2 ** (1 / 3), 2 ** (2 / 3)])
@@ -237,7 +246,8 @@ class RetinaNetConfig:
         # ------------------------ loss cfg -------------------------- #
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
-        self.reg_loss_weight = 1.0 / 4.0
+        self.smooth_l1_beta = 0  # use L1 loss
+        self.reg_loss_weight = 1.0
         self.num_losses = 3
 
         # ------------------------ training cfg ---------------------- #

@@ -15,7 +15,7 @@ import megengine.functional as F
 
 
 def roi_pool(
-    rpn_fms, rois, stride, pool_shape, roi_type='roi_align',
+    rpn_fms, rois, stride, pool_shape, roi_type="roi_align",
 ):
     assert len(stride) == len(rpn_fms)
     canonical_level = 4
@@ -40,18 +40,22 @@ def roi_pool(
 
     pool_list, inds_list = [], []
     for i in range(num_fms):
-        mask = (level_assignments == i)
+        mask = level_assignments == i
         _, inds = F.cond_take(mask == 1, mask)
         level_rois = rois.ai[inds]
-        if roi_type == 'roi_pool':
+        if roi_type == "roi_pool":
             pool_fm = F.roi_pooling(
-                rpn_fms[i], level_rois, pool_shape,
-                mode='max', scale=1.0/stride[i]
+                rpn_fms[i], level_rois, pool_shape, mode="max", scale=1.0 / stride[i]
             )
-        elif roi_type == 'roi_align':
+        elif roi_type == "roi_align":
             pool_fm = F.roi_align(
-                rpn_fms[i], level_rois, pool_shape, mode='average',
-                spatial_scale=1.0/stride[i], sample_points=2, aligned=True
+                rpn_fms[i],
+                level_rois,
+                pool_shape,
+                mode="average",
+                spatial_scale=1.0 / stride[i],
+                sample_points=2,
+                aligned=True,
             )
         pool_list.append(pool_fm)
         inds_list.append(inds)
