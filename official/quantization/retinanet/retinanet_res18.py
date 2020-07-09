@@ -6,14 +6,14 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import numpy as np
+
 import megengine as mge
 import megengine.functional as F
 import megengine.module as M
-import numpy as np
 
 from official.quantization.models.resnet import resnet18
 from official.quantization.retinanet.fpn import FPN
-from official.quantization.retinanet.head import RetinaNetHead
 from official.quantization.retinanet.loss import get_focal_loss
 from official.vision.detection import layers
 
@@ -64,7 +64,7 @@ class RetinaNet(M.Module):
         feature_shapes = [backbone_shape[f] for f in self.in_features]
 
         # ----------------------- build the RetinaNet Head ------------------ #
-        self.head = RetinaNetHead(cfg, feature_shapes)
+        self.head = layers.RetinaNetHead(cfg, feature_shapes)
         self.head.disable_quantize()
 
         # ----------------------- build the Quant Module ------------------ #

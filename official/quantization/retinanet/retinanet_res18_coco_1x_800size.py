@@ -7,7 +7,8 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import numpy as np
-from official.quantization.retinanet.retinanet_res18 import RetinaNetConfig, RetinaNet
+
+from official.quantization.retinanet.retinanet_res18 import RetinaNet, RetinaNetConfig
 
 
 class CustomRetinaNetConfig(RetinaNetConfig):

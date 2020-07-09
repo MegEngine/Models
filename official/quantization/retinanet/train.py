@@ -14,16 +14,17 @@ import multiprocessing as mp
 import os
 import sys
 from collections import defaultdict
+from tabulate import tabulate
+
+import numpy as np
 
 import megengine as mge
-import numpy as np
+import megengine.quantization as Q
 from megengine import distributed as dist
 from megengine import jit
 from megengine import optimizer as optim
 from megengine.data import Collator, DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-import megengine.quantization as Q
-from tabulate import tabulate
 
 from official.vision.detection.tools.data_mapper import data_mapper
 

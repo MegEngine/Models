@@ -13,14 +13,15 @@ import os
 import random
 import sys
 from multiprocessing import Process, Queue
+from tqdm import tqdm
 
 import cv2
-import megengine as mge
 import numpy as np
+
+import megengine as mge
+import megengine.quantization as Q
 from megengine import jit
 from megengine.data import DataLoader, SequentialSampler
-import megengine.quantization as Q
-from tqdm import tqdm
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.nms import py_cpu_nms
