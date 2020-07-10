@@ -188,7 +188,7 @@ class FasterRCNNConfig:
         self.num_losses = 5
 
         # ------------------------ training cfg ---------------------- #
-        self.train_image_short_size = 800
+        self.train_image_short_size = (640, 672, 704, 736, 768, 800)
         self.train_image_max_size = 1333
         self.train_prev_nms_top_n = 2000
         self.train_post_nms_top_n = 1000

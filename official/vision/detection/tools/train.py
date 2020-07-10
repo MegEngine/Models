@@ -299,7 +299,9 @@ def build_dataloader(batch_size, data_dir, cfg):
         transform=T.Compose(
             transforms=[
                 T.ShortestEdgeResize(
-                    cfg.train_image_short_size, cfg.train_image_max_size
+                    cfg.train_image_short_size,
+                    cfg.train_image_max_size,
+                    sample_style="choice",
                 ),
                 T.RandomHorizontalFlip(),
                 T.ToMode(),

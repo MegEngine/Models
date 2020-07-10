@@ -251,7 +251,7 @@ class RetinaNetConfig:
         self.num_losses = 3
 
         # ------------------------ training cfg ---------------------- #
-        self.train_image_short_size = 800
+        self.train_image_short_size = (640, 672, 704, 736, 768, 800)
         self.train_image_max_size = 1333
 
         self.basic_lr = 0.01 / 16.0  # The basic learning rate for single-image
