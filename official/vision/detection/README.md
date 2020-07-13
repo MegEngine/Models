@@ -6,10 +6,12 @@
 
 网络的性能在COCO2017数据集上的测试结果如下：
 
-| 模型                              | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu) |
-| ---                               | :---:        | :---:         | :---:  | :---:                     |
-| retinanet-res50-coco-1x-800size   | 36.0         | 2             | 2080Ti | 3.0(it/s)                 |
-| faster-rcnn-res50-coco-1x-800size | 38.1         | 2             | 2080Ti | 3.1(it/s)                 |
+| 模型                                     | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu) |
+| ---                                      | :---:        | :---:         | :---:  | :---:                     |
+| retinanet-res50-coco-1x-800size          | 36.4         | 2             | 2080Ti | 3.1(it/s)                 |
+| retinanet-res50-coco-1x-800size-syncbn   | 37.1         | 2             | 2080Ti | 1.7(it/s)                 |
+| faster-rcnn-res50-coco-1x-800size        | 38.8         | 2             | 2080Ti | 3.3(it/s)                 |
+| faster-rcnn-res50-coco-1x-800size-syncbn | 39.3         | 2             | 2080Ti | 1.8(it/s)                 |
 
 * MegEngine v0.4.0
 
@@ -19,15 +21,15 @@
 
 ```bash
 python3 tools/inference.py -f configs/retinanet_res50_coco_1x_800size.py \
+                           -w /path/to/retinanet_weights.pkl
                            -i ../../assets/cat.jpg \
-                           -m /path/to/retinanet_weights.pkl
 ```
 
 `tools/inference.py`的命令行选项如下:
 
 - `-f`, 测试的网络结构描述文件。
 - `-i`, 需要测试的样例图片。
-- `-m`, 网络结构文件所对应的训练权重, 可以从顶部的表格中下载训练好的检测器权重。
+- `-w`, 网络结构文件所对应的训练权重, 可以从顶部的表格中下载训练好的检测器权重。
 
 使用默认图片和默认模型测试的结果见下图:
 
@@ -88,14 +90,14 @@ nvcc -I $MGE/_internal/include -shared -o lib_nms.so -Xcompiler "-fno-strict-ali
 
 ```bash
 python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
-                      -m /path/to/retinanet_weights.pt \
+                      -w /path/to/retinanet_weights.pt \
 ```
 
 `tools/test.py`的命令行选项如下：
 
 - `-f`, 所需要测试的网络结构描述文件。
 - `-n`, 用于测试的devices(gpu)数量，默认1；
-- `-m`, 需要测试的模型；可以从顶部的表格中下载训练好的检测器权重, 也可以用自行训练好的权重。
+- `-w`, 需要测试的模型；可以从顶部的表格中下载训练好的检测器权重, 也可以用自行训练好的权重。
 - `-d`，COCO2017数据集的上级目录，默认`/data/datasets`
 
 ## 参考文献

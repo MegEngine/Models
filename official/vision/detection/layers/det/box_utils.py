@@ -33,8 +33,8 @@ class BoxCoderBase(metaclass=ABCMeta):
 class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
     def __init__(
         self,
-        reg_mean=np.array([0.0, 0.0, 0.0, 0.0]),
-        reg_std=np.array([1.0, 1.0, 1.0, 1.0]),
+        reg_mean=[0.0, 0.0, 0.0, 0.0],
+        reg_std=[1.0, 1.0, 1.0, 1.0],
     ):
         """
         Args:
@@ -42,8 +42,8 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
             reg_std(np.ndarray):  [x0_std, x1_std, y0_std, y1_std] or None
 
         """
-        self.reg_mean = reg_mean[None, :]
-        self.reg_std = reg_std[None, :]
+        self.reg_mean = np.array(reg_mean)[None, :]
+        self.reg_std = np.array(reg_std)[None, :]
         super().__init__()
 
     @staticmethod

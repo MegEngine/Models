@@ -6,6 +6,7 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+from megengine import hub
 
 from official.vision.detection import models
 
@@ -19,6 +20,10 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
         self.backbone_freeze_at = 0
 
 
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/"
+    "retinanet_res50_coco_1x_800size_syncbn_37dot1_35cedcdf.pkl"
+)
 def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     r"""
     RetinaNet with SyncBN trained from COCO dataset.

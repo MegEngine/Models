@@ -33,7 +33,7 @@ class RetinaNet(M.Module):
         )
         self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
-        self.stride_list = np.array([8, 16, 32, 64, 128]).astype(np.float32)
+        self.stride_list = np.array(cfg.stride).astype(np.float32)
         self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         # ----------------------- build the backbone ------------------------ #
@@ -80,8 +80,8 @@ class RetinaNet(M.Module):
 
     def preprocess_image(self, image):
         normed_image = (
-            image - self.cfg.img_mean[None, :, None, None]
-        ) / self.cfg.img_std[None, :, None, None]
+            image - np.array(self.cfg.img_mean)[None, :, None, None]
+        ) / np.array(self.cfg.img_std)[None, :, None, None]
         return layers.get_padded_tensor(normed_image, 32, 0.0)
 
     def forward(self, inputs):
@@ -230,13 +230,14 @@ class RetinaNetConfig:
             remove_images_without_annotations=False,
         )
         self.num_classes = 80
-        self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
-        self.img_std = np.array([57.375, 57.120, 58.395])
-        self.reg_mean = np.array([0.0, 0.0, 0.0, 0.0])
-        self.reg_std = np.array([1.0, 1.0, 1.0, 1.0])
+        self.img_mean = [103.530, 116.280, 123.675]  # BGR
+        self.img_std = [57.375, 57.120, 58.395]
+        self.stride = [8, 16, 32, 64, 128]
+        self.reg_mean = [0.0, 0.0, 0.0, 0.0]
+        self.reg_std = [1.0, 1.0, 1.0, 1.0]
 
-        self.anchor_ratios = np.array([0.5, 1, 2])
-        self.anchor_scales = np.array([2 ** 0, 2 ** (1 / 3), 2 ** (2 / 3)])
+        self.anchor_scales = [2 ** 0, 2 ** (1 / 3), 2 ** (2 / 3)]
+        self.anchor_ratios = [0.5, 1, 2]
         self.negative_thresh = 0.4
         self.positive_thresh = 0.5
         self.allow_low_quality = True

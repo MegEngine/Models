@@ -8,4 +8,8 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from megengine.data.dataset import COCO, Objects365, PascalVOC
 
-data_mapper = dict(coco=COCO, objects365=Objects365, voc=PascalVOC,)
+data_mapper = dict(
+    coco=COCO,
+    objects365=Objects365,
+    voc=PascalVOC,
+)

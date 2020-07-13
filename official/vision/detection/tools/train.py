@@ -42,7 +42,7 @@ def make_parser():
         "-f", "--file", default="net.py", type=str, help="net description file"
     )
     parser.add_argument(
-        "-w", "--weight_file", default=None, type=str, help="pre-train weights file",
+        "-w", "--weight_file", default=None, type=str, help="weights file",
     )
     parser.add_argument(
         "-n", "--ngpus", default=-1, type=int, help="total number of gpus for training",

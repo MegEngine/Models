@@ -68,8 +68,8 @@ class FasterRCNN(M.Module):
 
     def preprocess_image(self, image):
         normed_image = (
-            image - self.cfg.img_mean[None, :, None, None]
-        ) / self.cfg.img_std[None, :, None, None]
+            image - np.array(self.cfg.img_mean)[None, :, None, None]
+        ) / np.array(self.cfg.img_std)[None, :, None, None]
         return layers.get_padded_tensor(normed_image, 32, 0.0)
 
     def forward(self, inputs):
@@ -143,19 +143,18 @@ class FasterRCNNConfig:
             remove_images_without_annotations=False,
         )
         self.num_classes = 80
-        self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
-        self.img_std = np.array([57.375, 57.120, 58.395])
+        self.img_mean = [103.530, 116.280, 123.675]  # BGR
+        self.img_std = [57.375, 57.120, 58.395]
 
         # ----------------------- rpn cfg ------------------------- #
         self.anchor_base_size = 16
-        self.anchor_scales = np.array([0.5])
-        self.anchor_aspect_ratios = [0.5, 1, 2]
+        self.anchor_scales = [0.5]
+        self.anchor_ratios = [0.5, 1, 2]
         self.anchor_offset = -0.5
-        self.num_cell_anchors = len(self.anchor_aspect_ratios)
 
-        self.rpn_stride = np.array([4, 8, 16, 32, 64]).astype(np.float32)
-        self.rpn_reg_mean = np.array([0.0, 0.0, 0.0, 0.0])
-        self.rpn_reg_std = np.array([1.0, 1.0, 1.0, 1.0])
+        self.rpn_stride = [4, 8, 16, 32, 64]
+        self.rpn_reg_mean = [0.0, 0.0, 0.0, 0.0]
+        self.rpn_reg_std = [1.0, 1.0, 1.0, 1.0]
         self.rpn_in_features = ["p2", "p3", "p4", "p5", "p6"]
         self.rpn_channel = 256
 
@@ -177,8 +176,8 @@ class FasterRCNNConfig:
         self.bg_threshold_high = 0.5
         self.bg_threshold_low = 0.0
 
-        self.rcnn_reg_mean = np.array([0.0, 0.0, 0.0, 0.0])
-        self.rcnn_reg_std = np.array([0.1, 0.1, 0.2, 0.2])
+        self.rcnn_reg_mean = [0.0, 0.0, 0.0, 0.0]
+        self.rcnn_reg_std = [0.1, 0.1, 0.2, 0.2]
         self.rcnn_in_features = ["p2", "p3", "p4", "p5"]
         self.rcnn_stride = [4, 8, 16, 32]
 

@@ -73,12 +73,12 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 
 ### 目标检测
 
-目标检测同样是计算机视觉中的常见任务，我们提供了一个经典的目标检测模型[retinanet](./official/vision/detection)，这个模型在**COCO验证集**上的测试结果如下：
+目标检测同样是计算机视觉中的常见任务，我们提供了两个经典的目标检测模型[Retinanet](./official/vision/detection/model/retinanet)和[Faster R-CNN](./official/vision/detection/model/faster_rcnn)，这两个模型在**COCO验证集**上的测试结果如下：
 
 | 模型                         | mAP<br>@5-95 |
 | :---:                        | :---:        |
-| retinanet-res50-1x-800size   | 36.0         |
-| faster-rcnn-res50-1x-800size | 38.1         |
+| retinanet-res50-1x-800size   | 36.4         |
+| faster-rcnn-res50-1x-800size | 38.8         |
 
 
 ### 图像分割

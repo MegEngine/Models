@@ -28,15 +28,23 @@ logger = mge.get_logger(__name__)
 
 def make_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--batch_size", default=1, type=int)
-    parser.add_argument("-n", "--ngpus", default=1, type=int)
     parser.add_argument(
         "-f", "--file", default="net.py", type=str, help="net description file"
     )
-    parser.add_argument("-d", "--dataset_dir", default="/data/datasets", type=str)
+    parser.add_argument(
+        "-w", "--weight_file", default=None, type=str, help="weights file",
+    )
+    parser.add_argument(
+        "-n", "--ngpus", default=1, type=int, help="total number of gpus for testing",
+    )
+    parser.add_argument(
+        "-b", "--batch_size", default=1, type=int, help="batchsize for testing",
+    )
+    parser.add_argument(
+        "-d", "--dataset_dir", default="/data/datasets", type=str,
+    )
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
     parser.add_argument("-ee", "--end_epoch", default=-1, type=int)
-    parser.add_argument("-m", "--model", default=None, type=str)
     return parser
 
 
@@ -52,8 +60,8 @@ def main():
         args.end_epoch = args.start_epoch
 
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
-        if args.model:
-            model_file = args.model
+        if args.weight_file:
+            model_file = args.weight_file
         else:
             model_file = "log-of-{}/epoch_{}.pkl".format(
                 os.path.basename(args.file).split(".")[0], epoch_num

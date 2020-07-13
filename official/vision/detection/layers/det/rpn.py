@@ -6,6 +6,8 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import numpy as np
+
 import megengine as mge
 import megengine.functional as F
 import megengine.module as M
@@ -20,22 +22,23 @@ class RPN(M.Module):
         super().__init__()
         self.cfg = cfg
         self.box_coder = layers.BoxCoder(cfg.rpn_reg_mean, cfg.rpn_reg_std)
+        self.num_cell_anchors = len(cfg.anchor_scales) * len(cfg.anchor_ratios)
 
-        self.stride_list = cfg.rpn_stride
+        self.stride_list = np.array(cfg.rpn_stride).astype(np.float32)
         rpn_channel = cfg.rpn_channel
         self.in_features = cfg.rpn_in_features
         self.anchors_generator = layers.DefaultAnchorGenerator(
             cfg.anchor_base_size,
             cfg.anchor_scales,
-            cfg.anchor_aspect_ratios,
+            cfg.anchor_ratios,
             cfg.anchor_offset,
         )
         self.rpn_conv = M.Conv2d(256, rpn_channel, kernel_size=3, stride=1, padding=1)
         self.rpn_cls_score = M.Conv2d(
-            rpn_channel, cfg.num_cell_anchors * 2, kernel_size=1, stride=1
+            rpn_channel, self.num_cell_anchors * 2, kernel_size=1, stride=1
         )
         self.rpn_bbox_offsets = M.Conv2d(
-            rpn_channel, cfg.num_cell_anchors * 4, kernel_size=1, stride=1
+            rpn_channel, self.num_cell_anchors * 4, kernel_size=1, stride=1
         )
 
         for l in [self.rpn_conv, self.rpn_cls_score, self.rpn_bbox_offsets]:
@@ -61,7 +64,7 @@ class RPN(M.Module):
                 scores.reshape(
                     scores.shape[0],
                     2,
-                    self.cfg.num_cell_anchors,
+                    self.num_cell_anchors,
                     scores.shape[2],
                     scores.shape[3],
                 )
@@ -70,7 +73,7 @@ class RPN(M.Module):
             pred_bbox_offsets_list.append(
                 bbox_offsets.reshape(
                     bbox_offsets.shape[0],
-                    self.cfg.num_cell_anchors,
+                    self.num_cell_anchors,
                     4,
                     bbox_offsets.shape[2],
                     bbox_offsets.shape[3],
