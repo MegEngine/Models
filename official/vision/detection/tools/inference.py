@@ -18,7 +18,7 @@ import megengine as mge
 from megengine import jit
 from megengine.data.dataset import COCO
 
-from official.vision.detection.tools.test import DetEvaluator
+from official.vision.detection.tools.utils import DetEvaluator
 
 logger = mge.get_logger(__name__)
 
@@ -28,8 +28,10 @@ def make_parser():
     parser.add_argument(
         "-f", "--file", default="net.py", type=str, help="net description file"
     )
+    parser.add_argument(
+        "-w", "--weight_file", default=None, type=str, help="weights file",
+    )
     parser.add_argument("-i", "--image", default="example.jpg", type=str)
-    parser.add_argument("-m", "--model", default=None, type=str)
     return parser
 
 
@@ -37,7 +39,7 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
-    logger.info("Load Model : %s completed", args.model)
+    logger.info("Load Model : %s completed", args.weight_file)
 
     @jit.trace(symbolic=True)
     def val_func():
@@ -48,7 +50,7 @@ def main():
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
     model = current_network.Net(current_network.Cfg(), batch_size=1)
     model.eval()
-    state_dict = mge.load(args.model)
+    state_dict = mge.load(args.weight_file)
     if "state_dict" in state_dict:
         state_dict = state_dict["state_dict"]
     model.load_state_dict(state_dict)

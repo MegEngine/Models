@@ -12,19 +12,20 @@ import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 
-from official.vision.classification.resnet.model import resnet50
+import official.vision.classification.resnet.model as resnet
 from official.vision.detection import layers
 
 
 class FasterRCNN(M.Module):
-
     def __init__(self, cfg, batch_size):
         super().__init__()
         self.cfg = cfg
         cfg.batch_per_gpu = batch_size
         self.batch_size = batch_size
         # ----------------------- build the backbone ------------------------ #
-        bottom_up = resnet50(norm=layers.get_norm(cfg.resnet_norm))
+        bottom_up = getattr(resnet, cfg.backbone)(
+            norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
+        )
 
         # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
         if self.cfg.backbone_freeze_at >= 1:
@@ -67,14 +68,14 @@ class FasterRCNN(M.Module):
 
     def preprocess_image(self, image):
         normed_image = (
-            image - self.cfg.img_mean[None, :, None, None]
-        ) / self.cfg.img_std[None, :, None, None]
+            image - np.array(self.cfg.img_mean)[None, :, None, None]
+        ) / np.array(self.cfg.img_std)[None, :, None, None]
         return layers.get_padded_tensor(normed_image, 32, 0.0)
 
     def forward(self, inputs):
-        images = inputs['image']
-        im_info = inputs['im_info']
-        gt_boxes = inputs['gt_boxes']
+        images = inputs["image"]
+        im_info = inputs["im_info"]
+        gt_boxes = inputs["gt_boxes"]
         # process the images
         normed_images = self.preprocess_image(images)
         # normed_images = images
@@ -89,10 +90,10 @@ class FasterRCNN(M.Module):
         rpn_rois, rpn_losses = self.RPN(fpn_features, im_info, gt_boxes)
         rcnn_losses = self.RCNN(fpn_features, rpn_rois, im_info, gt_boxes)
 
-        loss_rpn_cls = rpn_losses['loss_rpn_cls']
-        loss_rpn_loc = rpn_losses['loss_rpn_loc']
-        loss_rcnn_cls = rcnn_losses['loss_rcnn_cls']
-        loss_rcnn_loc = rcnn_losses['loss_rcnn_loc']
+        loss_rpn_cls = rpn_losses["loss_rpn_cls"]
+        loss_rpn_loc = rpn_losses["loss_rpn_loc"]
+        loss_rcnn_cls = rcnn_losses["loss_rcnn_cls"]
+        loss_rcnn_loc = rcnn_losses["loss_rcnn_loc"]
         total_loss = loss_rpn_cls + loss_rpn_loc + loss_rcnn_cls + loss_rcnn_loc
 
         loss_dict = {
@@ -100,7 +101,7 @@ class FasterRCNN(M.Module):
             "rpn_cls": loss_rpn_cls,
             "rpn_loc": loss_rpn_loc,
             "rcnn_cls": loss_rcnn_cls,
-            "rcnn_loc": loss_rcnn_loc
+            "rcnn_loc": loss_rcnn_loc,
         }
         self.cfg.losses_keys = list(loss_dict.keys())
         return loss_dict
@@ -112,20 +113,20 @@ class FasterRCNN(M.Module):
         pred_boxes = pred_boxes.reshape(-1, 4)
         scale_w = im_info[0, 1] / im_info[0, 3]
         scale_h = im_info[0, 0] / im_info[0, 2]
-        pred_boxes = pred_boxes / F.concat(
-            [scale_w, scale_h, scale_w, scale_h], axis=0
-        )
+        pred_boxes = pred_boxes / F.concat([scale_w, scale_h, scale_w, scale_h], axis=0)
 
-        clipped_boxes = layers.get_clipped_box(
-            pred_boxes, im_info[0, 2:4]
-        ).reshape(-1, self.cfg.num_classes, 4)
+        clipped_boxes = layers.get_clipped_box(pred_boxes, im_info[0, 2:4]).reshape(
+            -1, self.cfg.num_classes, 4
+        )
         return pred_score, clipped_boxes
 
 
 class FasterRCNNConfig:
     def __init__(self):
+        self.backbone = "resnet50"
+        self.backbone_pretrained = True
         self.resnet_norm = "FrozenBN"
-        self.fpn_norm = ""
+        self.fpn_norm = None
         self.backbone_freeze_at = 2
 
         # ------------------------ data cfg -------------------------- #
@@ -142,17 +143,18 @@ class FasterRCNNConfig:
             remove_images_without_annotations=False,
         )
         self.num_classes = 80
-        self.img_mean = np.array([103.530, 116.280, 123.675])  # BGR
-        self.img_std = np.array([57.375, 57.120, 58.395])
+        self.img_mean = [103.530, 116.280, 123.675]  # BGR
+        self.img_std = [57.375, 57.120, 58.395]
 
         # ----------------------- rpn cfg ------------------------- #
         self.anchor_base_size = 16
-        self.anchor_scales = np.array([0.5])
-        self.anchor_aspect_ratios = [0.5, 1, 2]
+        self.anchor_scales = [0.5]
+        self.anchor_ratios = [0.5, 1, 2]
         self.anchor_offset = -0.5
-        self.num_cell_anchors = len(self.anchor_aspect_ratios)
 
-        self.rpn_stride = np.array([4, 8, 16, 32, 64]).astype(np.float32)
+        self.rpn_stride = [4, 8, 16, 32, 64]
+        self.rpn_reg_mean = [0.0, 0.0, 0.0, 0.0]
+        self.rpn_reg_std = [1.0, 1.0, 1.0, 1.0]
         self.rpn_in_features = ["p2", "p3", "p4", "p5", "p6"]
         self.rpn_channel = 256
 
@@ -165,7 +167,7 @@ class FasterRCNNConfig:
         self.ignore_label = -1
 
         # ----------------------- rcnn cfg ------------------------- #
-        self.pooling_method = 'roi_align'
+        self.pooling_method = "roi_align"
         self.pooling_size = (7, 7)
 
         self.num_rois = 512
@@ -174,18 +176,18 @@ class FasterRCNNConfig:
         self.bg_threshold_high = 0.5
         self.bg_threshold_low = 0.0
 
-        self.rcnn_reg_mean = None
-        self.rcnn_reg_std = np.array([0.1, 0.1, 0.2, 0.2])
+        self.rcnn_reg_mean = [0.0, 0.0, 0.0, 0.0]
+        self.rcnn_reg_std = [0.1, 0.1, 0.2, 0.2]
         self.rcnn_in_features = ["p2", "p3", "p4", "p5"]
         self.rcnn_stride = [4, 8, 16, 32]
 
         # ------------------------ loss cfg -------------------------- #
-        self.rpn_smooth_l1_beta = 3
-        self.rcnn_smooth_l1_beta = 1
+        self.rpn_smooth_l1_beta = 0  # use L1 loss
+        self.rcnn_smooth_l1_beta = 0  # use L1 loss
         self.num_losses = 5
 
         # ------------------------ training cfg ---------------------- #
-        self.train_image_short_size = 800
+        self.train_image_short_size = (640, 672, 704, 736, 768, 800)
         self.train_image_max_size = 1333
         self.train_prev_nms_top_n = 2000
         self.train_post_nms_top_n = 1000

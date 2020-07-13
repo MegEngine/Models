@@ -63,14 +63,13 @@ def get_norm(norm, out_channels=None):
     Returns:
         M.Module or None: the normalization layer
     """
-    if isinstance(norm, str):
-        if len(norm) == 0:
-            return None
-        norm = {
-            "BN": M.BatchNorm2d,
-            "SyncBN": M.SyncBatchNorm,
-            "FrozenBN": FrozenBatchNorm2d
-        }[norm]
+    if norm is None:
+        return None
+    norm = {
+        "BN": M.BatchNorm2d,
+        "SyncBN": M.SyncBatchNorm,
+        "FrozenBN": FrozenBatchNorm2d,
+    }[norm]
     if out_channels is not None:
         return norm(out_channels)
     else:

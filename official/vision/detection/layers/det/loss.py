@@ -53,7 +53,9 @@ def get_focal_loss(
     neg_part = score ** gamma * F.log(F.clamp(1 - score, 1e-8))
 
     pos_loss = -(label == class_range) * pos_part * alpha
-    neg_loss = -(label != class_range) * (label != ignore_label) * neg_part * (1 - alpha)
+    neg_loss = (
+        -(label != class_range) * (label != ignore_label) * neg_part * (1 - alpha)
+    )
     loss = pos_loss + neg_loss
 
     if norm_type == "fg":
@@ -69,10 +71,9 @@ def get_smooth_l1_loss(
     pred_bbox: Tensor,
     gt_bbox: Tensor,
     label: Tensor,
-    sigma: int = 3,
+    beta: int = 1,
     background: int = 0,
     ignore_label: int = -1,
-    fix_smooth_l1: bool = False,
     norm_type: str = "fg",
 ) -> Tensor:
     r"""Smooth l1 loss used in RetinaNet.
@@ -84,14 +85,12 @@ def get_smooth_l1_loss(
             the ground-truth bbox with the shape of :math:`(B, A, 4)`
         label (Tensor):
             the assigned label of boxes with shape of :math:`(B, A)`
-        sigma (int):
+        beta (int):
             the parameter of smooth l1 loss. Default: 1
         background (int):
             the value of background class. Default: 0
         ignore_label (int):
             the value of ignore class. Default: -1
-        fix_smooth_l1 (bool):
-            is to use huber loss, default is False to use original smooth-l1
         norm_type (str): current support 'fg', 'all', 'none':
             'fg': loss will be normalized by number of fore-ground samples
             'all': loss will be normalized by number of all samples
@@ -105,11 +104,11 @@ def get_smooth_l1_loss(
 
     fg_mask = (label != background) * (label != ignore_label)
 
-    losses = get_smooth_l1_base(pred_bbox, gt_bbox, sigma, is_fix=fix_smooth_l1)
+    losses = get_smooth_l1_base(pred_bbox, gt_bbox, beta)
     if norm_type == "fg":
         loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(fg_mask.sum(), 1)
     elif norm_type == "all":
-        all_mask = (label != ignore_label)
+        all_mask = label != ignore_label
         loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(all_mask.sum(), 1)
     else:
         raise NotImplementedError
@@ -118,7 +117,7 @@ def get_smooth_l1_loss(
 
 
 def get_smooth_l1_base(
-    pred_bbox: Tensor, gt_bbox: Tensor, sigma: float, is_fix: bool = False,
+    pred_bbox: Tensor, gt_bbox: Tensor, beta: float,
 ):
     r"""
 
@@ -127,34 +126,24 @@ def get_smooth_l1_base(
             the predicted bbox with the shape of :math:`(N, 4)`
         gt_bbox (Tensor):
             the ground-truth bbox with the shape of :math:`(N, 4)`
-        sigma (int):
+        beta (int):
             the parameter of smooth l1 loss.
-        is_fix (bool):
-            is to use huber loss, default is False to use original smooth-l1
 
     Returns:
         the calculated smooth l1 loss.
     """
-    if is_fix:
-        sigma = 1 / sigma
-        cond_point = sigma
-        x = pred_bbox - gt_bbox
-        abs_x = F.abs(x)
-        in_loss = 0.5 * x ** 2
-        out_loss = sigma * abs_x - 0.5 * sigma ** 2
+    x = pred_bbox - gt_bbox
+    abs_x = F.abs(x)
+    if beta < 1e-5:
+        loss = abs_x
     else:
-        sigma2 = sigma ** 2
-        cond_point = 1 / sigma2
-        x = pred_bbox - gt_bbox
-        abs_x = F.abs(x)
-        in_loss = 0.5 * x ** 2 * sigma2
-        out_loss = abs_x - 0.5 / sigma2
+        in_loss = 0.5 * x ** 2 / beta
+        out_loss = abs_x - 0.5 * beta
 
-    # FIXME: F.where cannot handle 0-shape tensor yet
-    # loss = F.where(abs_x < cond_point, in_loss, out_loss)
-    in_mask = abs_x < cond_point
-    out_mask = 1 - in_mask
-    loss = in_loss * in_mask + out_loss * out_mask
+        # FIXME: F.where cannot handle 0-shape tensor yet
+        # loss = F.where(abs_x < beta, in_loss, out_loss)
+        in_mask = abs_x < beta
+        loss = in_loss * in_mask + out_loss * (1 - in_mask)
     return loss
 
 
@@ -162,7 +151,7 @@ def softmax_loss(score, label, ignore_label=-1):
     max_score = F.zero_grad(score.max(axis=1, keepdims=True))
     score -= max_score
     log_prob = score - F.log(F.exp(score).sum(axis=1, keepdims=True))
-    mask = (label != ignore_label)
+    mask = label != ignore_label
     vlabel = label * mask
     loss = -(F.indexing_one_hot(log_prob, vlabel.astype("int32"), 1) * mask).sum()
     loss = loss / F.maximum(mask.sum(), 1)

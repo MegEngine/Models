@@ -15,27 +15,22 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
     def __init__(self):
         super().__init__()
 
-        # ------------------------ data cfg -------------------------- #
-        self.train_dataset = dict(
-            name="voc",
-            root="VOCdevkit/VOC2012",
-            image_set="train",
-        )
-        self.test_dataset = dict(
-            name="voc",
-            root="VOCdevkit/VOC2012",
-            image_set="val",
-        )
-        self.num_classes = 20
-
-        # ------------------------ training cfg ---------------------- #
-        self.nr_images_epoch = 16000
+        self.resnet_norm = "SyncBN"
+        self.fpn_norm = "SyncBN"
+        self.backbone_freeze_at = 0
 
 
-def retinanet_res50_voc_1x_800size(batch_size=1, **kwargs):
+@hub.pretrained(
+    "https://data.megengine.org.cn/models/weights/"
+    "retinanet_res50_coco_1x_800size_syncbn_37dot1_35cedcdf.pkl"
+)
+def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     r"""
-    RetinaNet trained from VOC dataset.
+    RetinaNet with SyncBN trained from COCO dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
+    `"FPN" <https://arxiv.org/abs/1612.03144>`_
+    `"COCO" <https://arxiv.org/abs/1405.0312>`_
+    `"SyncBN" <https://arxiv.org/abs/1711.07240>`_
     """
     return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
 

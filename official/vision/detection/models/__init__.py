@@ -6,7 +6,7 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-from .faster_rcnn_fpn import *
+from .faster_rcnn import *
 from .retinanet import *
 
 _EXCLUDE = {}

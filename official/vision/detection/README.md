@@ -2,14 +2,16 @@
 
 ## 介绍
 
-本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[Faster R-CNN with FPN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
+本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[Faster R-CNN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
 
 网络的性能在COCO2017数据集上的测试结果如下：
 
-| 模型                                  | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu)   | training speed<br>(1gpu) |
-| ---                                   | ---          | ---           | ---    | ---                         | ---                      |
-| retinanet-res50-coco-1x-800size       | 36.0         | 2             | 2080Ti | 2.27(it/s)                  | 3.7(it/s)                |
-| faster-rcnn-fpn-res50-coco-1x-800size | 37.3         | 2             | 2080Ti | 1.9(it/s)                   | 3.1(it/s)                |
+| 模型                                     | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu) |
+| ---                                      | :---:        | :---:         | :---:  | :---:                     |
+| retinanet-res50-coco-1x-800size          | 36.4         | 2             | 2080Ti | 3.1(it/s)                 |
+| retinanet-res50-coco-1x-800size-syncbn   | 37.1         | 2             | 2080Ti | 1.7(it/s)                 |
+| faster-rcnn-res50-coco-1x-800size        | 38.8         | 2             | 2080Ti | 3.3(it/s)                 |
+| faster-rcnn-res50-coco-1x-800size-syncbn | 39.3         | 2             | 2080Ti | 1.8(it/s)                 |
 
 * MegEngine v0.4.0
 
@@ -18,16 +20,16 @@
 以RetinaNet为例，模型训练好之后，可以通过如下命令测试单张图片:
 
 ```bash
-python3 tools/inference.py -f retinanet_res50_coco_1x_800size.py \
+python3 tools/inference.py -f configs/retinanet_res50_coco_1x_800size.py \
+                           -w /path/to/retinanet_weights.pkl
                            -i ../../assets/cat.jpg \
-                           -m /path/to/retinanet_weights.pkl
 ```
 
 `tools/inference.py`的命令行选项如下:
 
 - `-f`, 测试的网络结构描述文件。
-- `-m`, 网络结构文件所对应的训练权重, 可以从顶部的表格中下载训练好的检测器权重。
 - `-i`, 需要测试的样例图片。
+- `-w`, 网络结构文件所对应的训练权重, 可以从顶部的表格中下载训练好的检测器权重。
 
 使用默认图片和默认模型测试的结果见下图:
 
@@ -53,10 +55,7 @@ python3 tools/inference.py -f retinanet_res50_coco_1x_800size.py \
 4. 开始训练:
 
 ```bash
-python3 tools/train.py -f retinanet_res50_coco_1x_800size.py \
-                       -n 8 \
-                       --batch_size 2 \
-                       -w /path/to/pretrain.pkl
+python3 tools/train.py -f configs/retinanet_res50_coco_1x_800size.py -n 8
 ```
 
 `tools/train.py`提供了灵活的命令行选项，包括：
@@ -64,8 +63,8 @@ python3 tools/train.py -f retinanet_res50_coco_1x_800size.py \
 - `-f`, 所需要训练的网络结构描述文件。可以是RetinaNet、Faster R-CNN等.
 - `-n`, 用于训练的devices(gpu)数量，默认使用所有可用的gpu.
 - `-w`, 预训练的backbone网络权重的路径。
-- `--batch_size`，训练时采用的`batch size`, 默认2，表示每张卡训2张图。
-- `--dataset-dir`, COCO2017数据集的上级目录，默认`/data/datasets`。
+- `-b`，训练时采用的`batch size`, 默认2，表示每张卡训2张图。
+- `-d`, COCO2017数据集的上级目录，默认`/data/datasets`。
 
 默认情况下模型会存在 `log-of-模型名`目录下。
 
@@ -90,18 +89,16 @@ nvcc -I $MGE/_internal/include -shared -o lib_nms.so -Xcompiler "-fno-strict-ali
 在得到训练完保存的模型之后，可以通过tools下的test.py文件测试模型在`COCO2017`验证集的性能：
 
 ```bash
-python3 tools/test.py -f retinanet_res50_coco_1x_800size.py \
-                      -n 8 \
-                      --model /path/to/retinanet_weights.pt \
-                      --dataset_dir /data/datasets
+python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
+                      -w /path/to/retinanet_weights.pt \
 ```
 
 `tools/test.py`的命令行选项如下：
 
 - `-f`, 所需要测试的网络结构描述文件。
 - `-n`, 用于测试的devices(gpu)数量，默认1；
-- `--model`, 需要测试的模型；可以从顶部的表格中下载训练好的检测器权重, 也可以用自行训练好的权重。
-- `--dataset_dir`，COCO2017数据集的上级目录，默认`/data/datasets`
+- `-w`, 需要测试的模型；可以从顶部的表格中下载训练好的检测器权重, 也可以用自行训练好的权重。
+- `-d`，COCO2017数据集的上级目录，默认`/data/datasets`
 
 ## 参考文献
 

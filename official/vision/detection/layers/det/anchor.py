@@ -42,14 +42,14 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
     def __init__(
         self,
         base_size=8,
-        anchor_scales: np.ndarray = np.array([2, 3, 4]),
-        anchor_ratios: np.ndarray = np.array([0.5, 1, 2]),
+        anchor_scales: list = [2, 3, 4],
+        anchor_ratios: list = [0.5, 1, 2],
         offset: float = 0,
     ):
         super().__init__()
         self.base_size = base_size
-        self.anchor_scales = anchor_scales
-        self.anchor_ratios = anchor_ratios
+        self.anchor_scales = np.array(anchor_scales)
+        self.anchor_ratios = np.array(anchor_ratios)
         self.offset = offset
 
     def _whctrs(self, anchor):
@@ -111,7 +111,7 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         flatten_shift_y = F.add_axis(broad_shift_y.reshape(-1), 1)
 
         centers = F.concat(
-            [flatten_shift_x, flatten_shift_y, flatten_shift_x, flatten_shift_y, ],
+            [flatten_shift_x, flatten_shift_y, flatten_shift_x, flatten_shift_y,],
             axis=1,
         )
         centers = centers + self.offset * self.base_size
