@@ -20,8 +20,8 @@ from official.vision.keypoints.transforms import get_affine_transform
 from official.vision.keypoints.config import Config as cfg
 
 import official.vision.keypoints.models as M
-import official.vision.detection.retinanet_res50_coco_1x_800size as Det
-from official.vision.detection.tools.test import DetEvaluator
+import official.vision.detection.configs as Det
+from official.vision.detection.tools.utils import DetEvaluator
 from official.vision.keypoints.test import find_keypoints
 
 logger = mge.get_logger(__name__)
