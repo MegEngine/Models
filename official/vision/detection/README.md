@@ -10,10 +10,12 @@
 | ---                                      | :---:        | :---:         | :---:  | :---:                     |
 | retinanet-res50-coco-1x-800size          | 36.4         | 2             | 2080Ti | 3.1(it/s)                 |
 | retinanet-res50-coco-1x-800size-syncbn   | 37.1         | 2             | 2080Ti | 1.7(it/s)                 |
+| retinanet-res101-coco-2x-800size         | 40.8         | 2             | 2080Ti | 2.1(it/s)                 |
 | faster-rcnn-res50-coco-1x-800size        | 38.8         | 2             | 2080Ti | 3.3(it/s)                 |
 | faster-rcnn-res50-coco-1x-800size-syncbn | 39.3         | 2             | 2080Ti | 1.8(it/s)                 |
+| faster-rcnn-res101-coco-2x-800size       | 43.0         | 2             | 2080Ti | 2.3(it/s)                 |
 
-* MegEngine v0.4.0
+* MegEngine v0.5.1
 
 ## 如何使用
 

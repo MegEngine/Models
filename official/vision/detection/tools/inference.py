@@ -48,7 +48,9 @@ def main():
 
     sys.path.insert(0, os.path.dirname(args.file))
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
-    model = current_network.Net(current_network.Cfg(), batch_size=1)
+    cfg = current_network.Cfg()
+    cfg.backbone_pretrained = False
+    model = current_network.Net(cfg, batch_size=1)
     model.eval()
     state_dict = mge.load(args.weight_file)
     if "state_dict" in state_dict:

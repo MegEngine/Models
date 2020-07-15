@@ -38,9 +38,6 @@ def make_parser():
         "-n", "--ngpus", default=1, type=int, help="total number of gpus for testing",
     )
     parser.add_argument(
-        "-b", "--batch_size", default=1, type=int, help="batchsize for testing",
-    )
-    parser.add_argument(
         "-d", "--dataset_dir", default="/data/datasets", type=str,
     )
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
@@ -55,6 +52,9 @@ def main():
 
     parser = make_parser()
     args = parser.parse_args()
+
+    sys.path.insert(0, os.path.dirname(args.file))
+    current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
 
     if args.end_epoch == -1:
         args.end_epoch = args.start_epoch
@@ -75,7 +75,7 @@ def main():
             proc = Process(
                 target=worker,
                 args=(
-                    args.file,
+                    current_network,
                     model_file,
                     args.dataset_dir,
                     i,
@@ -86,10 +86,6 @@ def main():
             proc.start()
             procs.append(proc)
 
-        sys.path.insert(0, os.path.dirname(args.file))
-        current_network = importlib.import_module(
-            os.path.basename(args.file).split(".")[0]
-        )
         cfg = current_network.Cfg()
         num_imgs = dict(coco=5000, objects365=30000)
 
@@ -139,7 +135,7 @@ def main():
 
 
 def worker(
-    net_file, model_file, data_dir, worker_id, total_worker, result_queue,
+    current_network, model_file, data_dir, worker_id, total_worker, result_queue,
 ):
     """
     :param net_file: network description file
@@ -156,9 +152,9 @@ def worker(
         pred = model(model.inputs)
         return pred
 
-    sys.path.insert(0, os.path.dirname(net_file))
-    current_network = importlib.import_module(os.path.basename(net_file).split(".")[0])
-    model = current_network.Net(current_network.Cfg(), batch_size=1)
+    cfg = current_network.Cfg()
+    cfg.backbone_pretrained = False
+    model = current_network.Net(cfg, batch_size=1)
     model.eval()
     evaluator = DetEvaluator(model)
     state_dict = mge.load(model_file)
