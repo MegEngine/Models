@@ -70,16 +70,18 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 | ShuffleNetV2 x1.5 |  72.806  |  90.792  |
 | ShuffleNetV2 x2.0 |  75.074  |  92.278  |
 
-
 ### 目标检测
 
 目标检测同样是计算机视觉中的常见任务，我们提供了两个经典的目标检测模型[Retinanet](./official/vision/detection/model/retinanet)和[Faster R-CNN](./official/vision/detection/model/faster_rcnn)，这两个模型在**COCO验证集**上的测试结果如下：
 
-| 模型                         | mAP<br>@5-95 |
-| :---:                        | :---:        |
-| retinanet-res50-1x-800size   | 36.4         |
-| faster-rcnn-res50-1x-800size | 38.8         |
-
+| 模型                                     | mAP<br>@5-95 |
+| :---:                                    | :---:        |
+| retinanet-res50-coco-1x-800size          | 36.4         |
+| retinanet-res50-coco-1x-800size-syncbn   | 37.1         |
+| retinanet-res101-coco-2x-800size         | 40.8         |
+| faster-rcnn-res50-coco-1x-800size        | 38.8         |
+| faster-rcnn-res50-coco-1x-800size-syncbn | 39.3         |
+| faster-rcnn-res101-coco-2x-800size       | 43.0         |
 
 ### 图像分割
 
@@ -116,7 +118,6 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 | uncased_L-24_H-1024_A-16| [link](https://data.megengine.org.cn/models/weights/bert/uncased_L-24_H-1024_A-16/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/uncased_L-24_H-1024_A-16/bert_config.json)
 | chinese_L-12_H-768_A-12| [link](https://data.megengine.org.cn/models/weights/bert/chinese_L-12_H-768_A-12/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/chinese_L-12_H-768_A-12/bert_config.json)
 | multi_cased_L-12_H-768_A-12| [link](https://data.megengine.org.cn/models/weights/bert/multi_cased_L-12_H-768_A-12/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/multi_cased_L-12_H-768_A-12/bert_config.json)
-
 
 在glue_data/MRPC数据集中使用默认的超参数进行微调和评估，评估结果介于84％和88％之间。
 
