@@ -23,8 +23,8 @@
 
 ```bash
 python3 tools/inference.py -f configs/retinanet_res50_coco_1x_800size.py \
-                           -w /path/to/retinanet_weights.pkl
-                           -i ../../assets/cat.jpg \
+                           -w /path/to/retinanet_weights.pkl \
+                           -i ../../assets/cat.jpg
 ```
 
 `tools/inference.py`的命令行选项如下:
@@ -62,11 +62,12 @@ python3 tools/train.py -f configs/retinanet_res50_coco_1x_800size.py -n 8
 
 `tools/train.py`提供了灵活的命令行选项，包括：
 
-- `-f`, 所需要训练的网络结构描述文件。可以是RetinaNet、Faster R-CNN等.
-- `-n`, 用于训练的devices(gpu)数量，默认使用所有可用的gpu.
+- `-f`, 所需要训练的网络结构描述文件。可以是RetinaNet、Faster R-CNN等。
+- `-n`, 用于训练的devices(gpu)数量，默认使用所有可用的gpu。
 - `-w`, 预训练的backbone网络权重的路径。
 - `-b`，训练时采用的`batch size`, 默认2，表示每张卡训2张图。
 - `-d`, COCO2017数据集的上级目录，默认`/data/datasets`。
+- `--enable_sublinear`, 开启sublinear memory优化，可用于在有限的显存中训练大模型。
 
 默认情况下模型会存在 `log-of-模型名`目录下。
 
@@ -88,19 +89,37 @@ nvcc -I $MGE/_internal/include -shared -o lib_nms.so -Xcompiler "-fno-strict-ali
 
 ## 如何测试
 
-在得到训练完保存的模型之后，可以通过tools下的test.py文件测试模型在`COCO2017`验证集的性能：
+在得到训练完保存的模型之后，可以通过tools下的test.py文件测试模型在`COCO2017`验证集的性能。
+
+验证某个epoch的性能：
 
 ```bash
 python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
-                      -w /path/to/retinanet_weights.pt \
+                      -se 15
+```
+
+验证连续若干个epoch性能：
+```bash
+python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
+                      -se 15 -ee 17
+```
+
+验证某个指定weights的性能：
+
+```bash
+python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
+                      -w /path/to/retinanet_weights.pt
 ```
 
 `tools/test.py`的命令行选项如下：
 
 - `-f`, 所需要测试的网络结构描述文件。
-- `-n`, 用于测试的devices(gpu)数量，默认1；
-- `-w`, 需要测试的模型；可以从顶部的表格中下载训练好的检测器权重, 也可以用自行训练好的权重。
+- `-n`, 用于测试的devices(gpu)数量，默认1。
+- `-w`, 需要测试的模型；可以从顶部的表格中下载训练好的检测器权重, 也可以用自行训练好的权重，指定该参数时会忽略`-se`与`-ee`参数。
 - `-d`，COCO2017数据集的上级目录，默认`/data/datasets`
+- `-se`，连续测试的起始epoch数，默认为最后一个epoch，该参数的值必须大于等于0且小于模型的最大epoch数。
+- `-ee`，连续测试的结束epoch数，默认等于`-se`（即只测试1个epoch），该参数的值必须大于等于`-se`且小于模型的最大epoch数。
+
 
 ## 参考文献
 

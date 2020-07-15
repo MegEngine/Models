@@ -78,6 +78,8 @@ class RetinaNet(M.Module):
             ),
         }
 
+        self.loss_normalizer = mge.tensor(100.0)
+
     def preprocess_image(self, image):
         normed_image = (
             image - np.array(self.cfg.img_mean)[None, :, None, None]
@@ -104,7 +106,7 @@ class RetinaNet(M.Module):
             for i in range(len(features))
         ]
 
-        all_level_box_cls = F.sigmoid(F.concat(box_cls_list, axis=1))
+        all_level_box_cls = F.concat(box_cls_list, axis=1)
         all_level_box_delta = F.concat(box_delta_list, axis=1)
         all_level_anchors = F.concat(anchors_list, axis=0)
 
@@ -114,11 +116,13 @@ class RetinaNet(M.Module):
                 inputs["gt_boxes"],
                 inputs["im_info"][:, 4].astype(np.int32),
             )
+            norm_type = "none" if self.cfg.loss_normalizer_momentum > 0.0 else "fg"
             rpn_cls_loss = layers.get_focal_loss(
                 all_level_box_cls,
                 box_gt_cls,
                 alpha=self.cfg.focal_loss_alpha,
                 gamma=self.cfg.focal_loss_gamma,
+                norm_type=norm_type,
             )
             rpn_bbox_loss = (
                 layers.get_smooth_l1_loss(
@@ -126,9 +130,20 @@ class RetinaNet(M.Module):
                     box_gt_delta,
                     box_gt_cls,
                     self.cfg.smooth_l1_beta,
+                    norm_type=norm_type,
                 )
                 * self.cfg.reg_loss_weight
             )
+
+            if norm_type == "none":
+                F.add_update(
+                    self.loss_normalizer,
+                    (box_gt_cls > 0).sum(),
+                    alpha=self.cfg.loss_normalizer_momentum,
+                    beta=1 - self.cfg.loss_normalizer_momentum,
+                )
+                rpn_cls_loss = rpn_cls_loss / F.maximum(self.loss_normalizer, 1)
+                rpn_bbox_loss = rpn_bbox_loss / F.maximum(self.loss_normalizer, 1)
 
             total = rpn_cls_loss + rpn_bbox_loss
             loss_dict = {
@@ -155,6 +170,7 @@ class RetinaNet(M.Module):
             clipped_box = layers.get_clipped_box(
                 transformed_box, inputs["im_info"][0, 2:4]
             ).reshape(-1, 4)
+            all_level_box_cls = F.sigmoid(all_level_box_cls)
             return all_level_box_cls[0], clipped_box
 
     def get_ground_truth(self, anchors, batched_gt_boxes, batched_valid_gt_box_number):
@@ -245,6 +261,7 @@ class RetinaNetConfig:
         self.cls_prior_prob = 0.01
 
         # ------------------------ loss cfg -------------------------- #
+        self.loss_normalizer_momentum = 0.9  # 0.0 means disable EMA normalizer
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.smooth_l1_beta = 0  # use L1 loss
