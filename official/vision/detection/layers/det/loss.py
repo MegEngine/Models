@@ -9,10 +9,12 @@
 import megengine.functional as F
 from megengine.core import Tensor
 
+from official.vision.detection import layers
+
 
 def get_focal_loss(
-    score: Tensor,
-    label: Tensor,
+    logits: Tensor,
+    labels: Tensor,
     ignore_label: int = -1,
     background: int = 0,
     alpha: float = 0.5,
@@ -27,10 +29,10 @@ def get_focal_loss(
         FL(p_t) = -\alpha_t(1-p_t)^\gamma \log(p_t)
 
     Args:
-        score (Tensor):
-            the predicted score with the shape of :math:`(B, A, C)`
-        label (Tensor):
-            the assigned label of boxes with shape of :math:`(B, A)`
+        logits (Tensor):
+            the predicted logits with the shape of :math:`(B, A, C)`
+        labels (Tensor):
+            the assigned labels of boxes with shape of :math:`(B, A)`
         ignore_label (int):
             the value of ignore class. Default: -1
         background (int):
@@ -39,30 +41,31 @@ def get_focal_loss(
             parameter to mitigate class imbalance. Default: 0.5
         gamma (float):
             parameter to mitigate easy/hard loss imbalance. Default: 0
-        norm_type (str): current support 'fg', 'none':
-            'fg': loss will be normalized by number of fore-ground samples
-            'none": not norm
+        norm_type (str): current support "fg", "none":
+            "fg": loss will be normalized by number of fore-ground samples
+            "none": not norm
 
     Returns:
         the calculated focal loss.
     """
-    class_range = F.arange(1, score.shape[2] + 1)
+    class_range = F.arange(1, logits.shape[2] + 1)
 
-    label = F.add_axis(label, axis=2)
-    pos_part = (1 - score) ** gamma * F.log(F.clamp(score, 1e-8))
-    neg_part = score ** gamma * F.log(F.clamp(1 - score, 1e-8))
+    labels = F.add_axis(labels, axis=2)
+    scores = F.sigmoid(logits)
+    pos_part = (1 - scores) ** gamma * layers.logsigmoid(logits)
+    neg_part = scores ** gamma * layers.logsigmoid(-logits)
 
-    pos_loss = -(label == class_range) * pos_part * alpha
+    pos_loss = -(labels == class_range) * pos_part * alpha
     neg_loss = (
-        -(label != class_range) * (label != ignore_label) * neg_part * (1 - alpha)
+        -(labels != class_range) * (labels != ignore_label) * neg_part * (1 - alpha)
     )
-    loss = pos_loss + neg_loss
+    loss = (pos_loss + neg_loss).sum()
 
     if norm_type == "fg":
-        fg_mask = (label != background) * (label != ignore_label)
-        return loss.sum() / F.maximum(fg_mask.sum(), 1)
+        fg_mask = (labels != background) * (labels != ignore_label)
+        return loss / F.maximum(fg_mask.sum(), 1)
     elif norm_type == "none":
-        return loss.sum()
+        return loss
     else:
         raise NotImplementedError
 
@@ -70,7 +73,7 @@ def get_focal_loss(
 def get_smooth_l1_loss(
     pred_bbox: Tensor,
     gt_bbox: Tensor,
-    label: Tensor,
+    labels: Tensor,
     beta: int = 1,
     background: int = 0,
     ignore_label: int = -1,
@@ -83,42 +86,43 @@ def get_smooth_l1_loss(
             the predicted bbox with the shape of :math:`(B, A, 4)`
         gt_bbox (Tensor):
             the ground-truth bbox with the shape of :math:`(B, A, 4)`
-        label (Tensor):
-            the assigned label of boxes with shape of :math:`(B, A)`
+        labels (Tensor):
+            the assigned labels of boxes with shape of :math:`(B, A)`
         beta (int):
             the parameter of smooth l1 loss. Default: 1
         background (int):
             the value of background class. Default: 0
         ignore_label (int):
             the value of ignore class. Default: -1
-        norm_type (str): current support 'fg', 'all', 'none':
-            'fg': loss will be normalized by number of fore-ground samples
-            'all': loss will be normalized by number of all samples
-            'none': not norm
+        norm_type (str): current support "fg", "all", "none":
+            "fg": loss will be normalized by number of fore-ground samples
+            "all": loss will be normalized by number of all samples
+            "none": not norm
     Returns:
         the calculated smooth l1 loss.
     """
     pred_bbox = pred_bbox.reshape(-1, 4)
     gt_bbox = gt_bbox.reshape(-1, 4)
-    label = label.reshape(-1)
+    labels = labels.reshape(-1)
 
-    fg_mask = (label != background) * (label != ignore_label)
+    fg_mask = (labels != background) * (labels != ignore_label)
 
-    losses = get_smooth_l1_base(pred_bbox, gt_bbox, beta)
+    loss = get_smooth_l1_base(pred_bbox, gt_bbox, beta)
+    loss = (loss.sum(axis=1) * fg_mask).sum()
     if norm_type == "fg":
-        loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(fg_mask.sum(), 1)
+        loss = loss / F.maximum(fg_mask.sum(), 1)
     elif norm_type == "all":
-        all_mask = label != ignore_label
-        loss = (losses.sum(axis=1) * fg_mask).sum() / F.maximum(all_mask.sum(), 1)
+        all_mask = labels != ignore_label
+        loss = loss / F.maximum(all_mask.sum(), 1)
+    elif norm_type == "none":
+        return loss
     else:
         raise NotImplementedError
 
     return loss
 
 
-def get_smooth_l1_base(
-    pred_bbox: Tensor, gt_bbox: Tensor, beta: float,
-):
+def get_smooth_l1_base(pred_bbox: Tensor, gt_bbox: Tensor, beta: float) -> Tensor:
     r"""
 
     Args:
@@ -147,12 +151,12 @@ def get_smooth_l1_base(
     return loss
 
 
-def softmax_loss(score, label, ignore_label=-1):
-    max_score = F.zero_grad(score.max(axis=1, keepdims=True))
-    score -= max_score
-    log_prob = score - F.log(F.exp(score).sum(axis=1, keepdims=True))
-    mask = label != ignore_label
-    vlabel = label * mask
-    loss = -(F.indexing_one_hot(log_prob, vlabel.astype("int32"), 1) * mask).sum()
+def softmax_loss(scores: Tensor, labels: Tensor, ignore_label: int = -1) -> Tensor:
+    max_scores = F.zero_grad(scores.max(axis=1, keepdims=True))
+    scores -= max_scores
+    log_prob = scores - F.log(F.exp(scores).sum(axis=1, keepdims=True))
+    mask = labels != ignore_label
+    vlabels = labels * mask
+    loss = -(F.indexing_one_hot(log_prob, vlabels.astype("int32"), 1) * mask).sum()
     loss = loss / F.maximum(mask.sum(), 1)
     return loss

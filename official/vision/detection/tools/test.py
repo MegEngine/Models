@@ -55,9 +55,16 @@ def main():
 
     sys.path.insert(0, os.path.dirname(args.file))
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
+    cfg = current_network.Cfg()
 
-    if args.end_epoch == -1:
-        args.end_epoch = args.start_epoch
+    if args.weight_file:
+        args.start_epoch = args.end_epoch = -1
+    else:
+        if args.start_epoch == -1:
+            args.start_epoch = cfg.max_epoch - 1
+        if args.end_epoch == -1:
+            args.end_epoch = args.start_epoch
+    assert 0 <= args.start_epoch <= args.end_epoch < cfg.max_epoch
 
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
         if args.weight_file:
@@ -86,7 +93,6 @@ def main():
             proc.start()
             procs.append(proc)
 
-        cfg = current_network.Cfg()
         num_imgs = dict(coco=5000, objects365=30000)
 
         for _ in tqdm(range(num_imgs[cfg.test_dataset["name"]])):

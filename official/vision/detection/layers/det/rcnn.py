@@ -51,20 +51,20 @@ class RCNN(M.Module):
         flatten_feature = F.flatten(pool_features, start_axis=1)
         roi_feature = F.relu(self.fc1(flatten_feature))
         roi_feature = F.relu(self.fc2(roi_feature))
-        pred_cls = self.pred_cls(roi_feature)
-        pred_delta = self.pred_delta(roi_feature)
+        pred_logits = self.pred_cls(roi_feature)
+        pred_offsets = self.pred_delta(roi_feature)
 
         if self.training:
             # loss for classification
-            loss_rcnn_cls = layers.softmax_loss(pred_cls, labels)
+            loss_rcnn_cls = layers.softmax_loss(pred_logits, labels)
             # loss for regression
-            pred_delta = pred_delta.reshape(-1, self.cfg.num_classes + 1, 4)
+            pred_offsets = pred_offsets.reshape(-1, self.cfg.num_classes + 1, 4)
 
             vlabels = labels.reshape(-1, 1).broadcast((labels.shapeof(0), 4))
-            pred_delta = F.indexing_one_hot(pred_delta, vlabels, axis=1)
+            pred_offsets = F.indexing_one_hot(pred_offsets, vlabels, axis=1)
 
             loss_rcnn_loc = layers.get_smooth_l1_loss(
-                pred_delta,
+                pred_offsets,
                 bbox_targets,
                 labels,
                 self.cfg.rcnn_smooth_l1_beta,
@@ -74,14 +74,14 @@ class RCNN(M.Module):
             return loss_dict
         else:
             # slice 1 for removing background
-            pred_scores = F.softmax(pred_cls, axis=1)[:, 1:]
-            pred_delta = pred_delta[:, 4:].reshape(-1, 4)
+            pred_scores = F.softmax(pred_logits, axis=1)[:, 1:]
+            pred_offsets = pred_offsets[:, 4:].reshape(-1, 4)
             target_shape = (rcnn_rois.shapeof(0), self.cfg.num_classes, 4)
             # rois (N, 4) -> (N, 1, 4) -> (N, 80, 4) -> (N * 80, 4)
             base_rois = (
                 F.add_axis(rcnn_rois[:, 1:5], 1).broadcast(target_shape).reshape(-1, 4)
             )
-            pred_bbox = self.box_coder.decode(base_rois, pred_delta)
+            pred_bbox = self.box_coder.decode(base_rois, pred_offsets)
             return pred_bbox, pred_scores
 
     def get_ground_truth(self, rpn_rois, im_info, gt_boxes):

@@ -55,12 +55,12 @@ class RPN(M.Module):
             for fm, stride in zip(features, self.stride_list)
         ]
 
-        pred_cls_score_list = []
-        pred_bbox_offsets_list = []
+        pred_cls_logit_list = []
+        pred_bbox_offset_list = []
         for x in features:
             t = F.relu(self.rpn_conv(x))
             scores = self.rpn_cls_score(t)
-            pred_cls_score_list.append(
+            pred_cls_logit_list.append(
                 scores.reshape(
                     scores.shape[0],
                     2,
@@ -70,7 +70,7 @@ class RPN(M.Module):
                 )
             )
             bbox_offsets = self.rpn_bbox_offsets(t)
-            pred_bbox_offsets_list.append(
+            pred_bbox_offset_list.append(
                 bbox_offsets.reshape(
                     bbox_offsets.shape[0],
                     self.num_cell_anchors,
@@ -81,19 +81,19 @@ class RPN(M.Module):
             )
         # sample from the predictions
         rpn_rois = self.find_top_rpn_proposals(
-            pred_bbox_offsets_list, pred_cls_score_list, all_anchors_list, im_info
+            pred_bbox_offset_list, pred_cls_logit_list, all_anchors_list, im_info
         )
 
         if self.training:
             rpn_labels, rpn_bbox_targets = self.get_ground_truth(
                 boxes, im_info, all_anchors_list
             )
-            pred_cls_score, pred_bbox_offsets = self.merge_rpn_score_box(
-                pred_cls_score_list, pred_bbox_offsets_list
+            pred_cls_logits, pred_bbox_offsets = self.merge_rpn_score_box(
+                pred_cls_logit_list, pred_bbox_offset_list
             )
 
             # rpn loss
-            loss_rpn_cls = layers.softmax_loss(pred_cls_score, rpn_labels)
+            loss_rpn_cls = layers.softmax_loss(pred_cls_logits, rpn_labels)
             loss_rpn_loc = layers.get_smooth_l1_loss(
                 pred_bbox_offsets,
                 rpn_bbox_targets,
@@ -107,7 +107,7 @@ class RPN(M.Module):
             return rpn_rois
 
     def find_top_rpn_proposals(
-        self, rpn_bbox_offsets_list, rpn_cls_prob_list, all_anchors_list, im_info
+        self, rpn_bbox_offset_list, rpn_cls_score_list, all_anchors_list, im_info
     ):
         prev_nms_top_n = (
             self.cfg.train_prev_nms_top_n
@@ -123,37 +123,37 @@ class RPN(M.Module):
         batch_per_gpu = self.cfg.batch_per_gpu if self.training else 1
         nms_threshold = self.cfg.rpn_nms_threshold
 
-        list_size = len(rpn_bbox_offsets_list)
+        list_size = len(rpn_bbox_offset_list)
 
         return_rois = []
 
         for bid in range(batch_per_gpu):
-            batch_proposals_list = []
-            batch_probs_list = []
+            batch_proposal_list = []
+            batch_score_list = []
             batch_level_list = []
             for l in range(list_size):
-                # get proposals and probs
+                # get proposals and scores
                 offsets = (
-                    rpn_bbox_offsets_list[l][bid].dimshuffle(2, 3, 0, 1).reshape(-1, 4)
+                    rpn_bbox_offset_list[l][bid].dimshuffle(2, 3, 0, 1).reshape(-1, 4)
                 )
                 all_anchors = all_anchors_list[l]
                 proposals = self.box_coder.decode(all_anchors, offsets)
 
-                probs = rpn_cls_prob_list[l][bid, 1].dimshuffle(1, 2, 0).reshape(1, -1)
+                scores = rpn_cls_score_list[l][bid, 1].dimshuffle(1, 2, 0).reshape(1, -1)
                 # prev nms top n
-                probs, order = F.argsort(probs, descending=True)
-                num_proposals = F.minimum(probs.shapeof(1), prev_nms_top_n)
-                probs = probs.reshape(-1)[:num_proposals]
+                scores, order = F.argsort(scores, descending=True)
+                num_proposals = F.minimum(scores.shapeof(1), prev_nms_top_n)
+                scores = scores.reshape(-1)[:num_proposals]
                 order = order.reshape(-1)[:num_proposals]
                 proposals = proposals.ai[order, :]
 
-                batch_proposals_list.append(proposals)
-                batch_probs_list.append(probs)
-                batch_level_list.append(mge.ones(probs.shapeof(0)) * l)
+                batch_proposal_list.append(proposals)
+                batch_score_list.append(scores)
+                batch_level_list.append(mge.ones(scores.shapeof(0)) * l)
 
-            proposals = F.concat(batch_proposals_list, axis=0)
-            scores = F.concat(batch_probs_list, axis=0)
-            level = F.concat(batch_level_list, axis=0)
+            proposals = F.concat(batch_proposal_list, axis=0)
+            scores = F.concat(batch_score_list, axis=0)
+            levels = F.concat(batch_level_list, axis=0)
 
             proposals = layers.get_clipped_box(proposals, im_info[bid, :])
             # filter empty
@@ -161,19 +161,19 @@ class RPN(M.Module):
             _, keep_inds = F.cond_take(keep_mask == 1, keep_mask)
             proposals = proposals.ai[keep_inds, :]
             scores = scores.ai[keep_inds]
-            level = level.ai[keep_inds]
+            levels = levels.ai[keep_inds]
 
-            # gather the proposals and probs
+            # gather the proposals and scores
             # sort nms by scores
             scores, order = F.argsort(scores.reshape(1, -1), descending=True)
             order = order.reshape(-1)
             proposals = proposals.ai[order, :]
-            level = level.ai[order]
+            levels = levels.ai[order]
 
-            # apply total level nms
+            # apply total levels nms
             rois = F.concat([proposals, scores.reshape(-1, 1)], axis=1)
             keep_inds = batched_nms(
-                proposals, scores, level, nms_threshold, post_nms_top_n
+                proposals, scores, levels, nms_threshold, post_nms_top_n
             )
             rois = rois.ai[keep_inds]
 
@@ -184,34 +184,34 @@ class RPN(M.Module):
 
         return F.zero_grad(F.concat(return_rois, axis=0))
 
-    def merge_rpn_score_box(self, rpn_cls_score_list, rpn_bbox_offsets_list):
+    def merge_rpn_score_box(self, rpn_cls_score_list, rpn_bbox_offset_list):
         final_rpn_cls_score_list = []
-        final_rpn_bbox_offsets_list = []
+        final_rpn_bbox_offset_list = []
 
         for bid in range(self.cfg.batch_per_gpu):
             batch_rpn_cls_score_list = []
-            batch_rpn_bbox_offsets_list = []
+            batch_rpn_bbox_offset_list = []
 
             for i in range(len(self.in_features)):
-                rpn_cls_score = (
+                rpn_cls_scores = (
                     rpn_cls_score_list[i][bid].dimshuffle(2, 3, 1, 0).reshape(-1, 2)
                 )
                 rpn_bbox_offsets = (
-                    rpn_bbox_offsets_list[i][bid].dimshuffle(2, 3, 0, 1).reshape(-1, 4)
+                    rpn_bbox_offset_list[i][bid].dimshuffle(2, 3, 0, 1).reshape(-1, 4)
                 )
 
-                batch_rpn_cls_score_list.append(rpn_cls_score)
-                batch_rpn_bbox_offsets_list.append(rpn_bbox_offsets)
+                batch_rpn_cls_score_list.append(rpn_cls_scores)
+                batch_rpn_bbox_offset_list.append(rpn_bbox_offsets)
 
-            batch_rpn_cls_score = F.concat(batch_rpn_cls_score_list, axis=0)
-            batch_rpn_bbox_offsets = F.concat(batch_rpn_bbox_offsets_list, axis=0)
+            batch_rpn_cls_scores = F.concat(batch_rpn_cls_score_list, axis=0)
+            batch_rpn_bbox_offsets = F.concat(batch_rpn_bbox_offset_list, axis=0)
 
-            final_rpn_cls_score_list.append(batch_rpn_cls_score)
-            final_rpn_bbox_offsets_list.append(batch_rpn_bbox_offsets)
+            final_rpn_cls_score_list.append(batch_rpn_cls_scores)
+            final_rpn_bbox_offset_list.append(batch_rpn_bbox_offsets)
 
-        final_rpn_cls_score = F.concat(final_rpn_cls_score_list, axis=0)
-        final_rpn_bbox_offsets = F.concat(final_rpn_bbox_offsets_list, axis=0)
-        return final_rpn_cls_score, final_rpn_bbox_offsets
+        final_rpn_cls_scores = F.concat(final_rpn_cls_score_list, axis=0)
+        final_rpn_bbox_offsets = F.concat(final_rpn_bbox_offset_list, axis=0)
+        return final_rpn_cls_scores, final_rpn_bbox_offsets
 
     def per_level_gt(self, gt_boxes, im_info, anchors, allow_low_quality_matches=True):
         ignore_label = self.cfg.ignore_label
@@ -292,10 +292,10 @@ class RPN(M.Module):
         sample_label_mask = labels == sample_value
         num_mask = sample_label_mask.sum()
         num_final_samples = F.minimum(num_mask, num_samples)
-        # here, we use the bernoulli probability to sample the anchors
-        sample_prob = num_final_samples / num_mask
+        # here, we use the bernoulli scoreability to sample the anchors
+        sample_score = num_final_samples / num_mask
         uniform_rng = rand.uniform(sample_label_mask.shapeof(0))
-        to_ignore_mask = (uniform_rng >= sample_prob) * sample_label_mask
+        to_ignore_mask = (uniform_rng >= sample_score) * sample_label_mask
         labels = labels * (1 - to_ignore_mask) + to_ignore_mask * ignore_label
 
         return labels
