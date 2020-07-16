@@ -91,14 +91,14 @@ class RetinaNet(M.Module):
         features = self.backbone(image)
         features = [features[f] for f in self.in_features]
 
-        box_cls, box_delta = self.head(features)
+        box_logits, box_offsets = self.head(features)
 
-        box_cls_list = [
+        box_logits_list = [
             _.dimshuffle(0, 2, 3, 1).reshape(self.batch_size, -1, self.cfg.num_classes)
-            for _ in box_cls
+            for _ in box_logits
         ]
-        box_delta_list = [
-            _.dimshuffle(0, 2, 3, 1).reshape(self.batch_size, -1, 4) for _ in box_delta
+        box_offsets_list = [
+            _.dimshuffle(0, 2, 3, 1).reshape(self.batch_size, -1, 4) for _ in box_offsets
         ]
 
         anchors_list = [
@@ -106,29 +106,29 @@ class RetinaNet(M.Module):
             for i in range(len(features))
         ]
 
-        all_level_box_cls = F.concat(box_cls_list, axis=1)
-        all_level_box_delta = F.concat(box_delta_list, axis=1)
+        all_level_box_logits = F.concat(box_logits_list, axis=1)
+        all_level_box_offsets = F.concat(box_offsets_list, axis=1)
         all_level_anchors = F.concat(anchors_list, axis=0)
 
         if self.training:
-            box_gt_cls, box_gt_delta = self.get_ground_truth(
+            box_gt_scores, box_gt_offsets = self.get_ground_truth(
                 all_level_anchors,
                 inputs["gt_boxes"],
                 inputs["im_info"][:, 4].astype(np.int32),
             )
             norm_type = "none" if self.cfg.loss_normalizer_momentum > 0.0 else "fg"
             rpn_cls_loss = layers.get_focal_loss(
-                all_level_box_cls,
-                box_gt_cls,
+                all_level_box_logits,
+                box_gt_scores,
                 alpha=self.cfg.focal_loss_alpha,
                 gamma=self.cfg.focal_loss_gamma,
                 norm_type=norm_type,
             )
             rpn_bbox_loss = (
                 layers.get_smooth_l1_loss(
-                    all_level_box_delta,
-                    box_gt_delta,
-                    box_gt_cls,
+                    all_level_box_offsets,
+                    box_gt_offsets,
+                    box_gt_scores,
                     self.cfg.smooth_l1_beta,
                     norm_type=norm_type,
                 )
@@ -138,7 +138,7 @@ class RetinaNet(M.Module):
             if norm_type == "none":
                 F.add_update(
                     self.loss_normalizer,
-                    (box_gt_cls > 0).sum(),
+                    (box_gt_scores > 0).sum(),
                     alpha=self.cfg.loss_normalizer_momentum,
                     beta=1 - self.cfg.loss_normalizer_momentum,
                 )
@@ -158,7 +158,7 @@ class RetinaNet(M.Module):
             assert self.batch_size == 1
 
             transformed_box = self.box_coder.decode(
-                all_level_anchors, all_level_box_delta[0],
+                all_level_anchors, all_level_box_offsets[0],
             )
             transformed_box = transformed_box.reshape(-1, 4)
 
@@ -170,8 +170,8 @@ class RetinaNet(M.Module):
             clipped_box = layers.get_clipped_box(
                 transformed_box, inputs["im_info"][0, 2:4]
             ).reshape(-1, 4)
-            all_level_box_cls = F.sigmoid(all_level_box_cls)
-            return all_level_box_cls[0], clipped_box
+            all_level_box_scores = F.sigmoid(all_level_box_logits)
+            return all_level_box_scores[0], clipped_box
 
     def get_ground_truth(self, anchors, batched_gt_boxes, batched_valid_gt_box_number):
         total_anchors = anchors.shape[0]

@@ -74,8 +74,8 @@ class RetinaNetHead(M.Module):
         M.init.fill_(self.cls_score.bias, bias_value)
 
     def forward(self, features: List[Tensor]):
-        logits, bbox_reg = [], []
+        logits, offsets = [], []
         for feature in features:
             logits.append(self.cls_score(self.cls_subnet(feature)))
-            bbox_reg.append(self.bbox_pred(self.bbox_subnet(feature)))
-        return logits, bbox_reg
+            offsets.append(self.bbox_pred(self.bbox_subnet(feature)))
+        return logits, offsets
