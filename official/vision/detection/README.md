@@ -6,14 +6,16 @@
 
 网络的性能在COCO2017数据集上的测试结果如下：
 
-| 模型                                     | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu) |
-| ---                                      | :---:        | :---:         | :---:  | :---:                     |
-| retinanet-res50-coco-1x-800size          | 36.4         | 2             | 2080Ti | 3.1(it/s)                 |
-| retinanet-res50-coco-1x-800size-syncbn   | 37.1         | 2             | 2080Ti | 1.7(it/s)                 |
-| retinanet-res101-coco-2x-800size         | 40.8         | 2             | 2080Ti | 2.1(it/s)                 |
-| faster-rcnn-res50-coco-1x-800size        | 38.8         | 2             | 2080Ti | 3.3(it/s)                 |
-| faster-rcnn-res50-coco-1x-800size-syncbn | 39.3         | 2             | 2080Ti | 1.8(it/s)                 |
-| faster-rcnn-res101-coco-2x-800size       | 43.0         | 2             | 2080Ti | 2.3(it/s)                 |
+| 模型                                     | mAP<br>@5-95 | batch<br>/gpu | gpu    | trainging speed<br>(8gpu)    |
+| ---                                      | :---:        | :---:         | :---:  | :---:                        |
+| retinanet-res50-coco-1x-800size          | 36.4         | 2             | 2080Ti | 3.1(it/s)                    |
+| retinanet-res50-coco-1x-800size-syncbn   | 37.1         | 2             | 2080Ti | 1.7(it/s)                    |
+| retinanet-res101-coco-2x-800size         | 40.8         | 2             | 2080Ti | 2.1(it/s)                    |
+| retinanet-resx101-coco-2x-800size        | 41.8         | 2             | 2080Ti | 0.8(it/s) (enable sublinear) |
+| faster-rcnn-res50-coco-1x-800size        | 38.8         | 2             | 2080Ti | 3.3(it/s)                    |
+| faster-rcnn-res50-coco-1x-800size-syncbn | 39.3         | 2             | 2080Ti | 1.8(it/s)                    |
+| faster-rcnn-res101-coco-2x-800size       | 43.0         | 2             | 2080Ti | 2.3(it/s)                    |
+| faster-rcnn-resx101-coco-2x-800size      | 44.7         | 2             | 2080Ti | 0.9(it/s) (enable sublinear) |
 
 * MegEngine v0.5.1
 

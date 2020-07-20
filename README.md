@@ -79,9 +79,11 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 | retinanet-res50-coco-1x-800size          | 36.4         |
 | retinanet-res50-coco-1x-800size-syncbn   | 37.1         |
 | retinanet-res101-coco-2x-800size         | 40.8         |
+| retinanet-resx101-coco-2x-800size        | 41.8         |
 | faster-rcnn-res50-coco-1x-800size        | 38.8         |
 | faster-rcnn-res50-coco-1x-800size-syncbn | 39.3         |
 | faster-rcnn-res101-coco-2x-800size       | 43.0         |
+| faster-rcnn-resx101-coco-2x-800size      | 44.7         |
 
 ### 图像分割
 

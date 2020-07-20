@@ -31,9 +31,11 @@ from official.vision.detection.configs import (
     faster_rcnn_res50_coco_1x_800size,
     faster_rcnn_res50_coco_1x_800size_syncbn,
     faster_rcnn_res101_coco_2x_800size,
+    faster_rcnn_resx101_coco_2x_800size,
     retinanet_res50_coco_1x_800size,
     retinanet_res50_coco_1x_800size_syncbn,
     retinanet_res101_coco_2x_800size,
+    retinanet_resx101_coco_2x_800size,
 )
 from official.vision.detection.models import FasterRCNN, RetinaNet
 from official.vision.detection.tools.utils import DetEvaluator
