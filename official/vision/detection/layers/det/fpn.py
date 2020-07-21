@@ -65,17 +65,13 @@ class FPN(M.Module):
         """
         super(FPN, self).__init__()
 
-        in_strides = strides
-        in_channels = channels
-
-        use_bias = norm == ""
+        use_bias = norm is None
         self.lateral_convs = list()
         self.output_convs = list()
 
-        for idx, in_channels in enumerate(in_channels):
+        for idx, in_channels in enumerate(channels):
             lateral_norm = layers.get_norm(norm, out_channels)
             output_norm = layers.get_norm(norm, out_channels)
-
             lateral_conv = layers.Conv2d(
                 in_channels,
                 out_channels,
@@ -99,7 +95,7 @@ class FPN(M.Module):
                 M.init.fill_(lateral_conv.bias, 0)
                 M.init.fill_(output_conv.bias, 0)
 
-            stage = int(math.log2(in_strides[idx]))
+            stage = int(math.log2(strides[idx]))
 
             setattr(self, "fpn_lateral{}".format(stage), lateral_conv)
             setattr(self, "fpn_output{}".format(stage), output_conv)
@@ -113,7 +109,7 @@ class FPN(M.Module):
         # follow the common practices, FPN features are named to "p<stage>",
         # like ["p2", "p3", ..., "p6"]
         self._out_feature_strides = {
-            "p{}".format(int(math.log2(s))): s for s in in_strides
+            "p{}".format(int(math.log2(s))): s for s in strides
         }
 
         # top block output feature maps.

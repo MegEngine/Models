@@ -34,30 +34,26 @@ class RetinaNet(M.Module):
         self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
         self.stride_list = np.array(cfg.stride).astype(np.float32)
-        self.in_features = ["p3", "p4", "p5", "p6", "p7"]
+        self.in_features = cfg.fpn_in_features
 
         # ----------------------- build the backbone ------------------------ #
-        bottom_up = getattr(resnet, cfg.backbone)(
+        self.bottom_up = getattr(resnet, cfg.backbone)(
             norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
         )
 
-        # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
-        if self.cfg.backbone_freeze_at >= 1:
-            for p in bottom_up.conv1.parameters():
-                p.requires_grad = False
-        if self.cfg.backbone_freeze_at >= 2:
-            for p in bottom_up.layer1.parameters():
-                p.requires_grad = False
+        # ------ freeze the weights of pretrained model at given stage ------ #
+        self.freeze_at(cfg.backbone_freeze_at)
 
         # ----------------------- build the FPN ----------------------------- #
-        in_channels_p6p7 = 2048
-        out_channels = 256
+        out_channels = cfg.fpn_out_channels
         self.backbone = layers.FPN(
-            bottom_up=bottom_up,
-            in_features=["res3", "res4", "res5"],
+            bottom_up=self.bottom_up,
+            in_features=cfg.backbone_in_features,
             out_channels=out_channels,
             norm=cfg.fpn_norm,
-            top_block=layers.LastLevelP6P7(in_channels_p6p7, out_channels),
+            top_block=layers.LastLevelP6P7(cfg.fpn_in_channels_p6p7, out_channels),
+            strides=cfg.backbone_features_strides,
+            channels=cfg.backbone_features_channels,
         )
 
         backbone_shape = self.backbone.output_shape()
@@ -85,6 +81,14 @@ class RetinaNet(M.Module):
             image - np.array(self.cfg.img_mean)[None, :, None, None]
         ) / np.array(self.cfg.img_std)[None, :, None, None]
         return layers.get_padded_tensor(normed_image, 32, 0.0)
+
+    def freeze_at(self, freeze_at_stage):
+        if freeze_at_stage >= 1:
+            for p in self.bottom_up.conv1.parameters():
+                p.requires_grad = False
+        if freeze_at_stage >= 2:
+            for p in self.bottom_up.layer1.parameters():
+                p.requires_grad = False
 
     def forward(self, inputs):
         image = self.preprocess_image(inputs["image"])
@@ -226,11 +230,19 @@ class RetinaNet(M.Module):
 
 class RetinaNetConfig:
     def __init__(self):
+        # ----------------------- model cfg -------------------------- #
         self.backbone = "resnet50"
         self.backbone_pretrained = True
-        self.resnet_norm = "FrozenBN"
-        self.fpn_norm = None
         self.backbone_freeze_at = 2
+        self.backbone_in_features = ["res3", "res4", "res5"]
+        self.backbone_features_strides = [8, 16, 32]
+        self.backbone_features_channels = [512, 1024, 2048]
+        self.resnet_norm = "FrozenBN"
+
+        self.fpn_norm = None
+        self.fpn_in_channels_p6p7 = 2048
+        self.fpn_out_channels = 256
+        self.fpn_in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(

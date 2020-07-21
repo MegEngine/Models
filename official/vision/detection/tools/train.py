@@ -20,6 +20,7 @@ from tabulate import tabulate
 import numpy as np
 
 import megengine as mge
+import megengine.quantization as Q
 from megengine import distributed as dist
 from megengine import jit
 from megengine import optimizer as optim
@@ -54,6 +55,9 @@ def make_parser():
         "-d", "--dataset_dir", default="/data/datasets", type=str,
     )
     parser.add_argument("--enable_sublinear", action="store_true")
+    parser.add_argument(
+        "--mode", default="fp32", type=str,
+    )
 
     return parser
 
@@ -63,6 +67,7 @@ def main():
     args = parser.parse_args()
 
     # ------------------------ begin training -------------------------- #
+    assert args.mode in ["fp32", "qat"], "unsupported mode: {}".format(args.mode)
     valid_nr_dev = mge.get_device_count("gpu")
     if args.ngpus == -1:
         world_size = valid_nr_dev
@@ -108,6 +113,18 @@ def worker(rank, world_size, args):
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
 
     model = current_network.Net(current_network.Cfg(), batch_size=args.batch_size)
+    if args.weight_file is not None:
+        weights = mge.load(args.weight_file)
+        if "state_dict" in weights:
+            weights = weights["state_dict"]
+        if args.mode == "fp32":
+            model.backbone.bottom_up.load_state_dict(weights)
+        elif args.mode == "qat":
+            model.load_state_dict(weights)
+            # QAT
+            model.head.disable_quantize()
+            Q.quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
+
     params = model.parameters(requires_grad=True)
     model.train()
 
