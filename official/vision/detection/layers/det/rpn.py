@@ -14,7 +14,6 @@ import megengine.module as M
 import megengine.random as rand
 
 from official.vision.detection import layers
-from official.vision.detection.tools.gpu_nms import batched_nms
 
 
 class RPN(M.Module):
@@ -109,6 +108,7 @@ class RPN(M.Module):
     def find_top_rpn_proposals(
         self, rpn_bbox_offset_list, rpn_cls_score_list, all_anchors_list, im_info
     ):
+        from official.vision.detection.tools.gpu_nms import batched_nms
         prev_nms_top_n = (
             self.cfg.train_prev_nms_top_n
             if self.training
