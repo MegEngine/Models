@@ -11,24 +11,23 @@ import megengine.functional as F
 from megengine._internal.craniotome import CraniotomeBase
 from megengine.core.tensor import wrap_io_tensor
 
-_so_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib_nms.so")
+_current_path = os.path.dirname(os.path.abspath(__file__))
+_so_path = os.path.join(_current_path, "lib_nms.so")
 try:
     _so_lib = ctypes.CDLL(_so_path)
 except Exception:
-    MGE = mge.__file__.rsplit("/", 1)[0]
-    current_path = os.path.abspath(__file__).rsplit("/", 1)[0]
-    mge_path = os.path.join(MGE, "_internal/include")
-    src_file = os.path.join(current_path, "gpu_nms/nms.cu")
-    dst_file = os.path.join(current_path, "lib_nms.so")
+    import subprocess
+    mge_path = os.path.join(os.path.dirname(mge.__file__), "_internal", "include")
+    assert os.path.exists(mge_path), "{} file not found".format(mge_path)
+    src_file = os.path.join(_current_path, "gpu_nms", "nms.cu")
+    assert os.path.exists(src_file), "{} file not found".format(src_file)
 
-    assert os.path.exists(mge_path)
-    assert os.path.exists(src_file)
     cmd = (
         "nvcc -I {} -shared -o {} -Xcompiler '-fno-strict-aliasing -fPIC' {}".format(
-            mge_path, dst_file, src_file
+            mge_path, _so_path, src_file
         )
     )
-    os.system(cmd)
+    subprocess.check_call(cmd, shell=True)
     _so_lib = ctypes.CDLL(_so_path)
 
 _TYPE_POINTER = ctypes.c_void_p
