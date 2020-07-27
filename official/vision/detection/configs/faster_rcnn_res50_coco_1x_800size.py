@@ -22,7 +22,9 @@ def faster_rcnn_res50_coco_1x_800size(batch_size=1, **kwargs):
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    return models.FasterRCNN(models.FasterRCNNConfig(), batch_size=batch_size, **kwargs)
+    cfg = models.FasterRCNNConfig()
+    cfg.backbone_pretrained = False
+    return models.FasterRCNN(cfg, batch_size=batch_size, **kwargs)
 
 
 Net = models.FasterRCNN
