@@ -25,21 +25,15 @@ logger = mge.get_logger(__name__)
 
 def make_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-f", "--file", default="net.py", type=str, help="net description file"
-    )
-    parser.add_argument(
-        "-w", "--weight_file", default=None, type=str, help="weights file",
-    )
-    parser.add_argument("-i", "--image", default="example.jpg", type=str)
+    parser.add_argument("-f", "--file", type=str, help="net description file")
+    parser.add_argument("-w", "--weight_file", type=str, help="weights file")
+    parser.add_argument("-i", "--image", type=str)
     return parser
 
 
 def main():
     parser = make_parser()
     args = parser.parse_args()
-
-    logger.info("Load Model : %s completed", args.weight_file)
 
     @jit.trace(symbolic=True)
     def val_func():
