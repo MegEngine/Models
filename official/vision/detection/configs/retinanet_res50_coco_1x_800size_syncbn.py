@@ -32,7 +32,9 @@ def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     `"SyncBN" <https://arxiv.org/abs/1711.07240>`_
     """
-    return models.RetinaNet(CustomRetinaNetConfig(), batch_size=batch_size, **kwargs)
+    cfg = CustomRetinaNetConfig()
+    cfg.backbone_pretrained = False
+    return models.RetinaNet(cfg, batch_size=batch_size, **kwargs)
 
 
 Net = models.RetinaNet
