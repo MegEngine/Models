@@ -11,7 +11,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 import megengine.functional as F
-from megengine.core import Tensor
+from megengine import Tensor
 
 
 class BoxCoderBase(metaclass=ABCMeta):
@@ -113,7 +113,7 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
         pred_y2 = pred_ctr_y + 0.5 * pred_height
 
         pred_box = self._concat_new_axis(pred_x1, pred_y1, pred_x2, pred_y2, 2)
-        pred_box = pred_box.reshape(pred_box.shapeof(0), -1)
+        pred_box = pred_box.reshape(pred_box.shape[0], -1)
 
         return pred_box
 
@@ -133,7 +133,7 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     """
     box = boxes1
     gt = boxes2
-    target_shape = (boxes1.shapeof(0), boxes2.shapeof(0), 4)
+    target_shape = (boxes1.shape[0], boxes2.shape[0], 4)
 
     b_box = F.add_axis(boxes1, 1).broadcast(*target_shape)
     b_gt = F.add_axis(boxes2[:, :4], 0).broadcast(*target_shape)
@@ -149,7 +149,7 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     area_box = (box[:, 2] - box[:, 0]) * (box[:, 3] - box[:, 1])
     area_gt = (gt[:, 2] - gt[:, 0]) * (gt[:, 3] - gt[:, 1])
 
-    area_target_shape = (box.shapeof(0), gt.shapeof(0))
+    area_target_shape = (box.shape[0], gt.shape[0])
 
     b_area_box = F.add_axis(area_box, 1).broadcast(*area_target_shape)
     b_area_gt = F.add_axis(area_gt, 0).broadcast(*area_target_shape)

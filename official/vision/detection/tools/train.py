@@ -20,11 +20,11 @@ from tabulate import tabulate
 import numpy as np
 
 import megengine as mge
-from megengine import distributed as dist
-from megengine import jit
 from megengine import optimizer as optim
 from megengine.data import DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
+from megengine.distributed.group import get_default_group, init_process_group
+from megengine.distributed.server import Server
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import (
@@ -32,6 +32,9 @@ from official.vision.detection.tools.utils import (
     DetectionPadCollator,
     GroupedRandomSampler
 )
+
+from megengine import logger
+logger.set_mgb_log_level("ERROR")
 
 logger = mge.get_logger(__name__)
 
@@ -79,30 +82,35 @@ def main():
     if not os.path.isdir(log_dir):
         os.makedirs(log_dir)
 
+    server = Server()
+    server.serve_in_thread()
+    addr, port = server.server_address
+
     if world_size > 1:
         mp.set_start_method("spawn")
         processes = list()
         for i in range(world_size):
-            process = mp.Process(target=worker, args=(i, world_size, args))
+            process = mp.Process(target=worker, args=(i, world_size, addr, port, args))
             process.start()
             processes.append(process)
 
         for p in processes:
             p.join()
     else:
-        worker(0, 1, args)
+        worker(0, 1, 0, 0, args)
 
 
-def worker(rank, world_size, args):
+def worker(rank, world_size, addr, port, args):
     if world_size > 1:
-        dist.init_process_group(
-            master_ip="localhost",
-            master_port=23456,
+        init_process_group(
+            addr=addr,
+            port=port,
             world_size=world_size,
             rank=rank,
-            dev=rank,
         )
-        logger.info("Init process group for gpu%d done", rank)
+        group = get_default_group()
+        mge.device.set_default_device("gpu{}".format(group.rank))
+        logger.info("Init process group for gpu{} done".format(group.rank))
 
     sys.path.insert(0, os.path.dirname(args.file))
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
@@ -171,15 +179,6 @@ def train_one_epoch(
     world_size,
     enable_sublinear=False,
 ):
-    sublinear_cfg = jit.SublinearMemoryConfig() if enable_sublinear else None
-
-    @jit.trace(symbolic=True, sublinear_memory_config=sublinear_cfg)
-    def propagate():
-        loss_dict = model(model.inputs)
-        opt.backward(loss_dict["total_loss"])
-        losses = list(loss_dict.values())
-        return losses
-
     meter = AverageMeter(record_len=model.cfg.num_losses)
     time_meter = AverageMeter(record_len=2)
     log_interval = model.cfg.log_interval
@@ -190,13 +189,18 @@ def train_one_epoch(
         mini_batch = next(data_queue)
         data_tok = time.time()
 
-        model.inputs["image"].set_value(mini_batch["data"])
-        model.inputs["gt_boxes"].set_value(mini_batch["gt_boxes"])
-        model.inputs["im_info"].set_value(mini_batch["im_info"])
+        inputs = dict(
+            image=mge.tensor(mini_batch["data"]),
+            gt_boxes=mge.tensor(mini_batch["gt_boxes"]),
+            im_info=mge.tensor(mini_batch["im_info"]),
+        )
 
         tik = time.time()
         opt.zero_grad()
-        loss_list = propagate()
+        with opt.record():
+            loss_dict = model(inputs)
+            opt.backward(loss_dict["total_loss"])
+            loss_list = list(loss_dict.values())
         opt.step()
         tok = time.time()
 

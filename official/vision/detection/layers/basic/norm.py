@@ -26,8 +26,9 @@
 # ---------------------------------------------------------------------
 import numpy as np
 
+import megengine.functional as F
 import megengine.module as M
-from megengine.core import Buffer
+from megengine import Buffer
 
 
 class FrozenBatchNorm2d(M.Module):
@@ -49,7 +50,7 @@ class FrozenBatchNorm2d(M.Module):
 
     def forward(self, x):
         scale = self.weight.reshape(1, -1, 1, 1) * (
-            1.0 / (self.running_var + self.eps).sqrt()
+            1.0 / F.sqrt(self.running_var + self.eps)
         )
         bias = self.bias.reshape(1, -1, 1, 1) - self.running_mean * scale
         return x * scale + bias

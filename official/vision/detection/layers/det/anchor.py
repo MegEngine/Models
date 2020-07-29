@@ -11,7 +11,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 import megengine.functional as F
-from megengine.core import Tensor, tensor
+from megengine import Tensor, tensor
 
 
 class BaseAnchorGenerator(metaclass=ABCMeta):
@@ -62,19 +62,23 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
 
         return w, h, x_ctr, y_ctr
 
-    def get_plane_anchors(self, anchor_scales: np.ndarray):
+    def get_plane_anchors(self, anchor_scales: np.ndarray, device):
         """get anchors per location on feature map.
         The anchor number is anchor_scales x anchor_ratios
         """
-        base_anchor = tensor([0, 0, self.base_size - 1, self.base_size - 1])
+        base_anchor = tensor(
+            [0, 0, self.base_size - 1, self.base_size - 1],
+            dtype=np.float32,
+            device=device,
+        )
         base_anchor = F.add_axis(base_anchor, 0)
         w, h, x_ctr, y_ctr = self._whctrs(base_anchor)
         # ratio enumerate
         size = w * h
         size_ratios = size / self.anchor_ratios
 
-        ws = size_ratios.sqrt().round()
-        hs = (ws * self.anchor_ratios).round()
+        ws = F.round(F.sqrt(size_ratios))
+        hs = F.round(ws * self.anchor_ratios)
 
         # scale enumerate
         anchor_scales = anchor_scales[None, ...]
@@ -96,11 +100,10 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         return anchors.astype(np.float32)
 
     def get_center_offsets(self, featmap, stride):
-        f_shp = featmap.shape
-        fm_height, fm_width = f_shp[-2], f_shp[-1]
+        fm_height, fm_width = featmap.shape[-2], featmap.shape[-1]
 
-        shift_x = F.linspace(0, fm_width - 1, fm_width) * stride
-        shift_y = F.linspace(0, fm_height - 1, fm_height) * stride
+        shift_x = F.arange(0, fm_width, device=featmap.device) * stride
+        shift_y = F.arange(0, fm_height, device=featmap.device) * stride
 
         # make the mesh grid of shift_x and shift_y
         mesh_shape = (fm_height, fm_width)
@@ -121,7 +124,9 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         # shifts shape: [A, 4]
         shifts = self.get_center_offsets(featmap, stride)
         # plane_anchors shape: [B, 4], e.g. B=9
-        plane_anchors = self.get_plane_anchors(self.anchor_scales * stride)
+        plane_anchors = self.get_plane_anchors(
+            self.anchor_scales * stride, featmap.device
+        )
 
         all_anchors = F.add_axis(plane_anchors, 0) + F.add_axis(shifts, 1)
         all_anchors = all_anchors.reshape(-1, 4)
