@@ -50,3 +50,24 @@ from official.vision.segmentation.deeplabv3plus import (
     DeepLabV3Plus,
     deeplabv3plus_res101,
 )
+
+from official.vision.classification.weightnet.shufflenet_v2 import (
+    shufflenet_v2_x0_5,
+    shufflenet_v2_x1_0,
+    shufflenet_v2_x1_5,
+    shufflenet_v2_x2_0,
+)
+
+
+from official.vision.classification.frelu.resnet.model import (
+    BasicBlock,
+    Bottleneck,
+    Bottleneck_FReLU,
+    ResNet,
+    resnet50_frelu,
+)
+
+from official.vision.classification.frelu.shufflenetv2.model import (
+    shufflenet_v2_x0_5,
+)
+
