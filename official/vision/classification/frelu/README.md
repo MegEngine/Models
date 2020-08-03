@@ -6,7 +6,7 @@ This repository provides MegEngine implementation for "[Funnel Activation for Vi
 
 
 ## Requirement
-- MegEngine (https://github.com/MegEngine/MegEngine)
+- MegEngine 0.5.1 (https://github.com/MegEngine/MegEngine)
 
 
 ## Citation
