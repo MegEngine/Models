@@ -52,8 +52,8 @@ def get_focal_loss(
 
     labels = F.add_axis(labels, axis=2)
     scores = F.sigmoid(logits)
-    pos_part = (1 - scores) ** gamma * layers.logsigmoid(logits)
-    neg_part = scores ** gamma * layers.logsigmoid(-logits)
+    pos_part = (1 - scores) ** gamma * F.logsigmoid(logits)
+    neg_part = scores ** gamma * F.logsigmoid(-logits)
 
     pos_loss = -(labels == class_range) * pos_part * alpha
     neg_loss = (
@@ -152,9 +152,7 @@ def get_smooth_l1_base(pred_bbox: Tensor, gt_bbox: Tensor, beta: float) -> Tenso
 
 
 def softmax_loss(scores: Tensor, labels: Tensor, ignore_label: int = -1) -> Tensor:
-    max_scores = F.zero_grad(scores.max(axis=1, keepdims=True))
-    scores -= max_scores
-    log_prob = scores - F.log(F.exp(scores).sum(axis=1, keepdims=True))
+    log_prob = F.log_softmax(scores, axis=1)
     mask = labels != ignore_label
     vlabels = labels * mask
     loss = -(F.indexing_one_hot(log_prob, vlabels.astype("int32"), 1) * mask).sum()

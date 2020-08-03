@@ -45,11 +45,3 @@ def get_padded_tensor(
     else:
         raise Exception("Not supported tensor dim: %d" % ndim)
     return padded_array
-
-
-def softplus(x: Tensor) -> Tensor:
-    return F.log(1 + F.exp(-F.abs(x))) + F.relu(x)
-
-
-def logsigmoid(x: Tensor) -> Tensor:
-    return -softplus(-x)
