@@ -5,7 +5,7 @@ This repository provides MegEngine implementation for "[WeightNet: Revisiting th
 <img width="863" height="274" src="figures/weightnet.png"/>
 
 ## Requirement
-- MegEngine (https://github.com/MegEngine/MegEngine)
+- MegEngine 0.5.1 (https://github.com/MegEngine/MegEngine)
 
 
 ## Citation
