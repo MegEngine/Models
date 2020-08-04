@@ -76,8 +76,8 @@ class RetinaNet(M.Module):
         ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
         return normed_image
 
-    def forward(self, inputs):
-        image = self.preprocess_image(inputs["image"])
+    def forward(self, image, im_info, gt_boxes=None):
+        image = self.preprocess_image(image)
         features = self.backbone(image)
         features = [features[f] for f in self.in_features]
 
@@ -103,8 +103,8 @@ class RetinaNet(M.Module):
         if self.training:
             box_gt_scores, box_gt_offsets = self.get_ground_truth(
                 all_level_anchors,
-                inputs["gt_boxes"],
-                inputs["im_info"][:, 4].astype(np.int32),
+                gt_boxes,
+                im_info[:, 4].astype(np.int32),
             )
             norm_type = "none" if self.cfg.loss_normalizer_momentum > 0.0 else "fg"
             rpn_cls_loss = layers.get_focal_loss(
@@ -152,16 +152,16 @@ class RetinaNet(M.Module):
             )
             transformed_box = transformed_box.reshape(-1, 4)
 
-            scale_w = inputs["im_info"][0, 1] / inputs["im_info"][0, 3]
-            scale_h = inputs["im_info"][0, 0] / inputs["im_info"][0, 2]
+            scale_w = im_info[0, 1] / im_info[0, 3]
+            scale_h = im_info[0, 0] / im_info[0, 2]
             transformed_box = transformed_box / F.concat(
                 [scale_w, scale_h, scale_w, scale_h], axis=0
             )
             clipped_box = layers.get_clipped_box(
-                transformed_box, F.remove_axis(inputs["im_info"][0, 2:4], 0)  # FIXME
+                transformed_box, F.remove_axis(im_info[0, 2:4], 0)  # FIXME
             ).reshape(-1, 4)
             all_level_box_scores = F.sigmoid(all_level_box_logits)
-            return all_level_box_scores[0], clipped_box
+            return F.remove_axis(all_level_box_scores[0], 0), clipped_box  # FIXME
 
     def get_ground_truth(self, anchors, batched_gt_boxes, batched_valid_gt_box_number):
         total_anchors = anchors.shape[0]

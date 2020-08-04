@@ -17,11 +17,15 @@ from tqdm import tqdm
 import numpy as np
 
 import megengine as mge
-from megengine import jit
 from megengine.data import DataLoader, SequentialSampler
+from megengine.distributed.group import get_default_group, init_process_group
+from megengine.distributed.server import Server
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import DetEvaluator
+
+from megengine import logger
+logger.set_mgb_log_level("ERROR")
 
 logger = mge.get_logger(__name__)
 
@@ -66,6 +70,10 @@ def main():
             args.end_epoch = args.start_epoch
         assert 0 <= args.start_epoch <= args.end_epoch < cfg.max_epoch
 
+    server = Server()
+    server.serve_in_thread()
+    addr, port = server.server_address
+
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
         if args.weight_file:
             model_file = args.weight_file
@@ -73,9 +81,8 @@ def main():
             model_file = "log-of-{}/epoch_{}.pkl".format(
                 os.path.basename(args.file).split(".")[0], epoch_num
             )
-        logger.info("Load Model : %s completed", model_file)
 
-        results_list = list()
+        results_list = []
         result_queue = Queue(2000)
         procs = []
         for i in range(args.ngpus):
@@ -87,6 +94,8 @@ def main():
                     args.dataset_dir,
                     i,
                     args.ngpus,
+                    addr,
+                    port,
                     result_queue,
                 ),
             )
@@ -141,50 +150,43 @@ def main():
 
 
 def worker(
-    current_network, model_file, data_dir, worker_id, total_worker, result_queue,
+    current_network, model_file, data_dir, rank, world_size, addr, port, result_queue
 ):
-    """
-    :param net_file: network description file
-    :param model_file: file of dump weights
-    :param data_dir: the dataset directory
-    :param worker_id: the index of the worker
-    :param total_worker: number of gpu for evaluation
-    :param result_queue: processing queue
-    """
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(worker_id)
-
-    @jit.trace(symbolic=True)
-    def val_func():
-        pred = model(model.inputs)
-        return pred
+    init_process_group(
+        addr=addr,
+        port=port,
+        world_size=world_size,
+        rank=rank,
+    )
+    group = get_default_group()
+    mge.device.set_default_device("gpu{}".format(group.rank))
 
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
     model = current_network.Net(cfg, batch_size=1)
     model.eval()
-    evaluator = DetEvaluator(model)
     state_dict = mge.load(model_file)
     if "state_dict" in state_dict:
         state_dict = state_dict["state_dict"]
     model.load_state_dict(state_dict)
 
-    loader = build_dataloader(worker_id, total_worker, data_dir, model.cfg)
-    for data_dict in loader:
-        data, im_info = DetEvaluator.process_inputs(
-            data_dict[0][0],
+    evaluator = DetEvaluator(model)
+
+    dataloader = build_dataloader(rank, world_size, data_dir, model.cfg)
+    for data in dataloader:
+        image, im_info = DetEvaluator.process_inputs(
+            data[0][0],
             model.cfg.test_image_short_size,
             model.cfg.test_image_max_size,
         )
-        model.inputs["image"].set_value(data)
-        model.inputs["im_info"].set_value(im_info)
-
-        pred_res = evaluator.predict(val_func)
-        result_queue.put_nowait(
-            {
-                "det_res": pred_res,
-                "image_id": int(data_dict[1][2][0].split(".")[0].split("_")[-1]),
-            }
+        pred_res = evaluator.predict(
+            image=mge.tensor(image),
+            im_info=mge.tensor(im_info)
         )
+        result_queue.put_nowait({
+            "det_res": pred_res,
+            "image_id": int(data[1][2][0].split(".")[0].split("_")[-1]),
+        })
 
 
 def build_dataloader(rank, world_size, data_dir, cfg):

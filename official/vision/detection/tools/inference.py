@@ -15,11 +15,13 @@ import cv2
 import numpy as np
 
 import megengine as mge
-from megengine import jit
 from megengine.data.dataset import COCO
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import DetEvaluator
+
+from megengine import logger
+logger.set_mgb_log_level("ERROR")
 
 logger = mge.get_logger(__name__)
 
@@ -36,11 +38,6 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
-    @jit.trace(symbolic=True)
-    def val_func():
-        pred = model(model.inputs)
-        return pred
-
     sys.path.insert(0, os.path.dirname(args.file))
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
     cfg = current_network.Cfg()
@@ -55,12 +52,13 @@ def main():
     evaluator = DetEvaluator(model)
 
     ori_img = cv2.imread(args.image)
-    data, im_info = DetEvaluator.process_inputs(
+    image, im_info = DetEvaluator.process_inputs(
         ori_img.copy(), model.cfg.test_image_short_size, model.cfg.test_image_max_size,
     )
-    model.inputs["image"].set_value(data)
-    model.inputs["im_info"].set_value(im_info)
-    pred_res = evaluator.predict(val_func)
+    pred_res = evaluator.predict(
+        image=mge.tensor(image),
+        im_info=mge.tensor(im_info)
+    )
     res_img = DetEvaluator.vis_det(
         ori_img,
         pred_res,

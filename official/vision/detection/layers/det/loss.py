@@ -153,8 +153,7 @@ def get_smooth_l1_base(pred_bbox: Tensor, gt_bbox: Tensor, beta: float) -> Tenso
 
 
 def softmax_loss(scores: Tensor, labels: Tensor, ignore_label: int = -1) -> Tensor:
-    # log_prob = F.log_softmax(scores, axis=1)
-    log_prob = F.remove_axis(F.log_softmax(scores, axis=1), 1)  # FIXME
+    log_prob = F.log_softmax(scores, axis=1)
     mask = labels != ignore_label
     vlabels = labels * mask
     loss = -(F.indexing_one_hot(log_prob, vlabels.astype("int32"), 1) * mask).sum()

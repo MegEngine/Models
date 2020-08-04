@@ -53,19 +53,6 @@ class FasterRCNN(M.Module):
         # ----------------------- build the RCNN head ----------------------- #
         self.RCNN = layers.RCNN(cfg)
 
-        # -------------------------- input Tensor --------------------------- #
-        self.inputs = {
-            "image": mge.tensor(
-                np.random.random([2, 3, 224, 224]).astype(np.float32), dtype="float32",
-            ),
-            "im_info": mge.tensor(
-                np.random.random([2, 5]).astype(np.float32), dtype="float32",
-            ),
-            "gt_boxes": mge.tensor(
-                np.random.random([2, 100, 5]).astype(np.float32), dtype="float32",
-            ),
-        }
-
     def preprocess_image(self, image):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
@@ -74,23 +61,18 @@ class FasterRCNN(M.Module):
         ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
         return normed_image
 
-    def forward(self, inputs):
-        images = inputs["image"]
-        im_info = inputs["im_info"]
-        gt_boxes = inputs["gt_boxes"]
-        # process the images
-        normed_images = self.preprocess_image(images)
-        # normed_images = images
-        fpn_features = self.backbone(normed_images)
+    def forward(self, image, im_info, gt_boxes=None):
+        image = self.preprocess_image(image)
+        features = self.backbone(image)
 
         if self.training:
-            return self._forward_train(fpn_features, im_info, gt_boxes)
+            return self._forward_train(features, im_info, gt_boxes)
         else:
-            return self.inference(fpn_features, im_info)
+            return self.inference(features, im_info)
 
-    def _forward_train(self, fpn_features, im_info, gt_boxes):
-        rpn_rois, rpn_losses = self.RPN(fpn_features, im_info, gt_boxes)
-        rcnn_losses = self.RCNN(fpn_features, rpn_rois, im_info, gt_boxes)
+    def _forward_train(self, features, im_info, gt_boxes):
+        rpn_rois, rpn_losses = self.RPN(features, im_info, gt_boxes)
+        rcnn_losses = self.RCNN(features, rpn_rois, im_info, gt_boxes)
 
         loss_rpn_cls = rpn_losses["loss_rpn_cls"]
         loss_rpn_loc = rpn_losses["loss_rpn_loc"]
@@ -108,9 +90,9 @@ class FasterRCNN(M.Module):
         self.cfg.losses_keys = list(loss_dict.keys())
         return loss_dict
 
-    def inference(self, fpn_features, im_info):
-        rpn_rois = self.RPN(fpn_features, im_info)
-        pred_boxes, pred_score = self.RCNN(fpn_features, rpn_rois)
+    def inference(self, features, im_info):
+        rpn_rois = self.RPN(features, im_info)
+        pred_boxes, pred_score = self.RCNN(features, rpn_rois)
         # pred_score = pred_score[:, None]
         pred_boxes = pred_boxes.reshape(-1, 4)
         scale_w = im_info[0, 1] / im_info[0, 3]

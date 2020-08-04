@@ -180,7 +180,7 @@ class DetEvaluator:
         )
         return trans_img, im_info
 
-    def predict(self, val_func):
+    def predict(self, **inputs):
         """
         Args:
             val_func(callable): model inference function
@@ -190,7 +190,7 @@ class DetEvaluator:
         """
         model = self.model
 
-        box_cls, box_delta = val_func()
+        box_cls, box_delta = model(**inputs)
         box_cls, box_delta = box_cls.numpy(), box_delta.numpy()
         dtboxes_all = list()
         all_inds = np.where(box_cls > model.cfg.test_cls_threshold)
