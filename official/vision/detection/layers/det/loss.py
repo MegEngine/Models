@@ -48,7 +48,7 @@ def get_focal_loss(
     Returns:
         the calculated focal loss.
     """
-    class_range = F.arange(1, logits.shape[2] + 1)
+    class_range = F.arange(1, logits.shape[2] + 1, device=logits.device)
 
     labels = F.add_axis(labels, axis=2)
     scores = F.sigmoid(logits)
@@ -108,7 +108,8 @@ def get_smooth_l1_loss(
     fg_mask = (labels != background) * (labels != ignore_label)
 
     loss = get_smooth_l1_base(pred_bbox, gt_bbox, beta)
-    loss = (loss.sum(axis=1) * fg_mask).sum()
+    # loss = (loss.sum(axis=1) * fg_mask).sum()
+    loss = (F.remove_axis(loss.sum(axis=1), 1) * fg_mask).sum()  # FIXME
     if norm_type == "fg":
         loss = loss / F.maximum(fg_mask.sum(), 1)
     elif norm_type == "all":
@@ -152,7 +153,8 @@ def get_smooth_l1_base(pred_bbox: Tensor, gt_bbox: Tensor, beta: float) -> Tenso
 
 
 def softmax_loss(scores: Tensor, labels: Tensor, ignore_label: int = -1) -> Tensor:
-    log_prob = F.log_softmax(scores, axis=1)
+    # log_prob = F.log_softmax(scores, axis=1)
+    log_prob = F.remove_axis(F.log_softmax(scores, axis=1), 1)  # FIXME
     mask = labels != ignore_label
     vlabels = labels * mask
     loss = -(F.indexing_one_hot(log_prob, vlabels.astype("int32"), 1) * mask).sum()

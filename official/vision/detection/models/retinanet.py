@@ -148,7 +148,7 @@ class RetinaNet(M.Module):
             assert self.batch_size == 1
 
             transformed_box = self.box_coder.decode(
-                all_level_anchors, all_level_box_offsets[0],
+                all_level_anchors, F.remove_axis(all_level_box_offsets[0], 0),  # FIXME
             )
             transformed_box = transformed_box.reshape(-1, 4)
 
@@ -158,7 +158,7 @@ class RetinaNet(M.Module):
                 [scale_w, scale_h, scale_w, scale_h], axis=0
             )
             clipped_box = layers.get_clipped_box(
-                transformed_box, inputs["im_info"][0, 2:4]
+                transformed_box, F.remove_axis(inputs["im_info"][0, 2:4], 0)  # FIXME
             ).reshape(-1, 4)
             all_level_box_scores = F.sigmoid(all_level_box_logits)
             return all_level_box_scores[0], clipped_box
@@ -169,35 +169,30 @@ class RetinaNet(M.Module):
         bbox_targets_list = []
 
         for b_id in range(self.batch_size):
-            gt_boxes = batched_gt_boxes[b_id, : batched_valid_gt_box_number[b_id]]
+            gt_boxes = F.remove_axis(batched_gt_boxes[b_id, :batched_valid_gt_box_number[b_id].flatten()], 0)  # FIXME
 
             overlaps = layers.get_iou(anchors, gt_boxes[:, :4])
             argmax_overlaps = F.argmax(overlaps, axis=1)
 
-            max_overlaps = overlaps[
-                F.arange(0, total_anchors).astype(np.int32),
-                argmax_overlaps,
-            ]
+            max_overlaps = F.remove_axis(F.gather(overlaps, 1, F.add_axis(argmax_overlaps, 1)), 1)
 
-            labels = mge.tensor([-1]).broadcast(total_anchors)
+            labels = F.full_like(max_overlaps, -1)
             labels = labels * (max_overlaps >= self.cfg.negative_thresh)
             labels = labels * (max_overlaps < self.cfg.positive_thresh) + (
                 max_overlaps >= self.cfg.positive_thresh
             )
 
-            bbox_targets = self.box_coder.encode(
-                anchors, gt_boxes[argmax_overlaps, :4]
-            )
+            bbox_targets = self.box_coder.encode(anchors, gt_boxes[argmax_overlaps, :4])
 
             labels_cat = gt_boxes[argmax_overlaps, 4]
-            labels_cat = labels_cat * (1.0 - F.less_equal(F.abs(labels), 1e-5))
-            ignore_mask = F.less_equal(F.abs(labels + 1), 1e-5)
+            labels_cat = labels_cat * (1 - (labels == 0))  # FIXME labels != 0 trigger__ne__ NotImplementedError
+            ignore_mask = labels == -1
             labels_cat = labels_cat * (1 - ignore_mask) - ignore_mask
 
             # assign low_quality boxes
             if self.cfg.allow_low_quality:
                 gt_argmax_overlaps = F.argmax(overlaps, axis=0)
-                labels_cat[gt_argmax_overlaps] = gt_boxes[:, 4]
+                labels_cat[gt_argmax_overlaps] = F.remove_axis(gt_boxes[:, 4], 1)  # FIXME
                 matched_low_bbox_targets = self.box_coder.encode(
                     anchors[gt_argmax_overlaps, :], gt_boxes[:, :4]
                 )
@@ -207,8 +202,11 @@ class RetinaNet(M.Module):
             bbox_targets_list.append(F.add_axis(bbox_targets, 0))
 
         return (
-            F.zero_grad(F.concat(labels_cat_list, axis=0)),
-            F.zero_grad(F.concat(bbox_targets_list, axis=0)),
+            # FIXME
+            # F.zero_grad(F.concat(labels_cat_list, axis=0)),
+            # F.zero_grad(F.concat(bbox_targets_list, axis=0)),
+            F.concat(labels_cat_list, axis=0),
+            F.concat(bbox_targets_list, axis=0),
         )
 
 

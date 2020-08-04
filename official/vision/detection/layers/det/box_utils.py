@@ -62,10 +62,11 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
     def _box_ltrb_to_cs_opr(bbox, addaxis=None):
         """ transform the left-top right-bottom encoding bounding boxes
         to center and size encodings"""
-        bbox_width = bbox[:, 2] - bbox[:, 0]
-        bbox_height = bbox[:, 3] - bbox[:, 1]
-        bbox_ctr_x = bbox[:, 0] + 0.5 * bbox_width
-        bbox_ctr_y = bbox[:, 1] + 0.5 * bbox_height
+        # FIXME
+        bbox_width = F.remove_axis(bbox[:, 2] - bbox[:, 0], 1)
+        bbox_height = F.remove_axis(bbox[:, 3] - bbox[:, 1], 1)
+        bbox_ctr_x = F.remove_axis(bbox[:, 0], 1) + 0.5 * bbox_width
+        bbox_ctr_y = F.remove_axis(bbox[:, 1], 1) + 0.5 * bbox_height
         if addaxis is None:
             return bbox_width, bbox_height, bbox_ctr_x, bbox_ctr_y
         else:
@@ -144,10 +145,10 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     ih = F.minimum(b_box[:, :, 3], b_gt[:, :, 3]) - F.maximum(
         b_box[:, :, 1], b_gt[:, :, 1]
     )
-    inter = F.maximum(iw, 0) * F.maximum(ih, 0)
+    inter = F.remove_axis(F.maximum(iw, 0) * F.maximum(ih, 0), 2)  # FIXME
 
-    area_box = (box[:, 2] - box[:, 0]) * (box[:, 3] - box[:, 1])
-    area_gt = (gt[:, 2] - gt[:, 0]) * (gt[:, 3] - gt[:, 1])
+    area_box = F.remove_axis((box[:, 2] - box[:, 0]) * (box[:, 3] - box[:, 1]), 1)  # FIXME
+    area_gt = F.remove_axis((gt[:, 2] - gt[:, 0]) * (gt[:, 3] - gt[:, 1]), 1)  # FIXME
 
     area_target_shape = (box.shape[0], gt.shape[0])
 
@@ -184,7 +185,8 @@ def get_clipped_box(boxes, hw):
 
 
 def filter_boxes(boxes, size=0):
-    width = boxes[:, 2] - boxes[:, 0]
-    height = boxes[:, 3] - boxes[:, 1]
+    # FIXME
+    width = F.remove_axis(boxes[:, 2] - boxes[:, 0], 1)
+    height = F.remove_axis(boxes[:, 3] - boxes[:, 1], 1)
     keep = (width > size) * (height > size)
     return keep
