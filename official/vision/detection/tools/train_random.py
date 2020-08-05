@@ -56,7 +56,6 @@ def make_parser():
     parser.add_argument(
         "-d", "--dataset_dir", default="/data/datasets", type=str,
     )
-    parser.add_argument("--enable_sublinear", action="store_true")
 
     return parser
 
@@ -82,11 +81,10 @@ def main():
     if not os.path.isdir(log_dir):
         os.makedirs(log_dir)
 
-    server = Server()
-    server.serve_in_thread()
-    addr, port = server.server_address
-
     if world_size > 1:
+        server = Server()
+        server.serve_in_thread()
+        addr, port = server.server_address
         mp.set_start_method("spawn")
         processes = list()
         for i in range(world_size):
@@ -157,7 +155,6 @@ def worker(rank, world_size, addr, port, args):
             rank,
             epoch_id,
             world_size,
-            args.enable_sublinear,
         )
         if rank == 0:
             save_path = "log-of-{}/epoch_{}.pkl".format(
@@ -177,7 +174,6 @@ def train_one_epoch(
     rank,
     epoch_id,
     world_size,
-    enable_sublinear=False,
 ):
     meter = AverageMeter(record_len=model.cfg.num_losses)
     time_meter = AverageMeter(record_len=2)
@@ -189,16 +185,14 @@ def train_one_epoch(
         mini_batch = next(data_queue)
         data_tok = time.time()
 
-        inputs = dict(
-            image=mge.tensor(mini_batch["data"]),
-            gt_boxes=mge.tensor(mini_batch["gt_boxes"]),
-            im_info=mge.tensor(mini_batch["im_info"]),
-        )
-
         tik = time.time()
         opt.zero_grad()
         with opt.record():
-            loss_dict = model(inputs)
+            loss_dict = model(
+                image=mge.tensor(mini_batch["data"]),
+                gt_boxes=mge.tensor(mini_batch["gt_boxes"]),
+                im_info=mge.tensor(mini_batch["im_info"])
+            )
             opt.backward(loss_dict["total_loss"])
             loss_list = list(loss_dict.values())
         opt.step()
@@ -261,7 +255,7 @@ def adjust_learning_rate(optimizer, epoch_id, step, model, world_size):
             param_group["lr"] = base_lr * lr_factor
 
 
-def build_dataset(data_dir, cfg):
+def build_dataset():
     from megengine.data.dataset import VisionDataset
 
     class PseudoDetectionDataset(VisionDataset):
@@ -332,7 +326,7 @@ def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):
 
 
 def build_dataloader(batch_size, data_dir, cfg):
-    train_dataset = build_dataset(data_dir, cfg)
+    train_dataset = build_dataset()
     train_sampler = build_sampler(train_dataset, batch_size)
     train_dataloader = DataLoader(
         train_dataset,
