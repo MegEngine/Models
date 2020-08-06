@@ -12,6 +12,12 @@ import megengine.functional as F
 from megengine import Tensor
 
 
+def detach(x):
+    wrapper= type(x)
+    tensor = type(x.__wrapped__)
+    return wrapper(tensor(x.__wrapped__._data))
+
+
 def get_padded_tensor(
     array: Tensor, multiple_number: int = 32, pad_value: float = 0
 ) -> Tensor:

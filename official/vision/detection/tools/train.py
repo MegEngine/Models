@@ -38,6 +38,9 @@ logger.set_mgb_log_level("ERROR")
 
 logger = mge.get_logger(__name__)
 
+from megengine.core._imperative_rt import imperative
+imperative._set_async_mode(2)
+
 
 def make_parser():
     parser = argparse.ArgumentParser()

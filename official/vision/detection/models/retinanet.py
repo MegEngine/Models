@@ -205,8 +205,8 @@ class RetinaNet(M.Module):
             # FIXME
             # F.zero_grad(F.concat(labels_cat_list, axis=0)),
             # F.zero_grad(F.concat(bbox_targets_list, axis=0)),
-            F.concat(labels_cat_list, axis=0),
-            F.concat(bbox_targets_list, axis=0),
+            layers.detach(F.concat(labels_cat_list, axis=0)),
+            layers.detach(F.concat(bbox_targets_list, axis=0)),
         )
 
 
