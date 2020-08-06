@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 from megengine.data import Collator, RandomSampler
+from megengine.data.dataset import VisionDataset
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.nms import py_cpu_nms
@@ -305,3 +306,49 @@ class DetEvaluator:
                 return None
             elif c == ord("n"):
                 break
+
+
+class PseudoDetectionDataset(VisionDataset):
+    supported_order = ("image", "boxes", "boxes_category", "info")
+
+    def __init__(self, length=256, *, order=None):
+        super().__init__(None, order=order, supported_order=self.supported_order)
+        self.length = length
+        self.image = []
+        self.boxes = []
+        self.boxes_category = []
+        self.info = []
+        for i in range(self.length):
+            self.image.append(np.random.randint(256, size=(320, 480, 3), dtype=np.uint8))
+            b = []
+            c = []
+            for i in range(np.random.randint(1, 10)):
+                x, y, w, h = np.random.uniform(320, size=4)
+                b.append(np.array([x, y, x + w, y + h], dtype=np.float32))
+                c.append(np.random.randint(1, 81, dtype=np.int32))
+            self.boxes.append(np.concatenate(b))
+            self.boxes_category.append(np.stack(c))
+            self.info.append({"height": 320, "width": 480, "file_name": str(i)})
+
+    def __getitem__(self, index):
+        target = []
+        for k in self.order:
+            if k == "image":
+                target.append(self.image[index])
+            elif k == "boxes":
+                target.append(self.boxes[index])
+            elif k == "boxes_category":
+                target.append(self.boxes_category[index])
+            elif k == "info":
+                target.append([
+                    self.info[index]["height"],
+                    self.info[index]["width"],
+                    self.info[index]["file_name"]
+                ])
+        return tuple(target)
+
+    def __len__(self):
+        return self.length
+
+    def get_img_info(self, index):
+        return self.info[index]
