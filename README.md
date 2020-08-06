@@ -43,7 +43,7 @@ git clone https://github.com/MegEngine/Models.git
 pip3 install --user -r requirements.txt
 ```
 
-3. 添加目录到python环境变量中
+3. 添加目录到Python环境变量中
 
 ```bash
 export PYTHONPATH=/path/to/models:$PYTHONPATH

@@ -25,5 +25,5 @@ For the purposes of this definition, "submitted" means any form of electronic, v
 
 8. You agree to notify MegEngine of any facts or circumstances of which You become aware that would make these representations inaccurate in any respect.
 
-9. This the effective date of this Contributor License Agreement is 2020/3/23. MegEngine reserves the right to update or change this Agreement at any time, by posting the most current version of the Agreement on MegEngine, with a new effective date. All such changes in the Agreement are effective from the effective date. Your continued use of MegEngine after we post any such changes signifies your agreement to those changes. If you do not agree to the then-current Agreement, you must immediately discontinue using MegEngine.
+9. The effective date of this Contributor License Agreement is 2020/3/23. MegEngine reserves the right to update or change this Agreement at any time, by posting the most current version of the Agreement on MegEngine, with a new effective date. All such changes in the Agreement are effective from the effective date. Your continued use of MegEngine after we post any such changes signifies your agreement to those changes. If you do not agree to the then-current Agreement, you must immediately discontinue using MegEngine.
 

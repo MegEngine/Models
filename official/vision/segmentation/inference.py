@@ -52,6 +52,7 @@ class_colors = [
     [128, 64, 0],
 ]
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--image_path", type=str, default=None, help="inference image")
@@ -66,6 +67,7 @@ def main():
         img = cv2.imread(args.image_path)
     pred = inference(img, net)
     cv2.imwrite("out.jpg", pred)
+
 
 def load_model(model_path):
     model_dict = mge.load(model_path)
