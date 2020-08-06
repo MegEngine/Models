@@ -64,7 +64,7 @@ def main():
             args.start_epoch = cfg.max_epoch - 1
         if args.end_epoch == -1:
             args.end_epoch = args.start_epoch
-    assert 0 <= args.start_epoch <= args.end_epoch < cfg.max_epoch
+        assert 0 <= args.start_epoch <= args.end_epoch < cfg.max_epoch
 
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
         if args.weight_file:
@@ -182,7 +182,7 @@ def worker(
         result_queue.put_nowait(
             {
                 "det_res": pred_res,
-                "image_id": int(data_dict[1][2][0].split(".")[0].split("_")[-1]),
+                "image_id": int(data_dict[1][2][0].split(".")[0]),
             }
         )
 
