@@ -66,7 +66,7 @@ class RetinaNet(M.Module):
         # ----------------------- build the RetinaNet Head ------------------ #
         self.head = layers.RetinaNetHead(cfg, feature_shapes)
 
-        self.loss_normalizer = mge.tensor(100.0)
+        self.loss_normalizer = mge.Buffer(np.array(100.0))
 
     def preprocess_image(self, image):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
@@ -102,9 +102,7 @@ class RetinaNet(M.Module):
 
         if self.training:
             box_gt_scores, box_gt_offsets = self.get_ground_truth(
-                all_level_anchors,
-                gt_boxes,
-                im_info[:, 4].astype(np.int32),
+                all_level_anchors, gt_boxes, im_info[:, 4].astype(np.int32),
             )
             norm_type = "none" if self.cfg.loss_normalizer_momentum > 0.0 else "fg"
             rpn_cls_loss = layers.get_focal_loss(
@@ -126,12 +124,9 @@ class RetinaNet(M.Module):
             )
 
             if norm_type == "none":
-                F.add_update(
-                    self.loss_normalizer,
-                    (box_gt_scores > 0).sum(),
-                    alpha=self.cfg.loss_normalizer_momentum,
-                    beta=1 - self.cfg.loss_normalizer_momentum,
-                )
+                self.loss_normalizer = \
+                    self.loss_normalizer * self.cfg.loss_normalizer_momentum + \
+                    (box_gt_scores > 0).sum() * (1 - self.cfg.loss_normalizer_momentum)
                 rpn_cls_loss = rpn_cls_loss / F.maximum(self.loss_normalizer, 1)
                 rpn_bbox_loss = rpn_bbox_loss / F.maximum(self.loss_normalizer, 1)
 
@@ -169,12 +164,14 @@ class RetinaNet(M.Module):
         bbox_targets_list = []
 
         for b_id in range(self.batch_size):
-            gt_boxes = batched_gt_boxes[b_id, :batched_valid_gt_box_number[b_id]]
+            gt_boxes = batched_gt_boxes[b_id, : batched_valid_gt_box_number[b_id]]
 
             overlaps = layers.get_iou(anchors, gt_boxes[:, :4])
             argmax_overlaps = F.argmax(overlaps, axis=1)
 
-            max_overlaps = F.remove_axis(F.gather(overlaps, 1, F.add_axis(argmax_overlaps, 1)), 1)
+            max_overlaps = F.remove_axis(
+                F.gather(overlaps, 1, F.add_axis(argmax_overlaps, 1)), 1
+            )
 
             labels = F.full_like(max_overlaps, -1)
             labels = labels * (max_overlaps >= self.cfg.negative_thresh)
@@ -185,7 +182,9 @@ class RetinaNet(M.Module):
             bbox_targets = self.box_coder.encode(anchors, gt_boxes[argmax_overlaps, :4])
 
             labels_cat = gt_boxes[argmax_overlaps, 4]
-            labels_cat = labels_cat * (1 - (labels == 0))  # FIXME labels != 0 trigger__ne__ NotImplementedError
+            labels_cat = labels_cat * (
+                1 - (labels == 0)
+            )  # FIXME labels != 0 trigger__ne__ NotImplementedError
             ignore_mask = labels == -1
             labels_cat = labels_cat * (1 - ignore_mask) - ignore_mask
 
@@ -202,8 +201,11 @@ class RetinaNet(M.Module):
             bbox_targets_list.append(F.add_axis(bbox_targets, 0))
 
         return (
+            # FIXME
             F.concat(labels_cat_list, axis=0).detach(),
             F.concat(bbox_targets_list, axis=0).detach(),
+            # layers.detach(F.concat(labels_cat_list, axis=0)),
+            # layers.detach(F.concat(bbox_targets_list, axis=0)),
         )
 
 
@@ -244,7 +246,7 @@ class RetinaNetConfig:
         self.cls_prior_prob = 0.01
 
         # ------------------------ loss cfg -------------------------- #
-        self.loss_normalizer_momentum = 0.9  # 0.0 means disable EMA normalizer
+        self.loss_normalizer_momentum = 0.0  # 0.9  # 0.0 means disable EMA normalizer
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.smooth_l1_beta = 0  # use L1 loss
