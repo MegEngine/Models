@@ -48,8 +48,8 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
     ):
         super().__init__()
         self.base_size = base_size
-        self.anchor_scales = np.array(anchor_scales)
-        self.anchor_ratios = np.array(anchor_ratios)
+        self.anchor_scales = np.array(anchor_scales, dtype=np.float32)
+        self.anchor_ratios = np.array(anchor_ratios, dtype=np.float32)
         self.offset = offset
 
     def _whctrs(self, anchor):
