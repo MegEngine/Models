@@ -148,7 +148,7 @@ class RetinaNet(M.Module):
             assert self.batch_size == 1
 
             transformed_box = self.box_coder.decode(
-                all_level_anchors, F.remove_axis(all_level_box_offsets[0], 0),  # FIXME
+                all_level_anchors, all_level_box_offsets[0]
             )
             transformed_box = transformed_box.reshape(-1, 4)
 
@@ -158,10 +158,10 @@ class RetinaNet(M.Module):
                 [scale_w, scale_h, scale_w, scale_h], axis=0
             )
             clipped_box = layers.get_clipped_box(
-                transformed_box, F.remove_axis(im_info[0, 2:4], 0)  # FIXME
+                transformed_box, im_info[0, 2:4]
             ).reshape(-1, 4)
             all_level_box_scores = F.sigmoid(all_level_box_logits)
-            return F.remove_axis(all_level_box_scores[0], 0), clipped_box  # FIXME
+            return all_level_box_scores[0], clipped_box
 
     def get_ground_truth(self, anchors, batched_gt_boxes, batched_valid_gt_box_number):
         total_anchors = anchors.shape[0]
@@ -169,7 +169,7 @@ class RetinaNet(M.Module):
         bbox_targets_list = []
 
         for b_id in range(self.batch_size):
-            gt_boxes = F.remove_axis(batched_gt_boxes[b_id, :batched_valid_gt_box_number[b_id].flatten()], 0)  # FIXME
+            gt_boxes = batched_gt_boxes[b_id, :batched_valid_gt_box_number[b_id]]
 
             overlaps = layers.get_iou(anchors, gt_boxes[:, :4])
             argmax_overlaps = F.argmax(overlaps, axis=1)
@@ -192,7 +192,7 @@ class RetinaNet(M.Module):
             # assign low_quality boxes
             if self.cfg.allow_low_quality:
                 gt_argmax_overlaps = F.argmax(overlaps, axis=0)
-                labels_cat[gt_argmax_overlaps] = F.remove_axis(gt_boxes[:, 4], 1)  # FIXME
+                labels_cat[gt_argmax_overlaps] = gt_boxes[:, 4]
                 matched_low_bbox_targets = self.box_coder.encode(
                     anchors[gt_argmax_overlaps, :], gt_boxes[:, :4]
                 )
@@ -202,11 +202,8 @@ class RetinaNet(M.Module):
             bbox_targets_list.append(F.add_axis(bbox_targets, 0))
 
         return (
-            # FIXME
-            # F.zero_grad(F.concat(labels_cat_list, axis=0)),
-            # F.zero_grad(F.concat(bbox_targets_list, axis=0)),
-            layers.detach(F.concat(labels_cat_list, axis=0)),
-            layers.detach(F.concat(bbox_targets_list, axis=0)),
+            F.concat(labels_cat_list, axis=0).detach(),
+            F.concat(bbox_targets_list, axis=0).detach(),
         )
 
 

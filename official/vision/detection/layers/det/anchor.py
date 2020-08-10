@@ -55,11 +55,10 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
     def _whctrs(self, anchor):
         """convert anchor box into (w, h, ctr_x, ctr_y)
         """
-        # FIXME
-        w = F.remove_axis(anchor[:, 2] - anchor[:, 0] + 1, 1)
-        h = F.remove_axis(anchor[:, 3] - anchor[:, 1] + 1, 1)
-        x_ctr = F.remove_axis(anchor[:, 0], 1) + 0.5 * (w - 1)
-        y_ctr = F.remove_axis(anchor[:, 1], 1) + 0.5 * (h - 1)
+        w = anchor[:, 2] - anchor[:, 0] + 1
+        h = anchor[:, 3] - anchor[:, 1] + 1
+        x_ctr = anchor[:, 0] + 0.5 * (w - 1)
+        y_ctr = anchor[:, 1] + 0.5 * (h - 1)
 
         return w, h, x_ctr, y_ctr
 
