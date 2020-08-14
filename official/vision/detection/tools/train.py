@@ -38,8 +38,8 @@ logger.set_mgb_log_level("ERROR")
 
 logger = mge.get_logger(__name__)
 
-from megengine.core._imperative_rt import imperative
-imperative._set_async_mode(2)
+# from megengine.core._imperative_rt import imperative
+# imperative._set_async_mode(2)
 
 
 def make_parser():
@@ -117,16 +117,17 @@ def worker(rank, world_size, addr, port, args):
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
 
     model = current_network.Net(current_network.Cfg(), batch_size=args.batch_size)
-    params = model.parameters(requires_grad=True)
     model.train()
 
     if rank == 0:
         logger.info(get_config_info(model.cfg))
     opt = optim.SGD(
-        params,
+        {"params": model.parameters(requires_grad=True), "dist_group": group},  # FIXME
         lr=model.cfg.basic_lr * world_size * model.batch_size,
         momentum=model.cfg.momentum,
         weight_decay=model.cfg.weight_decay,
+        bcast_period=0,
+        param_pack=True,
     )
 
     if args.weight_file is not None:

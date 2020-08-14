@@ -182,9 +182,7 @@ class RetinaNet(M.Module):
             bbox_targets = self.box_coder.encode(anchors, gt_boxes[argmax_overlaps, :4])
 
             labels_cat = gt_boxes[argmax_overlaps, 4]
-            labels_cat = labels_cat * (
-                1 - (labels == 0)
-            )  # FIXME labels != 0 trigger__ne__ NotImplementedError
+            labels_cat = labels_cat * (labels != 0)
             ignore_mask = labels == -1
             labels_cat = labels_cat * (1 - ignore_mask) - ignore_mask
 
@@ -197,15 +195,13 @@ class RetinaNet(M.Module):
                 )
                 bbox_targets[gt_argmax_overlaps, :] = matched_low_bbox_targets
 
-            labels_cat_list.append(F.add_axis(labels_cat, 0))
-            bbox_targets_list.append(F.add_axis(bbox_targets, 0))
+            labels_cat_list.append(labels_cat)
+            bbox_targets_list.append(bbox_targets)
 
         return (
-            # FIXME
-            F.concat(labels_cat_list, axis=0).detach(),
-            F.concat(bbox_targets_list, axis=0).detach(),
-            # layers.detach(F.concat(labels_cat_list, axis=0)),
-            # layers.detach(F.concat(bbox_targets_list, axis=0)),
+            # FIXME stack is NotImplemented yet
+            layers.stack(labels_cat_list, axis=0).detach(),
+            layers.stack(bbox_targets_list, axis=0).detach(),
         )
 
 
@@ -246,7 +242,7 @@ class RetinaNetConfig:
         self.cls_prior_prob = 0.01
 
         # ------------------------ loss cfg -------------------------- #
-        self.loss_normalizer_momentum = 0.0  # 0.9  # 0.0 means disable EMA normalizer
+        self.loss_normalizer_momentum = 0.9  # 0.0 means disable EMA normalizer
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.smooth_l1_beta = 0  # use L1 loss

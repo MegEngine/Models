@@ -12,10 +12,8 @@ import megengine.functional as F
 from megengine import Tensor
 
 
-def detach(x):
-    wrapper= type(x)
-    tensor = type(x.__wrapped__)
-    return wrapper(tensor(x.__wrapped__._data))
+def stack(tensor_list, axis):
+    return F.concat([F.add_axis(x, axis) for x in tensor_list], axis=axis)
 
 
 def get_padded_tensor(
@@ -39,8 +37,8 @@ def get_padded_tensor(
     )
     padded_width = (t_width + multiple_number - 1) // multiple_number * multiple_number
 
-    padded_array = (
-        F.ones([batch, chl, padded_height, padded_width], dtype=np.float32) * pad_value
+    padded_array = F.full(
+        (batch, chl, padded_height, padded_width), pad_value, dtype=np.float32
     )
 
     ndim = array.ndim

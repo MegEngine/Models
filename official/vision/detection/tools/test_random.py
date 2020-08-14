@@ -29,8 +29,8 @@ logger.set_mgb_log_level("ERROR")
 
 logger = mge.get_logger(__name__)
 
-from megengine.core._imperative_rt import imperative
-imperative._set_async_mode(2)
+# from megengine.core._imperative_rt import imperative
+# imperative._set_async_mode(2)
 
 
 def make_parser():
@@ -183,7 +183,7 @@ def worker(
             model.cfg.test_image_max_size,
         )
         pred_res = evaluator.predict(
-            image=mge.tensor(image.astype(np.float32)),
+            image=mge.tensor(image),
             im_info=mge.tensor(im_info)
         )
         result_queue.put_nowait(
