@@ -67,10 +67,12 @@ class FasterRCNN(M.Module):
         }
 
     def preprocess_image(self, image):
+        padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
-            image - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
+            padded_image
+            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
         ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
-        return layers.get_padded_tensor(normed_image, 32, 0.0)
+        return normed_image
 
     def forward(self, inputs):
         images = inputs["image"]

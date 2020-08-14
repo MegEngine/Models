@@ -89,7 +89,7 @@ class DetectionPadCollator(Collator):
         batch_data = defaultdict(list)
 
         for image, boxes, boxes_category, info in inputs:
-            batch_data["data"].append(image)
+            batch_data["data"].append(image.astype(np.float32))
             batch_data["gt_boxes"].append(
                 np.concatenate([boxes, boxes_category[:, np.newaxis]], axis=1).astype(
                     np.float32
@@ -172,7 +172,7 @@ class DetEvaluator:
         )
         resized_img = cv2.flip(resized_img, 1) if flip else resized_img
         trans_img = np.ascontiguousarray(
-            resized_img.transpose(2, 0, 1)[None, :, :, :], dtype=np.uint8
+            resized_img.transpose(2, 0, 1)[None, :, :, :], dtype=np.float32
         )
         im_info = np.array(
             [(resized_height, resized_width, original_height, original_width)],

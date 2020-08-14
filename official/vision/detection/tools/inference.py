@@ -57,8 +57,8 @@ def main():
     data, im_info = DetEvaluator.process_inputs(
         ori_img.copy(), model.cfg.test_image_short_size, model.cfg.test_image_max_size,
     )
+    model.inputs["image"].set_value(data)
     model.inputs["im_info"].set_value(im_info)
-    model.inputs["image"].set_value(data.astype(np.float32))
     pred_res = evaluator.predict(val_func)
     res_img = DetEvaluator.vis_det(
         ori_img, pred_res, is_show_label=True, classes=COCO.class_names,
