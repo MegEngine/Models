@@ -81,10 +81,12 @@ class RetinaNet(M.Module):
         self.loss_normalizer = mge.tensor(100.0)
 
     def preprocess_image(self, image):
+        padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
-            image - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
+            padded_image
+            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
         ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
-        return layers.get_padded_tensor(normed_image, 32, 0.0)
+        return normed_image
 
     def forward(self, inputs):
         image = self.preprocess_image(inputs["image"])
@@ -98,7 +100,8 @@ class RetinaNet(M.Module):
             for _ in box_logits
         ]
         box_offsets_list = [
-            _.dimshuffle(0, 2, 3, 1).reshape(self.batch_size, -1, 4) for _ in box_offsets
+            _.dimshuffle(0, 2, 3, 1).reshape(self.batch_size, -1, 4)
+            for _ in box_offsets
         ]
 
         anchors_list = [
