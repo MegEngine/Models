@@ -1,0 +1,47 @@
+# -*- coding: utf-8 -*-
+# MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
+#
+# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import megengine.functional as F
+
+
+class IoUMatcher:
+
+    def __init__(self, thresholds, labels, allow_low_quality_matches=False):
+        assert len(thresholds) + 1 == len(labels), "thresholds and labels are not matched"
+        assert all(low <= high for (low, high) in zip(thresholds[:-1], thresholds[1:]))
+        thresholds.append(float("inf"))
+        thresholds.insert(0, -float("inf"))
+
+        self.thresholds = thresholds
+        self.labels = labels
+        self.allow_low_quality_matches = allow_low_quality_matches
+
+    def __call__(self, iou_matrix):
+        """
+        iou_matrix(tensor): A two dim tensor with shape of (N, M). N is number of GT-boxes,
+            while M is the number of anchors in detection.
+        """
+        assert len(iou_matrix.shape) == 2
+        max_scores = F.max(iou_matrix, axis=0)
+        match_indices = F.argmax(iou_matrix, axis=0)
+
+        # default ignore label: -1
+        labels = F.full_like(max_scores, -1).astype("int32")
+
+        for label, low, high in zip(self.labels, self.thresholds[:-1], self.thresholds[1:]):
+            masks = ((max_scores >= low) * (max_scores <= high)).astype("int32")
+            labels = labels * (1 - masks) + masks * label
+
+        if self.allow_low_quality_matches:
+            indices = F.argmax(iou_matrix, axis=1)
+            labels[indices] = F.full(indices.shape, value=self.labels[-1], dtype=labels.dtype)
+            match_indices[indices] = F.arange(
+                0, indices.shape[0], dtype=match_indices.dtype, device=iou_matrix.device
+            )
+
+        return match_indices, labels

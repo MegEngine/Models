@@ -27,9 +27,9 @@ class RetinaNet(M.Module):
         self.batch_size = batch_size
 
         self.anchor_gen = layers.DefaultAnchorGenerator(
-            base_size=4,
             anchor_scales=self.cfg.anchor_scales,
             anchor_ratios=self.cfg.anchor_ratios,
+            strides=self.cfg.stride,
         )
         self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
@@ -91,10 +91,7 @@ class RetinaNet(M.Module):
             _.transpose(0, 2, 3, 1).reshape(self.batch_size, -1, 4) for _ in box_offsets
         ]
 
-        anchors_list = [
-            self.anchor_gen(features[i], self.stride_list[i])
-            for i in range(len(features))
-        ]
+        anchors_list = self.anchor_gen(features)
 
         all_level_box_logits = F.concat(box_logits_list, axis=1)
         all_level_box_offsets = F.concat(box_offsets_list, axis=1)
@@ -159,7 +156,6 @@ class RetinaNet(M.Module):
             return all_level_box_scores[0], clipped_box
 
     def get_ground_truth(self, anchors, batched_gt_boxes, batched_valid_gt_box_number):
-        total_anchors = anchors.shape[0]
         labels_cat_list = []
         bbox_targets_list = []
 
@@ -233,8 +229,12 @@ class RetinaNetConfig:
         self.reg_mean = [0.0, 0.0, 0.0, 0.0]
         self.reg_std = [1.0, 1.0, 1.0, 1.0]
 
-        self.anchor_scales = [2 ** 0, 2 ** (1 / 3), 2 ** (2 / 3)]
-        self.anchor_ratios = [0.5, 1, 2]
+        self.anchor_scales = [
+            [x, x * 2 ** (1.0 / 3), x * 2 ** (2.0 / 3)]
+            for x in [32, 64, 128, 256, 512]
+        ]
+        self.anchor_ratios = [[0.5, 1, 2]]
+
         self.negative_thresh = 0.4
         self.positive_thresh = 0.5
         self.allow_low_quality = True
