@@ -30,6 +30,7 @@ class RetinaNet(M.Module):
             anchor_scales=self.cfg.anchor_scales,
             anchor_ratios=self.cfg.anchor_ratios,
             strides=self.cfg.stride,
+            offset=self.cfg.anchor_offset,
         )
         self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
@@ -66,7 +67,7 @@ class RetinaNet(M.Module):
         # ----------------------- build the RetinaNet Head ------------------ #
         self.head = layers.RetinaNetHead(cfg, feature_shapes)
 
-        self.loss_normalizer = mge.Buffer(np.array(100.0))
+        self.loss_normalizer = mge.tensor(100.0)
 
     def preprocess_image(self, image):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
@@ -234,6 +235,7 @@ class RetinaNetConfig:
             for x in [32, 64, 128, 256, 512]
         ]
         self.anchor_ratios = [[0.5, 1, 2]]
+        self.anchor_offset = 0.5
 
         self.negative_thresh = 0.4
         self.positive_thresh = 0.5
@@ -261,7 +263,7 @@ class RetinaNetConfig:
         self.max_epoch = 18
         self.warm_iters = 500
         self.lr_decay_rate = 0.1
-        self.lr_decay_stages = [12, 16, 17]
+        self.lr_decay_stages = [12, 16]
 
         # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800

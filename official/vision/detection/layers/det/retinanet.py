@@ -12,7 +12,7 @@ from typing import List
 import megengine.module as M
 from megengine import Tensor
 
-from official.vision.detection.layers import basic
+from official.vision.detection import layers
 
 
 class RetinaNetHead(M.Module):
@@ -20,16 +20,17 @@ class RetinaNetHead(M.Module):
     The head used in RetinaNet for object classification and box regression.
     """
 
-    def __init__(self, cfg, input_shape: List[basic.ShapeSpec]):
+    def __init__(self, cfg, input_shape: List[layers.ShapeSpec]):
         super().__init__()
 
         in_channels = input_shape[0].channels
         num_classes = cfg.num_classes
         num_convs = 4
         prior_prob = cfg.cls_prior_prob
-        num_anchors = [len(cfg.anchor_scales) * len(cfg.anchor_ratios)] * len(
-            input_shape
-        )
+        num_anchors = [
+            len(cfg.anchor_scales[i]) * len(cfg.anchor_ratios[i])
+            for i in range(len(input_shape))
+        ]
 
         assert (
             len(set(num_anchors)) == 1

@@ -14,6 +14,8 @@ import numpy as np
 from megengine import Tensor, tensor
 import megengine.functional as F
 
+from official.vision.detection import layers
+
 
 def meshgrid(x, y):
     assert len(x.shape) == 1
@@ -24,12 +26,12 @@ def meshgrid(x, y):
     return mesh_x, mesh_y
 
 
-def create_anchor_grid(featmap_size, offsets, stride):
+def create_anchor_grid(featmap_size, offsets, stride, device):
     step_x, step_y = featmap_size
     shift = offsets * stride
 
-    grid_x = F.arange(shift, step_x * stride + shift, step=stride)
-    grid_y = F.arange(shift, step_y * stride + shift, step=stride)
+    grid_x = F.arange(shift, step_x * stride + shift, step=stride, device=device)
+    grid_y = F.arange(shift, step_y * stride + shift, step=stride, device=device)
     grids_x, grids_y = meshgrid(grid_y, grid_x)
     return grids_x.reshape(-1), grids_y.reshape(-1)
 
@@ -42,12 +44,12 @@ class BaseAnchorGenerator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def generate_anchors_by_features(self, sizes) -> List[Tensor]:
+    def generate_anchors_by_features(self, sizes, device) -> List[Tensor]:
         pass
 
     def __call__(self, featmaps):
         feat_sizes = [fmap.shape[-2:] for fmap in featmaps]
-        return self.generate_anchors_by_features(feat_sizes)
+        return self.generate_anchors_by_features(feat_sizes, featmaps[0].device)
 
     @property
     def anchor_dim(self):
@@ -91,7 +93,6 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         assert len(ratios) == self.num_features
         return [
             tensor(self.generate_base_anchors(scale, ratio))
-            # self.generate_base_anchors(scale, ratio)
             for scale, ratio in zip(scales, ratios)
         ]
 
@@ -107,16 +108,14 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
                 base_anchors.append([x0, y0, x1, y1])
         return base_anchors
 
-    def generate_anchors_by_features(self, sizes):
+    def generate_anchors_by_features(self, sizes, device):
         all_anchors = []
         assert len(sizes) == self.num_features, (
             "input features expected {}, got {}".format(self.num_features, len(sizes))
         )
         for size, stride, base_anchor in zip(sizes, self.strides, self.base_anchors):
-            grid_x, grid_y = create_anchor_grid(size, self.offset, stride)
-            # FIXME: If F.stack works, change to stack
-            grid_x, grid_y = grid_x.reshape(-1, 1), grid_y.reshape(-1, 1)
-            grids = F.concat([grid_x, grid_y, grid_x, grid_y], axis=1)
+            grid_x, grid_y = create_anchor_grid(size, self.offset, stride, device)
+            grids = layers.stack([grid_x, grid_y, grid_x, grid_y], axis=1)
             all_anchors.append(
                 (grids.reshape(-1, 1, 4) + base_anchor.reshape(1, -1, 4)).reshape(-1, 4)
             )
