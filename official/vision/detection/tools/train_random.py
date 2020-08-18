@@ -20,11 +20,10 @@ from tabulate import tabulate
 import numpy as np
 
 import megengine as mge
-from megengine import optimizer as optim
+import megengine.distributed as dist
+import megengine.optimizer as optim
 from megengine.data import DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-from megengine.distributed.group import get_default_group, init_process_group
-from megengine.distributed.server import Server
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import (
@@ -86,13 +85,14 @@ def main():
         os.makedirs(log_dir)
 
     if world_size > 1:
-        server = Server()
-        server.serve_in_thread()
-        addr, port = server.server_address
+        master_ip = "localhost"
+        port = dist.get_free_ports(1)[0]
         mp.set_start_method("spawn")
         processes = list()
         for i in range(world_size):
-            process = mp.Process(target=worker, args=(i, world_size, addr, port, args))
+            process = mp.Process(
+                target=worker, args=(i, world_size, master_ip, port, args)
+            )
             process.start()
             processes.append(process)
 
@@ -102,15 +102,16 @@ def main():
         worker(0, 1, 0, 0, args)
 
 
-def worker(rank, world_size, addr, port, args):
+def worker(rank, world_size, master_ip, port, args):
     if world_size > 1:
-        init_process_group(
-            addr=addr,
+        dist.init_process_group(
+            master_ip=master_ip,
             port=port,
             world_size=world_size,
             rank=rank,
+            device=rank,
         )
-        group = get_default_group()
+        group = dist.get_default_group()
         mge.device.set_default_device("gpu{}".format(group.rank))
         logger.info("Init process group for gpu{} done".format(group.rank))
     else:

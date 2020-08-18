@@ -17,9 +17,8 @@ from tqdm import tqdm
 import numpy as np
 
 import megengine as mge
+import megengine.distributed as dist
 from megengine.data import DataLoader, SequentialSampler
-from megengine.distributed.group import get_default_group, init_process_group
-from megengine.distributed.server import Server
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import DetEvaluator
@@ -73,9 +72,8 @@ def main():
             args.end_epoch = args.start_epoch
         assert 0 <= args.start_epoch <= args.end_epoch < cfg.max_epoch
 
-    server = Server()
-    server.serve_in_thread()
-    addr, port = server.server_address
+    master_ip = "localhost"
+    port = dist.get_free_ports(1)[0]
 
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
         if args.weight_file:
@@ -97,7 +95,7 @@ def main():
                     args.dataset_dir,
                     i,
                     args.ngpus,
-                    addr,
+                    master_ip,
                     port,
                     result_queue,
                 ),
@@ -153,15 +151,16 @@ def main():
 
 
 def worker(
-    current_network, model_file, data_dir, rank, world_size, addr, port, result_queue
+    current_network, model_file, data_dir, rank, world_size, master_ip, port, result_queue
 ):
-    init_process_group(
-        addr=addr,
+    dist.init_process_group(
+        master_ip=master_ip,
         port=port,
         world_size=world_size,
         rank=rank,
+        device=rank,
     )
-    group = get_default_group()
+    group = dist.get_default_group()
     mge.device.set_default_device("gpu{}".format(group.rank))
 
     cfg = current_network.Cfg()
