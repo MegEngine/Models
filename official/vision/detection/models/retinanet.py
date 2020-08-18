@@ -67,6 +67,9 @@ class RetinaNet(M.Module):
         # ----------------------- build the RetinaNet Head ------------------ #
         self.head = layers.RetinaNetHead(cfg, feature_shapes)
 
+        self.matcher = layers.Matcher(
+            cfg.match_thresholds, cfg.match_labels, cfg.match_allow_low_quality
+        )
         self.loss_normalizer = mge.tensor(100.0)
 
     def preprocess_image(self, image):
@@ -110,21 +113,19 @@ class RetinaNet(M.Module):
                 gamma=self.cfg.focal_loss_gamma,
                 norm_type=norm_type,
             )
-            rpn_bbox_loss = (
-                layers.get_smooth_l1_loss(
-                    all_level_box_offsets,
-                    box_gt_offsets,
-                    box_gt_scores,
-                    self.cfg.smooth_l1_beta,
-                    norm_type=norm_type,
-                )
-                * self.cfg.reg_loss_weight
-            )
+            rpn_bbox_loss = layers.get_smooth_l1_loss(
+                all_level_box_offsets,
+                box_gt_offsets,
+                box_gt_scores,
+                self.cfg.smooth_l1_beta,
+                norm_type=norm_type,
+            ) * self.cfg.reg_loss_weight
 
             if norm_type == "none":
+                num_fg = (box_gt_scores > 0).astype(np.float32).sum()
                 self.loss_normalizer = \
                     self.loss_normalizer * self.cfg.loss_normalizer_momentum + \
-                    (box_gt_scores > 0).sum() * (1 - self.cfg.loss_normalizer_momentum)
+                    num_fg * (1 - self.cfg.loss_normalizer_momentum)
                 rpn_cls_loss = rpn_cls_loss / F.maximum(self.loss_normalizer, 1)
                 rpn_bbox_loss = rpn_bbox_loss / F.maximum(self.loss_normalizer, 1)
 
@@ -157,47 +158,27 @@ class RetinaNet(M.Module):
             return all_level_box_scores[0], clipped_box
 
     def get_ground_truth(self, anchors, batched_gt_boxes, batched_valid_gt_box_number):
-        labels_cat_list = []
+        labels_list = []
         bbox_targets_list = []
 
         for b_id in range(self.batch_size):
             gt_boxes = batched_gt_boxes[b_id, : batched_valid_gt_box_number[b_id]]
 
-            overlaps = layers.get_iou(anchors, gt_boxes[:, :4])
-            argmax_overlaps = F.argmax(overlaps, axis=1)
+            overlaps = layers.get_iou(gt_boxes[:, :4], anchors)
 
-            max_overlaps = F.remove_axis(
-                F.gather(overlaps, 1, F.add_axis(argmax_overlaps, 1)), 1
-            )
+            match_indices, labels = self.matcher(overlaps)
 
-            labels = F.full_like(max_overlaps, -1)
-            labels = labels * (max_overlaps >= self.cfg.negative_thresh)
-            labels = labels * (max_overlaps < self.cfg.positive_thresh) + (
-                max_overlaps >= self.cfg.positive_thresh
-            )
+            labels = gt_boxes[match_indices, 4] * (labels == 1) - (labels == -1)
+            # FIXME
+            # labels[labels == 1] = gt_boxes[match_indices, 4][labels == 1]
+            bbox_targets = self.box_coder.encode(anchors, gt_boxes[match_indices, :4])
 
-            bbox_targets = self.box_coder.encode(anchors, gt_boxes[argmax_overlaps, :4])
-
-            labels_cat = gt_boxes[argmax_overlaps, 4]
-            labels_cat = labels_cat * (labels != 0)
-            ignore_mask = labels == -1
-            labels_cat = labels_cat * (1 - ignore_mask) - ignore_mask
-
-            # assign low_quality boxes
-            if self.cfg.allow_low_quality:
-                gt_argmax_overlaps = F.argmax(overlaps, axis=0)
-                labels_cat[gt_argmax_overlaps] = gt_boxes[:, 4]
-                matched_low_bbox_targets = self.box_coder.encode(
-                    anchors[gt_argmax_overlaps, :], gt_boxes[:, :4]
-                )
-                bbox_targets[gt_argmax_overlaps, :] = matched_low_bbox_targets
-
-            labels_cat_list.append(labels_cat)
+            labels_list.append(labels)
             bbox_targets_list.append(bbox_targets)
 
         return (
             # FIXME stack is NotImplemented yet
-            layers.stack(labels_cat_list, axis=0).detach(),
+            layers.stack(labels_list, axis=0).detach(),
             layers.stack(bbox_targets_list, axis=0).detach(),
         )
 
@@ -237,9 +218,9 @@ class RetinaNetConfig:
         self.anchor_ratios = [[0.5, 1, 2]]
         self.anchor_offset = 0.5
 
-        self.negative_thresh = 0.4
-        self.positive_thresh = 0.5
-        self.allow_low_quality = True
+        self.match_thresholds = [0.4, 0.5]
+        self.match_labels = [0, -1, 1]
+        self.match_allow_low_quality = True
         self.class_aware_box = False
         self.cls_prior_prob = 0.01
 

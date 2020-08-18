@@ -9,7 +9,7 @@
 import megengine.functional as F
 
 
-class IoUMatcher:
+class Matcher:
 
     def __init__(self, thresholds, labels, allow_low_quality_matches=False):
         assert len(thresholds) + 1 == len(labels), "thresholds and labels are not matched"
@@ -21,27 +21,27 @@ class IoUMatcher:
         self.labels = labels
         self.allow_low_quality_matches = allow_low_quality_matches
 
-    def __call__(self, iou_matrix):
+    def __call__(self, matrix):
         """
-        iou_matrix(tensor): A two dim tensor with shape of (N, M). N is number of GT-boxes,
+        matrix(tensor): A two dim tensor with shape of (N, M). N is number of GT-boxes,
             while M is the number of anchors in detection.
         """
-        assert len(iou_matrix.shape) == 2
-        max_scores = F.max(iou_matrix, axis=0)
-        match_indices = F.argmax(iou_matrix, axis=0)
+        assert len(matrix.shape) == 2
+        max_scores = F.max(matrix, axis=0)
+        match_indices = F.argmax(matrix, axis=0)
 
         # default ignore label: -1
-        labels = F.full_like(max_scores, -1).astype("int32")
+        labels = F.full_like(match_indices, -1)
 
         for label, low, high in zip(self.labels, self.thresholds[:-1], self.thresholds[1:]):
-            masks = ((max_scores >= low) * (max_scores <= high)).astype("int32")
+            masks = (F.logical_and(max_scores >= low, max_scores <= high)).astype(labels.dtype)  # FIXME
             labels = labels * (1 - masks) + masks * label
 
         if self.allow_low_quality_matches:
-            indices = F.argmax(iou_matrix, axis=1)
+            indices = F.argmax(matrix, axis=1)
             labels[indices] = F.full(indices.shape, value=self.labels[-1], dtype=labels.dtype)
             match_indices[indices] = F.arange(
-                0, indices.shape[0], dtype=match_indices.dtype, device=iou_matrix.device
+                0, indices.shape[0], dtype=match_indices.dtype, device=match_indices.device
             )
 
         return match_indices, labels

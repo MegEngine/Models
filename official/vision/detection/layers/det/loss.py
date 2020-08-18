@@ -52,18 +52,18 @@ def get_focal_loss(
 
     labels = F.add_axis(labels, axis=2)
     scores = F.sigmoid(logits)
-    pos_part = (1 - scores) ** gamma * F.logsigmoid(logits)
-    neg_part = scores ** gamma * F.logsigmoid(-logits)
+    pos_part = -(1 - scores) ** gamma * F.logsigmoid(logits)
+    neg_part = -scores ** gamma * F.logsigmoid(-logits)
 
-    pos_loss = -(labels == class_range) * pos_part * alpha
-    neg_loss = (
-        -(labels != class_range) * (labels != ignore_label) * neg_part * (1 - alpha)
+    pos_loss = pos_part * alpha * (labels == class_range)
+    neg_loss = neg_part * (1 - alpha) * F.logical_and(
+        labels != class_range, labels != ignore_label
     )
-    loss = (pos_loss + neg_loss).sum()
+    loss = pos_loss.sum() + neg_loss.sum()
 
     if norm_type == "fg":
-        fg_mask = (labels != background) * (labels != ignore_label)
-        return loss / F.maximum(fg_mask.sum(), 1)
+        fg_mask = F.logical_and(labels != background, labels != ignore_label)
+        return loss / F.maximum(fg_mask.astype(np.float32).sum(), 1)
     elif norm_type == "none":
         return loss
     else:
@@ -105,16 +105,16 @@ def get_smooth_l1_loss(
     gt_bbox = gt_bbox.reshape(-1, 4)
     labels = labels.reshape(-1)
 
-    fg_mask = (labels != background) * (labels != ignore_label)
+    fg_mask = F.logical_and(labels != background, labels != ignore_label)
 
     loss = get_smooth_l1_base(pred_bbox, gt_bbox, beta)
     # loss = (loss.sum(axis=1) * fg_mask).sum()
     loss = (F.remove_axis(loss.sum(axis=1), 1) * fg_mask).sum()  # FIXME
     if norm_type == "fg":
-        loss = loss / F.maximum(fg_mask.sum(), 1)
+        loss = loss / F.maximum(fg_mask.astype(np.float32).sum(), 1)
     elif norm_type == "all":
         all_mask = labels != ignore_label
-        loss = loss / F.maximum(all_mask.sum(), 1)
+        loss = loss / F.maximum(all_mask.astype(np.float32).sum(), 1)
     elif norm_type == "none":
         return loss
     else:

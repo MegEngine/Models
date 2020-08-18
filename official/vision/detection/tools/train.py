@@ -112,6 +112,8 @@ def worker(rank, world_size, addr, port, args):
         group = get_default_group()
         mge.device.set_default_device("gpu{}".format(group.rank))
         logger.info("Init process group for gpu{} done".format(group.rank))
+    else:
+        group = None
 
     sys.path.insert(0, os.path.dirname(args.file))
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])

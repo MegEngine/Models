@@ -10,9 +10,10 @@ from .anchor import *
 from .box_utils import *
 from .fpn import *
 from .loss import *
+from .matcher import *
 from .pooler import *
 from .rcnn import *
-from .retinanet import *
+from .retina_head import *
 from .rpn import *
 
 _EXCLUDE = {}

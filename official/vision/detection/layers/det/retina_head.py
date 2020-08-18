@@ -41,18 +41,18 @@ class RetinaNetHead(M.Module):
         bbox_subnet = []
         for _ in range(num_convs):
             cls_subnet.append(
-                M.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1,)
+                M.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
             )
             cls_subnet.append(M.ReLU())
             bbox_subnet.append(
-                M.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1,)
+                M.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
             )
             bbox_subnet.append(M.ReLU())
 
         self.cls_subnet = M.Sequential(*cls_subnet)
         self.bbox_subnet = M.Sequential(*bbox_subnet)
         self.cls_score = M.Conv2d(
-            in_channels, num_anchors * num_classes, kernel_size=3, stride=1, padding=1,
+            in_channels, num_anchors * num_classes, kernel_size=3, stride=1, padding=1
         )
         self.bbox_pred = M.Conv2d(
             in_channels, num_anchors * 4, kernel_size=3, stride=1, padding=1
@@ -60,10 +60,7 @@ class RetinaNetHead(M.Module):
 
         # Initialization
         for modules in [
-            self.cls_subnet,
-            self.bbox_subnet,
-            self.cls_score,
-            self.bbox_pred,
+            self.cls_subnet, self.bbox_subnet, self.cls_score, self.bbox_pred
         ]:
             for layer in modules.modules():
                 if isinstance(layer, M.Conv2d):
