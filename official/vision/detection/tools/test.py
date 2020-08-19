@@ -182,7 +182,7 @@ def worker(
         result_queue.put_nowait(
             {
                 "det_res": pred_res,
-                "image_id": int(data_dict[1][2][0].split(".")[0]),
+                "image_id": int(data_dict[1][2][0].split(".")[0].split("_")[-1]),
             }
         )
 
