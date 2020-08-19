@@ -242,7 +242,7 @@ class DetEvaluator:
                         dataset_class.class_names[int(box[5])]
                     ]
                 else:
-                    elem["category_id"] = int(box[5])
+                    elem["category_id"] = int(box[5]) + 1
                 all_results.append(elem)
         return all_results
 

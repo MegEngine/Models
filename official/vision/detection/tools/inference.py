@@ -18,6 +18,7 @@ import megengine as mge
 from megengine import jit
 from megengine.data.dataset import COCO
 
+from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import DetEvaluator
 
 logger = mge.get_logger(__name__)
@@ -61,7 +62,10 @@ def main():
     model.inputs["im_info"].set_value(im_info)
     pred_res = evaluator.predict(val_func)
     res_img = DetEvaluator.vis_det(
-        ori_img, pred_res, is_show_label=True, classes=COCO.class_names,
+        ori_img,
+        pred_res,
+        is_show_label=True,
+        classes=data_mapper[cfg.test_dataset["name"]].class_names,
     )
     cv2.imwrite("results.jpg", res_img)
 
