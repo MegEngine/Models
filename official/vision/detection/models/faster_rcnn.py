@@ -26,6 +26,7 @@ class FasterRCNN(M.Module):
         bottom_up = getattr(resnet, cfg.backbone)(
             norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
         )
+        del bottom_up.fc
 
         # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
         if self.cfg.backbone_freeze_at >= 1:
