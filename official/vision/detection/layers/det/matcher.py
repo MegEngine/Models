@@ -38,10 +38,9 @@ class Matcher:
             labels = labels * (1 - masks) + masks * label
 
         if self.allow_low_quality_matches:
-            indices = F.argmax(matrix, axis=1)
-            labels[indices] = F.full(indices.shape, value=self.labels[-1], dtype=labels.dtype)
-            match_indices[indices] = F.arange(
-                0, indices.shape[0], dtype=match_indices.dtype, device=match_indices.device
-            )
+            max_scores = F.max(matrix, axis=1)
+            masks = matrix == F.add_axis(max_scores, 1)
+            masks = (F.sum(masks.astype(labels.dtype), axis=0) > 0).astype(labels.dtype)  # FIXME
+            labels = labels * (1 - masks) + masks
 
         return match_indices, labels
