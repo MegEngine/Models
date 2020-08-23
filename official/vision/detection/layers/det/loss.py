@@ -63,7 +63,7 @@ def get_focal_loss(
 
     if norm_type == "fg":
         fg_mask = F.logical_and(labels != background, labels != ignore_label)
-        return loss / F.maximum(fg_mask.astype(np.float32).sum(), 1)
+        return loss / F.maximum(fg_mask.astype(loss.dtype).sum(), 1)
     elif norm_type == "none":
         return loss
     else:
@@ -108,13 +108,12 @@ def get_smooth_l1_loss(
     fg_mask = F.logical_and(labels != background, labels != ignore_label)
 
     loss = get_smooth_l1_base(pred_bbox, gt_bbox, beta)
-    # loss = (loss.sum(axis=1) * fg_mask).sum()
-    loss = (F.remove_axis(loss.sum(axis=1), 1) * fg_mask).sum()  # FIXME
+    loss = (F.sum(loss, axis=1) * fg_mask).sum()  # FIXME
     if norm_type == "fg":
-        loss = loss / F.maximum(fg_mask.astype(np.float32).sum(), 1)
+        loss = loss / F.maximum(fg_mask.astype(loss.dtype).sum(), 1)
     elif norm_type == "all":
         all_mask = labels != ignore_label
-        loss = loss / F.maximum(all_mask.astype(np.float32).sum(), 1)
+        loss = loss / F.maximum(all_mask.astype(loss.dtype).sum(), 1)
     elif norm_type == "none":
         return loss
     else:
@@ -157,5 +156,5 @@ def softmax_loss(scores: Tensor, labels: Tensor, ignore_label: int = -1) -> Tens
     mask = labels != ignore_label
     vlabels = labels * mask
     loss = -(F.indexing_one_hot(log_prob, vlabels.astype("int32"), 1) * mask).sum()
-    loss = loss / F.maximum(mask.sum(), 1)
+    loss = loss / F.maximum(mask.astype(loss.dtype).sum(), 1)
     return loss

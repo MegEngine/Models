@@ -71,7 +71,6 @@ class RetinaNet(M.Module):
         self.matcher = layers.Matcher(
             cfg.match_thresholds, cfg.match_labels, cfg.match_allow_low_quality
         )
-        self.loss_normalizer = mge.tensor(100.0)
 
     def preprocess_image(self, image):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
@@ -106,29 +105,18 @@ class RetinaNet(M.Module):
             box_gt_scores, box_gt_offsets = self.get_ground_truth(
                 all_level_anchors, gt_boxes, im_info[:, 4].astype(np.int32),
             )
-            norm_type = "none" if self.cfg.loss_normalizer_momentum > 0.0 else "fg"
             rpn_cls_loss = layers.get_focal_loss(
                 all_level_box_logits,
                 box_gt_scores,
                 alpha=self.cfg.focal_loss_alpha,
                 gamma=self.cfg.focal_loss_gamma,
-                norm_type=norm_type,
             )
             rpn_bbox_loss = layers.get_smooth_l1_loss(
                 all_level_box_offsets,
                 box_gt_offsets,
                 box_gt_scores,
                 self.cfg.smooth_l1_beta,
-                norm_type=norm_type,
             ) * self.cfg.reg_loss_weight
-
-            if norm_type == "none":
-                num_fg = (box_gt_scores > 0).astype(np.float32).sum()
-                self.loss_normalizer = \
-                    self.loss_normalizer * self.cfg.loss_normalizer_momentum + \
-                    num_fg * (1 - self.cfg.loss_normalizer_momentum)
-                rpn_cls_loss = rpn_cls_loss / F.maximum(self.loss_normalizer, 1)
-                rpn_bbox_loss = rpn_bbox_loss / F.maximum(self.loss_normalizer, 1)
 
             total = rpn_cls_loss + rpn_bbox_loss
             loss_dict = {
@@ -178,9 +166,8 @@ class RetinaNet(M.Module):
             bbox_targets_list.append(bbox_targets)
 
         return (
-            # FIXME stack is NotImplemented yet
-            layers.stack(labels_list, axis=0).detach(),
-            layers.stack(bbox_targets_list, axis=0).detach(),
+            F.stack(labels_list, axis=0).detach(),
+            F.stack(bbox_targets_list, axis=0).detach(),
         )
 
 
@@ -226,7 +213,6 @@ class RetinaNetConfig:
         self.cls_prior_prob = 0.01
 
         # ------------------------ loss cfg -------------------------- #
-        self.loss_normalizer_momentum = 0.9  # 0.0 means disable EMA normalizer
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.smooth_l1_beta = 0  # use L1 loss

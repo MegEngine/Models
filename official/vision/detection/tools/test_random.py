@@ -23,13 +23,8 @@ from megengine.data import DataLoader, SequentialSampler
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import DetEvaluator, PseudoDetectionDataset
 
-from megengine import logger
-logger.set_mgb_log_level("ERROR")
-
 logger = mge.get_logger(__name__)
-
-# from megengine.core._imperative_rt import imperative
-# imperative._set_async_mode(2)
+logger.setLevel("INFO")
 
 
 def make_parser():
@@ -160,8 +155,7 @@ def worker(
         rank=rank,
         device=rank,
     )
-    group = dist.get_default_group()
-    mge.device.set_default_device("gpu{}".format(group.rank))
+    mge.device.set_default_device("gpu{}".format(rank))
 
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
@@ -185,12 +179,10 @@ def worker(
             image=mge.tensor(image),
             im_info=mge.tensor(im_info)
         )
-        result_queue.put_nowait(
-            {
-                "det_res": pred_res,
-                "image_id": int(data[1][2][0].split(".")[0]),
-            }
-        )
+        result_queue.put_nowait({
+            "det_res": pred_res,
+            "image_id": int(data[1][2][0].split(".")[0]),
+        })
 
 
 def build_dataset():

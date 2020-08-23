@@ -115,7 +115,7 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         )
         for size, stride, base_anchor in zip(sizes, self.strides, self.base_anchors):
             grid_x, grid_y = create_anchor_grid(size, self.offset, stride, device)
-            grids = layers.stack([grid_x, grid_y, grid_x, grid_y], axis=1)
+            grids = F.stack([grid_x, grid_y, grid_x, grid_y], axis=1)
             all_anchors.append(
                 (grids.reshape(-1, 1, 4) + base_anchor.reshape(1, -1, 4)).reshape(-1, 4)
             )

@@ -33,13 +33,8 @@ from official.vision.detection.tools.utils import (
     PseudoDetectionDataset
 )
 
-from megengine import logger
-logger.set_mgb_log_level("ERROR")
-
 logger = mge.get_logger(__name__)
-
-# from megengine.core._imperative_rt import imperative
-# imperative._set_async_mode(2)
+logger.setLevel("INFO")
 
 
 def make_parser():
@@ -111,11 +106,7 @@ def worker(rank, world_size, master_ip, port, args):
             rank=rank,
             device=rank,
         )
-        group = dist.get_default_group()
-        mge.device.set_default_device("gpu{}".format(group.rank))
-        logger.info("Init process group for gpu{} done".format(group.rank))
-    else:
-        group = None
+        logger.info("Init process group for gpu{} done".format(rank))
 
     sys.path.insert(0, os.path.dirname(args.file))
     current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
@@ -126,7 +117,7 @@ def worker(rank, world_size, master_ip, port, args):
     if rank == 0:
         logger.info(get_config_info(model.cfg))
     opt = optim.SGD(
-        {"params": model.parameters(requires_grad=True), "dist_group": group},  # FIXME
+        {"params": model.parameters(requires_grad=True), "dist_group": dist.WORLD},
         lr=model.cfg.basic_lr * world_size * model.batch_size,
         momentum=model.cfg.momentum,
         weight_decay=model.cfg.weight_decay,

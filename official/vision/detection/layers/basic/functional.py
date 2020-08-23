@@ -12,10 +12,6 @@ import megengine.functional as F
 from megengine import Tensor
 
 
-def stack(tensor_list, axis):
-    return F.concat([F.add_axis(x, axis) for x in tensor_list], axis=axis)
-
-
 def get_padded_tensor(
     array: Tensor, multiple_number: int = 32, pad_value: float = 0
 ) -> Tensor:

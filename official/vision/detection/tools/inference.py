@@ -20,10 +20,8 @@ from megengine.data.dataset import COCO
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import DetEvaluator
 
-from megengine import logger
-logger.set_mgb_log_level("ERROR")
-
 logger = mge.get_logger(__name__)
+logger.setLevel("INFO")
 
 
 def make_parser():

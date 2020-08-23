@@ -34,7 +34,7 @@ class Matcher:
         labels = F.full_like(match_indices, -1)
 
         for label, low, high in zip(self.labels, self.thresholds[:-1], self.thresholds[1:]):
-            masks = (F.logical_and(max_scores >= low, max_scores <= high)).astype(labels.dtype)  # FIXME
+            masks = ((max_scores >= low) & (max_scores <= high)).astype(labels.dtype)
             labels = labels * (1 - masks) + masks * label
 
         if self.allow_low_quality_matches:
