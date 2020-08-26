@@ -319,7 +319,8 @@ class PseudoDetectionDataset(VisionDataset):
         self.boxes_category = []
         self.info = []
         for i in range(self.length):
-            self.image.append(np.random.randint(256, size=(320, 480, 3), dtype=np.uint8))
+            h, w = np.random.randint(300, 501, size=2)
+            self.image.append(np.random.randint(256, size=(h, w, 3), dtype=np.uint8))
             b = []
             c = []
             for i in range(np.random.randint(1, 10)):
@@ -328,7 +329,7 @@ class PseudoDetectionDataset(VisionDataset):
                 c.append(np.random.randint(1, 81, dtype=np.int32))
             self.boxes.append(np.concatenate(b))
             self.boxes_category.append(np.stack(c))
-            self.info.append({"height": 320, "width": 480, "file_name": str(i)})
+            self.info.append({"height": h, "width": w, "file_name": str(i)})
 
     def __getitem__(self, index):
         target = []
