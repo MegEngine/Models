@@ -69,6 +69,7 @@ def main():
 
     master_ip = "localhost"
     port = dist.get_free_ports(1)[0]
+    server = dist.Server(port)
 
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
         if args.weight_file:
@@ -181,7 +182,7 @@ def worker(
         )
         result_queue.put_nowait({
             "det_res": pred_res,
-            "image_id": int(data[1][2][0].split(".")[0]),
+            "image_id": int(data[1][2][0].split(".")[0].split("_")[-1]),
         })
 
 

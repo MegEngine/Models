@@ -45,7 +45,7 @@ def make_parser():
         "-w", "--weight_file", default=None, type=str, help="weights file",
     )
     parser.add_argument(
-        "-n", "--ngpus", default=-1, type=int, help="total number of gpus for training",
+        "-n", "--ngpus", default=1, type=int, help="total number of gpus for training",
     )
     parser.add_argument(
         "-b", "--batch_size", default=2, type=int, help="batchsize for training",
@@ -62,30 +62,20 @@ def main():
     args = parser.parse_args()
 
     # ------------------------ begin training -------------------------- #
-    valid_nr_dev = mge.get_device_count("gpu")
-    if args.ngpus == -1:
-        world_size = valid_nr_dev
-    else:
-        if args.ngpus > valid_nr_dev:
-            logger.error("do not have enough gpus for training")
-            sys.exit(1)
-        else:
-            world_size = args.ngpus
-
-    logger.info("Device Count = %d", world_size)
+    logger.info("Device Count = %d", args.ngpus)
 
     log_dir = "log-of-{}".format(os.path.basename(args.file).split(".")[0])
     if not os.path.isdir(log_dir):
         os.makedirs(log_dir)
 
-    if world_size > 1:
+    if args.ngpus > 1:
         master_ip = "localhost"
         port = dist.get_free_ports(1)[0]
-        mp.set_start_method("spawn")
+        server = dist.Server(port)
         processes = list()
-        for i in range(world_size):
+        for i in range(args.ngpus):
             process = mp.Process(
-                target=worker, args=(i, world_size, master_ip, port, args)
+                target=worker, args=(i, args.ngpus, master_ip, port, args)
             )
             process.start()
             processes.append(process)
@@ -116,11 +106,11 @@ def worker(rank, world_size, master_ip, port, args):
     if rank == 0:
         logger.info(get_config_info(model.cfg))
     opt = optim.SGD(
-        {"params": model.parameters(requires_grad=True), "dist_group": dist.WORLD},
-        lr=model.cfg.basic_lr * world_size * model.batch_size,
+        model.parameters(requires_grad=True),
+        lr=model.cfg.basic_lr * model.batch_size,
         momentum=model.cfg.momentum,
         weight_decay=model.cfg.weight_decay,
-        bcast_period=0,
+        reduce_method="sum",
         param_pack=True,
     )
 
@@ -133,27 +123,8 @@ def worker(rank, world_size, master_ip, port, args):
     train_loader = iter(build_dataloader(model.batch_size, args.dataset_dir, model.cfg))
 
     for epoch_id in range(model.cfg.max_epoch):
-        for param_group in opt.param_groups:
-            param_group["lr"] = (
-                model.cfg.basic_lr
-                * world_size
-                * model.batch_size
-                * (
-                    model.cfg.lr_decay_rate
-                    ** bisect.bisect_right(model.cfg.lr_decay_stages, epoch_id)
-                )
-            )
-
         tot_steps = model.cfg.nr_images_epoch // (model.batch_size * world_size)
-        train_one_epoch(
-            model,
-            train_loader,
-            opt,
-            tot_steps,
-            rank,
-            epoch_id,
-            world_size,
-        )
+        train_one_epoch(model, train_loader, opt, tot_steps, rank, epoch_id)
         if rank == 0:
             save_path = "log-of-{}/epoch_{}.pkl".format(
                 os.path.basename(args.file).split(".")[0], epoch_id
@@ -164,20 +135,12 @@ def worker(rank, world_size, master_ip, port, args):
             logger.info("dump weights to %s", save_path)
 
 
-def train_one_epoch(
-    model,
-    data_queue,
-    opt,
-    tot_steps,
-    rank,
-    epoch_id,
-    world_size,
-):
+def train_one_epoch(model, data_queue, opt, tot_steps, rank, epoch_id):
     meter = AverageMeter(record_len=model.cfg.num_losses)
     time_meter = AverageMeter(record_len=2)
     log_interval = model.cfg.log_interval
     for step in range(tot_steps):
-        adjust_learning_rate(opt, epoch_id, step, model, world_size)
+        adjust_learning_rate(opt, epoch_id, step, model)
 
         data_tik = time.time()
         mini_batch = next(data_queue)
@@ -236,10 +199,9 @@ def get_config_info(config):
     return config_table
 
 
-def adjust_learning_rate(optimizer, epoch_id, step, model, world_size):
+def adjust_learning_rate(optimizer, epoch_id, step, model):
     base_lr = (
         model.cfg.basic_lr
-        * world_size
         * model.batch_size
         * (
             model.cfg.lr_decay_rate
@@ -247,10 +209,11 @@ def adjust_learning_rate(optimizer, epoch_id, step, model, world_size):
         )
     )
     # Warm up
+    lr_factor = 1.0
     if epoch_id == 0 and step < model.cfg.warm_iters:
         lr_factor = (step + 1.0) / model.cfg.warm_iters
-        for param_group in optimizer.param_groups:
-            param_group["lr"] = base_lr * lr_factor
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = base_lr * lr_factor
 
 
 def build_dataset(data_dir, cfg):
