@@ -7,27 +7,23 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import importlib
 import json
 import os
-import random
-import sys
 from multiprocessing import Process, Queue
-
-import cv2
-import megengine as mge
-import numpy as np
-from megengine import jit
-from megengine.data import DataLoader, SequentialSampler
-from megengine.data.dataset import COCO as COCODataset
-import megengine.data.transform as T
 from tqdm import tqdm
 
-from official.vision.keypoints.dataset import COCOJoints
-from official.vision.keypoints.transforms import RandomBoxAffine, ExtendBoxes
-from official.vision.keypoints.config import Config as cfg
-import official.vision.keypoints.models as M
+import cv2
+import numpy as np
 
+import megengine as mge
+import megengine.data.transform as T
+import megengine.distributed as dist
+from megengine.data import DataLoader, SequentialSampler
+
+import official.vision.keypoints.models as kpm
+from official.vision.keypoints.config import Config as cfg
+from official.vision.keypoints.dataset import COCOJoints
+from official.vision.keypoints.transforms import ExtendBoxes, RandomBoxAffine
 
 logger = mge.get_logger(__name__)
 
@@ -36,7 +32,9 @@ def build_dataloader(rank, world_size, data_root, ann_file):
     val_dataset = COCOJoints(
         data_root, ann_file, image_set="val2017", order=("image", "boxes", "info")
     )
-    val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
+    val_sampler = SequentialSampler(
+        val_dataset, cfg.batch_size, world_size=world_size, rank=rank
+    )
     val_dataloader = DataLoader(
         val_dataset,
         sampler=val_sampler,
@@ -51,8 +49,8 @@ def build_dataloader(rank, world_size, data_root, ann_file):
                     random_extend_prob=0,
                 ),
                 RandomBoxAffine(
-                    degrees=(0, 0),
-                    scale=(1, 1),
+                    degrees=0,
+                    scale=0,
                     output_shape=cfg.input_shape,
                     rotate_prob=0,
                     scale_prob=0,
@@ -76,10 +74,11 @@ def find_keypoints(pred, bbox):
         dtype=np.float32,
     )
     pred_aug[:, border:-border, border:-border] = pred.copy()
-    for i in range(pred_aug.shape[0]):
-        pred_aug[i] = cv2.GaussianBlur(
-            pred_aug[i], (cfg.test_gaussian_kernel, cfg.test_gaussian_kernel), 0
-        )
+    pred_aug = cv2.GaussianBlur(
+        pred_aug.transpose(1, 2, 0),
+        (cfg.test_gaussian_kernel, cfg.test_gaussian_kernel),
+        0,
+    ).transpose(2, 0, 1)
 
     results = np.zeros((pred_aug.shape[0], 3), dtype=np.float32)
     for i in range(pred_aug.shape[0]):
@@ -154,12 +153,7 @@ def find_keypoints(pred, bbox):
     return results
 
 
-def find_results(func, img, bbox, info):
-    outs = func()
-    outs = outs.numpy()
-    pred = outs[0]
-    fliped_pred = outs[1][cfg.keypoint_flip_order][:, :, ::-1]
-    pred = (pred + fliped_pred) / 2
+def find_results(pred, bbox, info):
 
     results = find_keypoints(pred, bbox)
 
@@ -178,7 +172,15 @@ def find_results(func, img, bbox, info):
 
 
 def worker(
-    arch, model_file, data_root, ann_file, worker_id, total_worker, result_queue,
+    arch,
+    model_file,
+    data_root,
+    ann_file,
+    master_ip,
+    port,
+    rank,
+    world_size,
+    result_queue,
 ):
     """
     :param net_file: network description file
@@ -188,31 +190,61 @@ def worker(
     :param total_worker: number of gpu for evaluation
     :param result_queue: processing queue
     """
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(worker_id)
+    if world_size > 1:
+        dist.init_process_group(
+            master_ip=master_ip,
+            port=port,
+            world_size=world_size,
+            rank=rank,
+            device=rank,
+        )
 
-    @jit.trace(symbolic=True, opt_level=2)
-    def val_func():
-        pred = model.predict()
-        return pred
+    mge.device.set_default_device("gpu{}".format(rank))
 
-    model = getattr(M, arch)()
+    model = getattr(kpm, arch)()
     model.eval()
-    model.load_state_dict(mge.load(model_file)["state_dict"])
+    weight = mge.load(model_file)
+    weight = weight["state_dict"] if "state_dict" in weight.keys() else weight
+    model.load_state_dict(weight)
 
-    loader = build_dataloader(worker_id, total_worker, data_root, ann_file)
+    loader = build_dataloader(rank, world_size, data_root, ann_file)
+
     for data_dict in loader:
         img, bbox, info = data_dict
+
         fliped_img = img[:, :, :, ::-1] - np.zeros_like(img)
         data = np.concatenate([img, fliped_img], 0)
-        model.inputs["image"].set_value(np.ascontiguousarray(data).astype(np.float32))
-        instance = find_results(val_func, img, bbox[0, 0], info)
+        data = np.ascontiguousarray(data).astype(np.float32)
 
-        result_queue.put_nowait(instance)
+        outs = model.predict(mge.tensor(data)).numpy()
+        preds = outs[: img.shape[0]]
+        preds_fliped = outs[img.shape[0]:, cfg.keypoint_flip_order, :, ::-1]
+        preds = (preds + preds_fliped) / 2
+
+        for i in range(preds.shape[0]):
+
+            results = find_keypoints(preds[i], bbox[i, 0])
+
+            final_score = float(results[:, -1].mean() * info[-1][i])
+            image_id = int(info[-2][i])
+
+            keypoints = results.copy()
+            keypoints[:, -1] = 1
+            keypoints = keypoints.reshape(-1,).tolist()
+            instance = {
+                "image_id": image_id,
+                "category_id": 1,
+                "score": final_score,
+                "keypoints": keypoints,
+            }
+
+            result_queue.put_nowait(instance)
 
 
 def make_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--ngpus", default=8, type=int)
+    parser.add_argument("-n", "--ngpus", default=None, type=int)
+    parser.add_argument("-b", "--batch_size", default=None, type=int)
     parser.add_argument(
         "-dt",
         "--dt_file",
@@ -221,7 +253,12 @@ def make_parser():
     )
     parser.add_argument("-se", "--start_epoch", default=-1, type=int)
     parser.add_argument("-ee", "--end_epoch", default=-1, type=int)
-    parser.add_argument("-md", "--model_dir", default="/data/models/simplebaseline_res50_256x192/", type=str)
+    parser.add_argument(
+        "-md",
+        "--model_dir",
+        default="/data/models/simplebaseline_res50_256x192/",
+        type=str,
+    )
     parser.add_argument("-tf", "--test_freq", default=1, type=int)
 
     parser.add_argument(
@@ -229,12 +266,7 @@ def make_parser():
         "--arch",
         default="simplebaseline_res50",
         type=str,
-        choices=[
-            "simplebaseline_res50",
-            "Simplebaseline_res101",
-            "Simplebaseline_res152",
-            "mspn_4stage",
-        ],
+        choices=cfg.model_choices,
     )
     parser.add_argument(
         "-m",
@@ -251,6 +283,13 @@ def main():
 
     parser = make_parser()
     args = parser.parse_args()
+
+    args.ngpus = (
+        dist.helper.get_device_count_by_fork("gpu")
+        if args.ngpus is None
+        else args.ngpus
+    )
+    cfg.batch_size = cfg.batch_size if args.batch_size is None else args.batch_size
 
     dt_path = os.path.join(cfg.data_root, "person_detection_results", args.dt_file)
     dets = json.load(open(dt_path, "r"))
@@ -273,15 +312,19 @@ def main():
         if args.model:
             model_file = args.model
         else:
-            model_file = "{}/epoch_{}.pkl".format(
-                args.model_dir, epoch_num
-            )
+            model_file = "{}/epoch_{}.pkl".format(args.model_dir, epoch_num)
         logger.info("Load Model : %s completed", model_file)
 
         all_results = list()
-        result_queue = Queue(2000)
+
+        result_queue = Queue(5000)
         procs = []
         for i in range(args.ngpus):
+
+            master_ip = "localhost"
+            port = dist.get_free_ports(1)[0]
+            dist.Server(port)
+
             proc = Process(
                 target=worker,
                 args=(
@@ -289,6 +332,8 @@ def main():
                     model_file,
                     cfg.data_root,
                     ann_file,
+                    master_ip,
+                    port,
                     i,
                     args.ngpus,
                     result_queue,

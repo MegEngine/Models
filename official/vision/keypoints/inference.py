@@ -7,22 +7,20 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import json
-import os
-
-import cv2
-import megengine as mge
-import numpy as np
-from megengine import jit
 import math
 
-from official.vision.keypoints.transforms import get_affine_transform
-from official.vision.keypoints.config import Config as cfg
+import cv2
+import numpy as np
 
-import official.vision.keypoints.models as M
+import megengine as mge
+
 import official.vision.detection.configs as Det
+import official.vision.keypoints.models as kpm
+from official.vision.detection.tools.nms import py_cpu_nms
 from official.vision.detection.tools.utils import DetEvaluator
+from official.vision.keypoints.config import Config as cfg
 from official.vision.keypoints.test import find_keypoints
+from official.vision.keypoints.transforms import get_affine_transform
 
 logger = mge.get_logger(__name__)
 
@@ -34,12 +32,7 @@ def make_parser():
         "--arch",
         default="simplebaseline_res50",
         type=str,
-        choices=[
-            "simplebaseline_res50",
-            "simplebaseline_res101",
-            "simplebaseline_res152",
-            "mspn_4stage",
-        ],
+        choices=cfg.model_choices,
     )
     parser.add_argument(
         "-det", "--detector", default="retinanet_res50_coco_1x_800size", type=str,
@@ -58,13 +51,11 @@ def make_parser():
 
 
 class KeypointEvaluator:
-    def __init__(self, detect_model, det_func, keypoint_model, keypoint_func):
+    def __init__(self, detect_model, keypoint_model):
 
         self.detector = detect_model
-        self.det_func = det_func
 
         self.keypoint_model = keypoint_model
-        self.keypoint_func = keypoint_func
 
     def detect_persons(self, image):
 
@@ -74,21 +65,22 @@ class KeypointEvaluator:
             self.detector.cfg.test_image_max_size,
         )
 
-        self.detector.inputs["im_info"].set_value(im_info)
-        self.detector.inputs["image"].set_value(data.astype(np.float32))
-
         evaluator = DetEvaluator(self.detector)
-        det_res = evaluator.predict(self.det_func)
+
+        det_res = evaluator.predict(image=mge.tensor(data), im_info=mge.tensor(im_info))
 
         persons = []
         for d in det_res:
             cls_id = int(d[5] + 1)
             if cls_id == 1:
-                bbox = d[:4]
+                bbox = d[:5]
                 persons.append(bbox)
-        return persons
+        persons = np.array(persons).reshape(-1, 5)
+        keep = py_cpu_nms(persons, cfg.nms_thr)
+        return persons[keep]
 
     def predict_single_person(self, image, bbox):
+        bbox = bbox[:4]
 
         w = bbox[2] - bbox[0]
         h = bbox[3] - bbox[1]
@@ -104,6 +96,15 @@ class KeypointEvaluator:
             extend_h = extend_w / w_h_ratio
         else:
             extend_w = extend_h * w_h_ratio
+
+        bbox = np.array(
+            [
+                center_x - extend_w / 2,
+                center_y - extend_h / 2,
+                center_x + extend_w / 2,
+                center_y + extend_h / 2,
+            ]
+        ).reshape(4,)
 
         trans = get_affine_transform(
             np.array([center_x, center_y]),
@@ -126,9 +127,7 @@ class KeypointEvaluator:
         keypoint_input = keypoint_input.transpose(0, 3, 1, 2)
         keypoint_input = np.ascontiguousarray(keypoint_input).astype(np.float32)
 
-        self.keypoint_model.inputs["image"].set_value(keypoint_input)
-
-        outs = self.keypoint_func()
+        outs = self.keypoint_model.predict(mge.tensor(keypoint_input))
         outs = outs.numpy()
         pred = outs[0]
         fliped_pred = outs[1][cfg.keypoint_flip_order][:, :, ::-1]
@@ -184,22 +183,12 @@ def main():
     detector.eval()
     logger.info("Load Model : %s completed", args.detector)
 
-    keypoint_model = getattr(M, args.arch)()
+    keypoint_model = getattr(kpm, args.arch)()
     keypoint_model.load_state_dict(mge.load(args.model)["state_dict"])
     keypoint_model.eval()
     logger.info("Load Model : %s completed", args.arch)
 
-    @jit.trace(symbolic=True)
-    def det_func():
-        pred = detector(detector.inputs)
-        return pred
-
-    @jit.trace(symbolic=True)
-    def keypoint_func():
-        pred = keypoint_model.predict()
-        return pred
-
-    evaluator = KeypointEvaluator(detector, det_func, keypoint_model, keypoint_func)
+    evaluator = KeypointEvaluator(detector, keypoint_model)
 
     image = cv2.imread(args.image)
 

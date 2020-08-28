@@ -12,10 +12,10 @@
 #
 # Copyright (c) Microsoft
 # ---------------------------------------------------------------------
-from megengine.data.transform import VisionTransform, RandomHorizontalFlip
-from megengine.data.transform.vision import functional as F
 import cv2
 import numpy as np
+
+from megengine.data.transform import RandomHorizontalFlip, VisionTransform
 
 
 def get_dir(src_point, rot_rad):
@@ -109,7 +109,7 @@ class HalfBodyTransform(VisionTransform):
 
             # randomly keep only the upper or lower body
             # ensure the selected part has at least 3 joints
-            if np.random.randn() < 0.5 and len(upper_joints) > 3:
+            if np.random.random() < 0.5 and len(upper_joints) > 3:
                 selected_joints = upper_joints
             else:
                 selected_joints = (
@@ -150,7 +150,8 @@ class ExtendBoxes(VisionTransform):
     :param extend_x: ratio that width is extended.
     :param extend_y: ratio that height is extended.
     :param w_h_ratio: width/height ratio.
-    :param random_extend_prob: probability that boxes are randomly extended, in which case extend_x and extend_y are the maximum ratios.
+    :param random_extend_prob: probability that boxes are randomly extended,
+    in which case extend_x and extend_y are the maximum ratios.
     """
 
     def __init__(self, extend_x, extend_y, w_h_ratio, random_extend_prob=1, order=None):
@@ -237,12 +238,14 @@ class RandomBoxAffine(VisionTransform):
         scale = 1
         is_scale = np.random.random() < self.scale_prob
         if is_scale:
-            scale = np.random.uniform(self.scale_range[0], self.scale_range[1])
+            scale = np.random.randn() * self.scale_range + 1
+            scale = np.clip(scale, 1 - self.scale_range, 1 + self.scale_range)
 
         degree = 0
         is_rotate = np.random.random() < self.rotate_prob
         if is_rotate:
-            degree = np.random.uniform(self.degrees_range[0], self.degrees_range[1])
+            degree = np.random.randn() * self.degrees_range
+            degree = np.clip(degree, -2 * self.degrees_range, 2 * self.degrees_range)
 
         bbox = input[self.order.index("boxes")][0]
 

@@ -6,14 +6,13 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import megengine as mge
+import math
+
 import megengine.functional as F
 import megengine.hub as hub
 import megengine.module as M
-import math
-import official.vision.classification.resnet.model as resnet
 
-import numpy as np
+import official.vision.classification.resnet.model as resnet
 
 
 class ResnetBody(M.Module):
@@ -26,7 +25,7 @@ class ResnetBody(M.Module):
         zero_init_residual=False,
         norm=M.BatchNorm2d,
     ):
-        super(ResnetBody, self).__init__()
+        super().__init__()
         self.in_channels = init_channel
         self.layer1 = self._make_layer(
             block, channels[0], layers[0], stride=1, norm=norm
@@ -89,7 +88,7 @@ class SingleStage(M.Module):
     def __init__(
         self, block, init_channel, layers, channels, mid_channel, norm=M.BatchNorm2d
     ):
-        super(SingleStage, self).__init__()
+        super().__init__()
         self.down = ResnetBody(block, init_channel, layers, channels, norm)
         channel = block.expansion * channels[-1]
         self.up1 = M.Sequential(
@@ -145,11 +144,17 @@ class SingleStage(M.Module):
 
 
 class MSPN(M.Module):
-    def __init__(self, block, layers, channels, mid_channel, keypoint_num, nr_stg):
-        super(MSPN, self).__init__()
-
-        block = getattr(resnet, block)
-        norm = M.BatchNorm2d
+    def __init__(
+        self,
+        block,
+        layers,
+        channels,
+        mid_channel,
+        keypoint_num,
+        nr_stg,
+        norm=M.BatchNorm2d,
+    ):
+        super().__init__()
 
         self.nr_stg = nr_stg
         self.keypoint_num = keypoint_num
@@ -182,41 +187,53 @@ class MSPN(M.Module):
                     M.Conv2d(mid_channel, 64, 1, 1, 0), norm(64), M.ReLU()
                 )
 
-        self.inputs = {
-            "image": mge.tensor(dtype="float32"),
-            "heatmap": mge.tensor(dtype="float32"),
-            "heat_valid": mge.tensor(dtype="float32"),
-        }
+        self._initialize_weights()
 
-    def calc_loss(self):
-        outs = self.forward(self.inputs["image"])
+    def _initialize_weights(self):
+
+        for m in self.modules():
+            if isinstance(m, M.Conv2d):
+                M.init.normal_(m.weight, std=0.001)
+                for name, _ in m.named_parameters():
+                    if name in ["bias"]:
+                        M.init.zeros_(m.bias)
+            if isinstance(m, M.ConvTranspose2d):
+                M.init.normal_(m.weight, std=0.001)
+                for name, _ in m.named_parameters():
+                    if name in ["bias"]:
+                        M.init.zeros_(m.bias)
+            if isinstance(m, M.BatchNorm2d):
+                M.init.ones_(m.weight)
+                M.init.zeros_(m.bias)
+
+    def calc_loss(self, images, heatmaps, heat_valid):
+        outs = self(images)
 
         loss = 0
         for stage_out in outs:
             for ind, scale_out in enumerate(stage_out[:-1]):
-                label = (
-                    self.inputs["heatmap"][:, ind]
-                    * (self.inputs["heat_valid"] > 1.1)[:, :, None, None]
-                )
-                tmp = F.square_loss(scale_out, label)
-                loss += tmp / 4 / len(outs)
+                thre = 0.1 if ind == 3 else 1.1
+                loss_weight = 1 if ind == 3 else 1 / 4 / len(outs)
+                label = heatmaps[:, ind] * F.expand_dims((heat_valid > thre), [2, 3])
+                scale_out = scale_out * F.expand_dims((heat_valid > thre), [2, 3])
+                tmp = F.loss.square_loss(scale_out, label)
+                loss += tmp * loss_weight
 
             # OHKM loss for the largest heatmap
-            tmp = ((stage_out[-1] - self.inputs["heatmap"][:, -1]) ** 2).mean(3).mean(
-                2
-            ) * (self.inputs["heat_valid"] > 0.1)
+            tmp = ((stage_out[-1] - heatmaps[:, -1]) ** 2).mean([2, 3]) * (
+                heat_valid > 0.1
+            )
             ohkm_loss = 0
             for i in range(tmp.shape[0]):
-                selected_loss, _ = F.top_k(
-                    tmp[i], self.keypoint_num // 2, descending=True
-                )
+                selected_loss, _ = F.math.sort(tmp[i], descending=True)
+                selected_loss = selected_loss[: self.keypoint_num // 2]
                 ohkm_loss += selected_loss.mean()
             ohkm_loss /= tmp.shape[0]
             loss += ohkm_loss
         return loss
 
-    def predict(self):
-        outputs = self.forward(self.inputs["image"])
+    def predict(self, images):
+        outputs = self(images)
         pred = outputs[-1][-1]
         return pred
 
@@ -232,7 +249,9 @@ class MSPN(M.Module):
                 out = self.stages["Stage_{}_tail".format(i)]["tail_{}".format(j)](
                     multi_scale_features[j]
                 )
-                out = F.interpolate(out, scale_factor=2 ** (3 - j))
+                out = F.nn.interpolate(
+                    out, scale_factor=2 ** (3 - j), align_corners=True
+                )
                 multi_scale_heatmaps.append(out)
 
             if i < self.nr_stg - 1:
@@ -246,13 +265,16 @@ class MSPN(M.Module):
     "https://data.megengine.org.cn/models/weights/keypoint_models/mspn_4stage_0_255_75_2.pkl"
 )
 def mspn_4stage(**kwargs):
+    block = getattr(resnet, "Bottleneck")
+    norm = M.SyncBatchNorm
     model = MSPN(
-        block="Bottleneck",
+        block=block,
         layers=[5, 5, 6, 3],
         channels=[64, 128, 192, 384],
         nr_stg=4,
         mid_channel=256,
         keypoint_num=17,
+        norm=norm,
         **kwargs
     )
     return model

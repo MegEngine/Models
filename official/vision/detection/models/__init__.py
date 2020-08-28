@@ -9,7 +9,10 @@
 from .atss import *
 from .faster_rcnn import *
 from .fcos import *
+<<<<<<< HEAD
 from .freeanchor import *
+=======
+>>>>>>> fix(vision/classification): fix pylint error due to version change (#61)
 from .retinanet import *
 
 _EXCLUDE = {}

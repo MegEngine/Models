@@ -6,18 +6,16 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import megengine as mge
 import megengine.functional as F
 import megengine.hub as hub
 import megengine.module as M
-import official.vision.classification.resnet.model as resnet
 
-import numpy as np
+import official.vision.classification.resnet.model as resnet
 
 
 class DeconvLayers(M.Module):
     def __init__(self, nf1, nf2s, kernels, num_layers, bias=True, norm=M.BatchNorm2d):
-        super(DeconvLayers, self).__init__()
+        super().__init__()
         _body = []
         for i in range(num_layers):
             kernel = kernels[i]
@@ -38,7 +36,7 @@ class DeconvLayers(M.Module):
 
 class SimpleBaseline(M.Module):
     def __init__(self, backbone, cfg):
-        super(SimpleBaseline, self).__init__()
+        super().__init__()
         norm = M.BatchNorm2d
         self.backbone = getattr(resnet, backbone)(
             norm=norm, pretrained=cfg.backbone_pretrained
@@ -59,35 +57,34 @@ class SimpleBaseline(M.Module):
 
         self._initialize_weights()
 
-        self.inputs = {
-            "image": mge.tensor(dtype="float32"),
-            "heatmap": mge.tensor(dtype="float32"),
-            "heat_valid": mge.tensor(dtype="float32"),
-        }
-
-    def calc_loss(self):
-        out = self.forward(self.inputs["image"])
-        valid = self.inputs["heat_valid"][:, :, None, None]
-        label = self.inputs["heatmap"][:, -1]
-        loss = F.square_loss(out * valid, label * valid)
+    def calc_loss(self, images, heatmaps, heat_valid):
+        out = self(images)
+        valid = F.expand_dims((heat_valid > 0.1), [2, 3])
+        label = heatmaps[:, -1]
+        loss = F.nn.square_loss(out * valid, label * valid)
         return loss
 
-    def predict(self):
-        return self.forward(self.inputs["image"])
+    def predict(self, images):
+        return self(images)
 
     def _initialize_weights(self):
 
-        for k, m in self.deconv_layers.named_modules():
+        for k, m in self.named_modules():
+            if isinstance(m, M.Conv2d):
+                if self.cfg.backbone_pretrained and ("backbone" in k):
+                    continue
+                M.init.normal_(m.weight, std=0.001)
+                for name, _ in m.named_parameters():
+                    if name in ["bias"]:
+                        M.init.zeros_(m.bias)
             if isinstance(m, M.ConvTranspose2d):
                 M.init.normal_(m.weight, std=0.001)
-                if self.cfg.deconv_with_bias:
-                    M.init.zeros_(m.bias)
+                for name, _ in m.named_parameters():
+                    if name in ["bias"]:
+                        M.init.zeros_(m.bias)
             if isinstance(m, M.BatchNorm2d):
                 M.init.ones_(m.weight)
                 M.init.zeros_(m.bias)
-
-        M.init.normal_(self.last_layer.weight, std=0.001)
-        M.init.zeros_(self.last_layer.bias)
 
     def forward(self, x):
         f = self.backbone.extract_features(x)["res5"]
@@ -110,7 +107,8 @@ cfg = SimpleBaseline_Config()
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/keypoint_models/simplebaseline50_256x192_0_255_71_2.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/\
+        simplebaseline50_256x192_0_255_71_2.pkl"
 )
 def simplebaseline_res50(**kwargs):
 
@@ -119,7 +117,8 @@ def simplebaseline_res50(**kwargs):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/keypoint_models/simplebaseline101_256x192_0_255_72_2.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/\
+        simplebaseline101_256x192_0_255_72_2.pkl"
 )
 def simplebaseline_res101(**kwargs):
 
@@ -128,7 +127,8 @@ def simplebaseline_res101(**kwargs):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/keypoint_models/simplebaseline152_256x192_0_255_72_4.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/\
+        simplebaseline152_256x192_0_255_72_4.pkl"
 )
 def simplebaseline_res152(**kwargs):
 

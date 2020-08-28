@@ -1,6 +1,6 @@
 # Human Pose Esimation
 
-本目录包含了采用MegEngine实现的经典[SimpleBaseline](https://arxiv.org/pdf/1804.06208.pdf)和[MSPN](https://arxiv.org/pdf/1901.00148.pdf)网络结构，同时提供了在COCO数据集上的完整训练和测试代码。
+本目录包含了采用MegEngine实现的经典[SimpleBaseline](https://arxiv.org/pdf/1804.06208.pdf), [HRNet](http://openaccess.thecvf.com/content_CVPR_2019/papers/Sun_Deep_High-Resolution_Representation_Learning_for_Human_Pose_Estimation_CVPR_2019_paper.pdf), [MSPN](https://arxiv.org/pdf/1901.00148.pdf)和[RSN](https://arxiv.org/pdf/2003.04030.pdf)的网络结构，同时提供了在COCO数据集上的完整训练和测试代码。
 
 本目录使用了在COCO val2017上的Human AP为56.4的人体检测结果，最后在COCO val2017上人体关节点估计结果为
 |Methods|Backbone|Input Size| AP | Ap .5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
@@ -8,7 +8,11 @@
 | SimpleBaseline |Res50 |256x192| 0.712 | 0.887 | 0.779 | 0.673 | 0.785 | 0.782 | 0.932 | 0.839 | 0.730 | 0.854 |
 | SimpleBaseline |Res101|256x192| 0.722 | 0.891 | 0.795 | 0.687 | 0.795 | 0.794 | 0.936 | 0.855 | 0.745 | 0.863 |
 | SimpleBaseline |Res152|256x192| 0.724 | 0.888 | 0.794 | 0.688 | 0.795 | 0.795 | 0.934 | 0.856 | 0.746 | 0.863 |
-| MSPN_4stage |MSPN|256x192| 0.752 | 0.900 | 0.819 | 0.716 | 0.825 | 0.819 | 0.943 | 0.875 | 0.770 | 0.887 |
+| HRNet-W32   |HRNet-W32|256x192| 0.740 | 0.896 | 0.806 | 0.702 | 0.812 | 0.805 | 0.938 | 0.860 | 0.756 | 0.871 |
+| HRNet-W48   |HRNet-W48|256x192| 0.745 | 0.899 | 0.811 | 0.706 | 0.818 | 0.810 | 0.942 | 0.867 | 0.760 | 0.878 |
+| RSN18       |RSN18    |256x192| 0.721 | 0.891 | 0.789 | 0.682 | 0.795 | 0.790 | 0.935 | 0.846 | 0.738 | 0.860 |
+| RSN50       |RSN50    |256x192| 0.732 | 0.895 | 0.800 | 0.692 | 0.805 | 0.799 | 0.937 | 0.856 | 0.748 | 0.868 |
+| MSPN_4stage |MSPN     |256x192| 0.752 | 0.900 | 0.819 | 0.716 | 0.825 | 0.819 | 0.943 | 0.875 | 0.770 | 0.887 |
 
 ## 安装和环境配置
 
@@ -119,5 +123,7 @@ python3 inference.py --arch /name/of/tested/network \
 
 ## 参考文献
 
-- [Simple Baselines for Human Pose Estimation and Tracking](https://arxiv.org/pdf/1804.06208.pdf) Bin Xiao, Haiping Wu, and Yichen Wei
-- [Rethinking on Multi-Stage Networks for Human Pose Estimation](https://arxiv.org/pdf/1901.00148.pdf) Wenbo Li1, Zhicheng Wang, Binyi Yin, Qixiang Peng, Yuming Du, Tianzi Xiao, Gang Yu, Hongtao Lu, Yichen Wei and Jian Sun
+- [Simple Baselines for Human Pose Estimation and Tracking](https://arxiv.org/abs/1804.06208) Bin Xiao, Haiping Wu, and Yichen Wei. European Conference on Computer Vision (ECCV), 2018.
+- [Deep High-Resolution Representation Learning for Human Pose Estimation](https://arxiv.org/abs/1902.09212) Ke Sun Bin Xiao Dong Liu Jingdong Wang. IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2019.
+- [Learning Delicate Local Representations for Multi-Person Pose Estimation](https://arxiv.org/abs/2003.04030) Yuanhao Cai, Zhicheng Wang, Zhengxiong Luo, Binyi Yin, Angang Du, Haoqian Wang, Xiangyu Zhang, Xinyu Zhou, Erjin Zhou, and Jian Sun. European Conference on Computer Vision (ECCV), 2020.
+- [Rethinking on Multi-Stage Networks for Human Pose Estimation](https://arxiv.org/abs/1901.00148) Wenbo Li, Zhicheng Wang, Binyi Yin, Qixiang Peng, Yuming Du, Tianzi Xiao, Gang Yu, Hongtao Lu, Yichen Wei and Jian Sun.
