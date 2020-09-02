@@ -27,7 +27,7 @@ class Matcher:
             while M is the number of anchors in detection.
         """
         assert len(matrix.shape) == 2
-        max_scores = F.max(matrix, axis=0)
+        max_scores = matrix.max(axis=0)
         match_indices = F.argmax(matrix, axis=0)
 
         # default ignore label: -1
@@ -40,7 +40,7 @@ class Matcher:
         if self.allow_low_quality_matches:
             max_scores = F.max(matrix, axis=1)
             masks = matrix == F.add_axis(max_scores, 1)
-            masks = (F.sum(masks.astype(labels.dtype), axis=0) > 0).astype(labels.dtype)  # FIXME
+            masks = (masks.astype(labels.dtype).sum(axis=0) > 0).astype(labels.dtype)
             labels = labels * (1 - masks) + masks
 
         return match_indices, labels

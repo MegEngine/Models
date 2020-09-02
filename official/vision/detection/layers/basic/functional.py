@@ -34,7 +34,7 @@ def get_padded_tensor(
     padded_width = (t_width + multiple_number - 1) // multiple_number * multiple_number
 
     padded_array = F.full(
-        (batch, chl, padded_height, padded_width), pad_value, dtype=np.float32
+        (batch, chl, padded_height, padded_width), pad_value, dtype=array.dtype
     )
 
     ndim = array.ndim
