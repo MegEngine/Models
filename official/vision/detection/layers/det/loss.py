@@ -9,8 +9,6 @@
 import megengine.functional as F
 from megengine.core import Tensor
 
-from official.vision.detection import layers
-
 
 def binary_cross_entropy_with_logits(logits: Tensor, targets: Tensor) -> Tensor:
     r"""Binary Cross Entropy

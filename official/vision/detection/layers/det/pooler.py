@@ -7,42 +7,41 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import math
-
 import numpy as np
 
-import megengine as mge
 import megengine.functional as F
 
 
 def roi_pool(
     rpn_fms, rois, stride, pool_shape, roi_type="roi_align",
 ):
+    rois = rois.detach()
     assert len(stride) == len(rpn_fms)
     canonical_level = 4
     canonical_box_size = 224
-    min_level = math.log2(stride[0])
-    max_level = math.log2(stride[-1])
+    min_level = int(math.log2(stride[0]))
+    max_level = int(math.log2(stride[-1]))
 
     num_fms = len(rpn_fms)
     box_area = (rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2])
     level_assignments = F.floor(
-        canonical_level + F.log(box_area.sqrt() / canonical_box_size) / np.log(2)
-    )
+        canonical_level + F.log(F.sqrt(box_area) / canonical_box_size) / np.log(2)
+    ).astype("int32")
     level_assignments = F.minimum(level_assignments, max_level)
     level_assignments = F.maximum(level_assignments, min_level)
     level_assignments = level_assignments - min_level
 
     # avoid empty assignment
     level_assignments = F.concat(
-        [level_assignments, mge.tensor(np.arange(num_fms, dtype=np.int32))],
+        [level_assignments, F.arange(0, num_fms, dtype="int32", device=level_assignments.device)],
     )
-    rois = F.concat([rois, mge.zeros((num_fms, rois.shapeof(-1)))])
+    rois = F.concat([rois, F.zeros((num_fms, rois.shape[-1]))])
 
     pool_list, inds_list = [], []
     for i in range(num_fms):
-        mask = level_assignments == i
-        _, inds = F.cond_take(mask == 1, mask)
-        level_rois = rois.ai[inds]
+        _, inds = F.cond_take(level_assignments == i, level_assignments)
+        level_rois = rois[inds]
+
         if roi_type == "roi_pool":
             pool_fm = F.roi_pooling(
                 rpn_fms[i], level_rois, pool_shape, mode="max", scale=1.0 / stride[i]
@@ -60,9 +59,8 @@ def roi_pool(
         pool_list.append(pool_fm)
         inds_list.append(inds)
 
-    fm_order = F.concat(inds_list, axis=0)
-    fm_order = F.argsort(fm_order.reshape(1, -1))[1].reshape(-1)
+    fm_order = F.argsort(F.concat(inds_list, axis=0))
     pool_feature = F.concat(pool_list, axis=0)
-    pool_feature = pool_feature.ai[fm_order][:-num_fms]
+    pool_feature = pool_feature[fm_order][:-num_fms]
 
     return pool_feature

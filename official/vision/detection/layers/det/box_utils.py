@@ -117,7 +117,7 @@ class PointCoder(BoxCoderBase, metaclass=ABCMeta):
         ], axis=2).reshape(deltas.shape)
 
 
-def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
+def get_iou(boxes1: Tensor, boxes2: Tensor, return_ioa=False) -> Tensor:
     """
     Given two lists of boxes of size N and M,
     compute the IoU (intersection over union)
@@ -126,6 +126,7 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
 
     Args:
         boxes1,boxes2 (Boxes): two `Boxes`. Contains N & M boxes, respectively.
+        return_iob (Bool): wheather return Intersection over Box1 or not, default: False
 
     Returns:
         Tensor: IoU, sized [N,M].
@@ -156,11 +157,11 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     union = b_area_box + b_area_gt - inter
     overlaps = F.maximum(inter / union, 0)
 
-    if return_ignore:
+    if return_ioa:
         overlaps_ignore = F.maximum(inter / b_area_box, 0)
         gt_ignore_mask = F.add_axis((gt[:, 4] == -1), 0).broadcast(*area_target_shape)
-        overlaps *= 1 - gt_ignore_mask
-        overlaps_ignore *= gt_ignore_mask
+        overlaps *= (1 - gt_ignore_mask).astype("float32")
+        overlaps_ignore *= gt_ignore_mask.astype("float32")
         return overlaps, overlaps_ignore
 
     return overlaps
@@ -185,5 +186,6 @@ def get_clipped_box(boxes, hw):
 def filter_boxes(boxes, size=0):
     width = boxes[:, 2] - boxes[:, 0]
     height = boxes[:, 3] - boxes[:, 1]
-    keep = (width > size) * (height > size)
+    # FIXME: bool support
+    keep = (width > size).astype("int32") * (height > size).astype("int32")
     return keep

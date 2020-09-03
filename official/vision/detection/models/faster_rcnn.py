@@ -8,7 +8,6 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import numpy as np
 
-import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 
@@ -55,12 +54,10 @@ class FasterRCNN(M.Module):
         self.RCNN = layers.RCNN(cfg)
 
     def preprocess_image(self, image):
-        padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
-            padded_image
-            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
+            image - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
         ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
-        return normed_image
+        return layers.get_padded_tensor(normed_image, 32, 0.0)
 
     def forward(self, image, im_info, gt_boxes=None):
         image = self.preprocess_image(image)
@@ -99,10 +96,9 @@ class FasterRCNN(M.Module):
         scale_w = im_info[0, 1] / im_info[0, 3]
         scale_h = im_info[0, 0] / im_info[0, 2]
         pred_boxes = pred_boxes / F.concat([scale_w, scale_h, scale_w, scale_h], axis=0)
-
-        clipped_boxes = layers.get_clipped_box(pred_boxes, im_info[0, 2:4]).reshape(
-            -1, self.cfg.num_classes, 4
-        )
+        clipped_boxes = layers.get_clipped_box(
+            pred_boxes, im_info[0, 2:4]
+        ).reshape(-1, self.cfg.num_classes, 4)
         return pred_score, clipped_boxes
 
 
@@ -177,7 +173,7 @@ class FasterRCNNConfig:
         self.train_prev_nms_top_n = 2000
         self.train_post_nms_top_n = 1000
 
-        self.basic_lr = 0.02 / 16  # The basic learning rate for single-image
+        self.basic_lr = 0.02 / 16.0  # The basic learning rate for single-image
         self.momentum = 0.9
         self.weight_decay = 1e-4
         self.log_interval = 20
