@@ -160,12 +160,12 @@ class RPN(M.Module):
             proposals = proposals[keep_inds, :]
             scores = scores[keep_inds]
             levels = levels[keep_inds]
-            keep_inds = F.batched_nms(proposals, scores, levels, nms_threshold)
-            keep_inds = keep_inds[:post_nms_top_n]
+            nms_keep_inds = F.batched_nms(proposals, scores, levels, nms_threshold)
+            nms_keep_inds = nms_keep_inds[:min(post_nms_top_n, nms_keep_inds.shape[0])]
 
             # generate rois to rcnn head, rois shape (N, 5), info [batch_id, x1, y1, x2, y2]
             rois = F.concat([proposals, scores.reshape(-1, 1)], axis=1)
-            rois = rois[keep_inds]
+            rois = rois[nms_keep_inds, :]
             batch_inds = F.full((rois.shape[0], 1), bid)
             batch_rois = F.concat([batch_inds, rois[:, :4]], axis=1)
             return_rois.append(batch_rois)
