@@ -10,7 +10,6 @@ import numpy as np
 
 import megengine.functional as F
 import megengine.module as M
-import megengine.random as rand
 
 from official.vision.detection import layers
 
@@ -61,8 +60,7 @@ class RPN(M.Module):
             scores = self.rpn_cls_score(t)
             pred_cls_logit_list.append(
                 scores.reshape(
-                    scores.shape[0],
-                    2,
+                    scores.shape[0], 2,
                     self.num_cell_anchors,
                     scores.shape[2],
                     scores.shape[3],
@@ -78,7 +76,7 @@ class RPN(M.Module):
                     bbox_offsets.shape[3],
                 )
             )
-        # sample from the predictions
+        # get rois from the predictions
         rpn_rois = self.find_top_rpn_proposals(
             pred_bbox_offset_list, pred_cls_logit_list, all_anchors_list, im_info
         )
@@ -237,8 +235,8 @@ class RPN(M.Module):
         return labels, bbox_targets
 
     def get_ground_truth(self, gt_boxes, im_info, all_anchors_list):
-        final_labels_list = []
-        final_bbox_targets_list = []
+        gt_labels_list = []
+        gt_bbox_targets_list = []
 
         for bid in range(self.cfg.batch_per_gpu):
             batch_labels_list = []
@@ -255,43 +253,21 @@ class RPN(M.Module):
 
             # sample labels
             num_positive = self.cfg.num_sample_anchors * self.cfg.positive_anchor_ratio
-            # sample positive
+            # sample positive labels
             concated_batch_labels = concated_batch_labels.detach()
-            concated_batch_labels = self._bernoulli_sample_labels(
+            concated_batch_labels = layers.sample_labels(
                 concated_batch_labels, num_positive, 1, self.cfg.ignore_label
             )
-            # sample negative
+            # sample negative labels
             # FIXME bool astype
             num_positive = (concated_batch_labels == 1).astype("int32").sum()
             num_negative = self.cfg.num_sample_anchors - num_positive
-            concated_batch_labels = self._bernoulli_sample_labels(
+            concated_batch_labels = layers.sample_labels(
                 concated_batch_labels, num_negative, 0, self.cfg.ignore_label
             )
 
-            final_labels_list.append(concated_batch_labels)
-            final_bbox_targets_list.append(concated_batch_bbox_targets)
-        final_labels = F.concat(final_labels_list, axis=0)
-        final_bbox_targets = F.concat(final_bbox_targets_list, axis=0)
-        return final_labels.detach(), final_bbox_targets.detach()
-
-    def _bernoulli_sample_labels(
-        self, labels, num_samples, sample_value, ignore_label=-1
-    ):
-        """ Using the bernoulli sampling method"""
-        # TODO rewrite this logic
-        # FIXME bool astype
-        sample_label_mask = (labels == sample_value).astype("int32")
-        # NOTE sum to int
-        num_mask = sample_label_mask.sum()
-        num_final_samples = F.minimum(num_mask, num_samples)
-        # here, we use the bernoulli scoreability to sample the anchors
-        uniform_rng = rand.uniform(sample_label_mask.shape[0])
-        sample_score = (
-            (
-                num_final_samples.astype("float32") / num_mask.astype("float32")
-            ).broadcast(uniform_rng.shape)
-        )
-        to_ignore_mask = (uniform_rng >= sample_score).astype("int32") * sample_label_mask
-        labels = labels * (1 - to_ignore_mask) + to_ignore_mask * ignore_label
-
-        return labels
+            gt_labels_list.append(concated_batch_labels)
+            gt_bbox_targets_list.append(concated_batch_bbox_targets)
+        gt_labels = F.concat(gt_labels_list, axis=0)
+        gt_bbox_targets = F.concat(gt_bbox_targets_list, axis=0)
+        return gt_labels.detach(), gt_bbox_targets.detach()
