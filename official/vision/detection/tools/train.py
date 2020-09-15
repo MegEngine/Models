@@ -21,9 +21,11 @@ import numpy as np
 
 import megengine as mge
 import megengine.distributed as dist
-import megengine.optimizer as optim
+from megengine.autodiff import GradManager
 from megengine.data import DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
+from megengine.jit import trace
+from megengine.optimizer import SGD
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import (
@@ -34,6 +36,7 @@ from official.vision.detection.tools.utils import (
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
+mge.device.set_prealloc_config(1024, 1024, 512 * 1024 * 1024, 4)
 
 
 def make_parser():
@@ -73,9 +76,9 @@ def main():
         port = dist.get_free_ports(1)[0]
         server = dist.Server(port)
         processes = list()
-        for i in range(args.ngpus):
+        for rank in range(args.ngpus):
             process = mp.Process(
-                target=worker, args=(i, args.ngpus, master_ip, port, args)
+                target=worker, args=(master_ip, port, args.ngpus, rank, args)
             )
             process.start()
             processes.append(process)
@@ -83,10 +86,10 @@ def main():
         for p in processes:
             p.join()
     else:
-        worker(0, 1, 0, 0, args)
+        worker(None, None, 1, 0, args)
 
 
-def worker(rank, world_size, master_ip, port, args):
+def worker(master_ip, port, world_size, rank, args):
     if world_size > 1:
         dist.init_process_group(
             master_ip=master_ip,
@@ -103,29 +106,47 @@ def worker(rank, world_size, master_ip, port, args):
     model = current_network.Net(current_network.Cfg(), batch_size=args.batch_size)
     model.train()
 
-    if rank == 0:
+    if dist.get_rank() == 0:
         logger.info(get_config_info(model.cfg))
-    opt = optim.SGD(
-        model.parameters(requires_grad=True),
+
+    params_with_grad = []
+    for name, param in model.named_parameters():
+        if "bottom_up.conv1" in name and model.cfg.backbone_freeze_at >= 1:
+            continue
+        if "bottom_up.layer1" in name and model.cfg.backbone_freeze_at >= 2:
+            continue
+        params_with_grad.append(param)
+
+    opt = SGD(
+        params_with_grad,
         lr=model.cfg.basic_lr * model.batch_size,
         momentum=model.cfg.momentum,
-        weight_decay=model.cfg.weight_decay,
-        reduce_method="sum",
-        param_pack=True,
+        weight_decay=model.cfg.weight_decay * dist.get_world_size(),
     )
+
+    gm = GradManager()
+    if dist.get_world_size() > 1:
+        gm.attach(
+            params_with_grad,
+            callbacks=[dist.make_allreduce_cb("SUM", dist.WORLD)]
+        )
+    else:
+        gm.attach(params_with_grad)
 
     if args.weight_file is not None:
         weights = mge.load(args.weight_file)
         model.backbone.bottom_up.load_state_dict(weights)
+    if dist.get_world_size() > 1:
+        dist.bcast_list_(model.parameters(), dist.WORLD)  # sync parameters
 
-    if rank == 0:
+    if dist.get_rank() == 0:
         logger.info("Prepare dataset")
     train_loader = iter(build_dataloader(model.batch_size, args.dataset_dir, model.cfg))
 
     for epoch_id in range(model.cfg.max_epoch):
-        tot_steps = model.cfg.nr_images_epoch // (model.batch_size * world_size)
-        train_one_epoch(model, train_loader, opt, tot_steps, rank, epoch_id)
-        if rank == 0:
+        tot_steps = model.cfg.nr_images_epoch // (model.batch_size * dist.get_world_size())
+        train_one_epoch(model, train_loader, opt, gm, tot_steps, epoch_id)
+        if dist.get_rank() == 0:
             save_path = "log-of-{}/epoch_{}.pkl".format(
                 os.path.basename(args.file).split(".")[0], epoch_id
             )
@@ -135,7 +156,16 @@ def worker(rank, world_size, master_ip, port, args):
             logger.info("dump weights to %s", save_path)
 
 
-def train_one_epoch(model, data_queue, opt, tot_steps, rank, epoch_id):
+def train_one_epoch(model, data_queue, opt, gm, tot_steps, epoch_id):
+    # @trace(symbolic=False)
+    def train_func(image, im_info, gt_boxes):
+        with gm:
+            loss_dict = model(image=image, im_info=im_info, gt_boxes=gt_boxes)
+            gm.backward(loss_dict["total_loss"])
+            loss_list = list(loss_dict.values())
+        opt.step().clear_grad()
+        return loss_list
+
     meter = AverageMeter(record_len=model.cfg.num_losses)
     time_meter = AverageMeter(record_len=2)
     log_interval = model.cfg.log_interval
@@ -147,21 +177,16 @@ def train_one_epoch(model, data_queue, opt, tot_steps, rank, epoch_id):
         data_tok = time.time()
 
         tik = time.time()
-        opt.zero_grad()
-        with opt.record():
-            loss_dict = model(
-                image=mge.tensor(mini_batch["data"]),
-                gt_boxes=mge.tensor(mini_batch["gt_boxes"]),
-                im_info=mge.tensor(mini_batch["im_info"])
-            )
-            opt.backward(loss_dict["total_loss"])
-            loss_list = list(loss_dict.values())
-        opt.step()
+        loss_list = train_func(
+            image=mge.tensor(mini_batch["data"]),
+            im_info=mge.tensor(mini_batch["im_info"]),
+            gt_boxes=mge.tensor(mini_batch["gt_boxes"])
+        )
         tok = time.time()
 
         time_meter.update([tok - tik, data_tok - data_tik])
 
-        if rank == 0:
+        if dist.get_rank() == 0:
             info_str = "e%d, %d/%d, lr:%f, "
             loss_str = ", ".join(
                 ["{}:%f".format(loss) for loss in model.cfg.losses_keys]

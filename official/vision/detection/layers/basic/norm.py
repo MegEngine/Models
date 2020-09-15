@@ -28,7 +28,7 @@ import numpy as np
 
 import megengine.functional as F
 import megengine.module as M
-from megengine import Buffer
+from megengine import Parameter
 
 
 class FrozenBatchNorm2d(M.Module):
@@ -42,18 +42,18 @@ class FrozenBatchNorm2d(M.Module):
         self.num_features = num_features
         self.eps = eps
 
-        self.weight = Buffer(np.ones(num_features, dtype=np.float32))
-        self.bias = Buffer(np.zeros(num_features, dtype=np.float32))
+        self.weight = Parameter(np.ones(num_features, dtype=np.float32))
+        self.bias = Parameter(np.zeros(num_features, dtype=np.float32))
 
-        self.running_mean = Buffer(np.zeros((1, num_features, 1, 1), dtype=np.float32))
-        self.running_var = Buffer(np.ones((1, num_features, 1, 1), dtype=np.float32))
+        self.running_mean = Parameter(np.zeros((1, num_features, 1, 1), dtype=np.float32))
+        self.running_var = Parameter(np.ones((1, num_features, 1, 1), dtype=np.float32))
 
     def forward(self, x):
         scale = self.weight.reshape(1, -1, 1, 1) * (
             1.0 / F.sqrt(self.running_var + self.eps)
         )
         bias = self.bias.reshape(1, -1, 1, 1) - self.running_mean * scale
-        return x * scale + bias
+        return x * scale.detach() + bias.detach()
 
 
 def get_norm(norm, out_channels=None):

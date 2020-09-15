@@ -43,13 +43,13 @@ class RetinaNet(M.Module):
         )
         del bottom_up.fc
 
-        # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
-        if self.cfg.backbone_freeze_at >= 1:
-            for p in bottom_up.conv1.parameters():
-                p.requires_grad = False
-        if self.cfg.backbone_freeze_at >= 2:
-            for p in bottom_up.layer1.parameters():
-                p.requires_grad = False
+        # # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
+        # if self.cfg.backbone_freeze_at >= 1:
+        #     for p in bottom_up.conv1.parameters():
+        #         p.requires_grad = False
+        # if self.cfg.backbone_freeze_at >= 2:
+        #     for p in bottom_up.layer1.parameters():
+        #         p.requires_grad = False
 
         # ----------------------- build the FPN ----------------------------- #
         in_channels_p6p7 = 2048
