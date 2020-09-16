@@ -6,12 +6,34 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+from typing import List
 from abc import ABCMeta, abstractmethod
-
+import math
 import numpy as np
 
+from megengine import Tensor, tensor
 import megengine.functional as F
-from megengine.core import Tensor, tensor
+
+from official.vision.detection import layers
+
+
+def meshgrid(x, y):
+    assert len(x.shape) == 1
+    assert len(y.shape) == 1
+    mesh_shape = (y.shape[0], x.shape[0])
+    mesh_x = x.broadcast(mesh_shape)
+    mesh_y = y.reshape(-1, 1).broadcast(mesh_shape)
+    return mesh_x, mesh_y
+
+
+def create_anchor_grid(featmap_size, offsets, stride, device):
+    step_x, step_y = featmap_size
+    shift = offsets * stride
+
+    grid_x = F.arange(shift, step_x * stride + shift, step=stride, device=device)
+    grid_y = F.arange(shift, step_y * stride + shift, step=stride, device=device)
+    grids_x, grids_y = meshgrid(grid_y, grid_x)
+    return grids_x.reshape(-1), grids_y.reshape(-1)
 
 
 class BaseAnchorGenerator(metaclass=ABCMeta):
@@ -22,111 +44,79 @@ class BaseAnchorGenerator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_anchors_by_feature(self) -> Tensor:
+    def generate_anchors_by_features(self, sizes, device) -> List[Tensor]:
         pass
+
+    def __call__(self, featmaps):
+        feat_sizes = [fmap.shape[-2:] for fmap in featmaps]
+        return self.generate_anchors_by_features(feat_sizes, featmaps[0].device)
+
+    @property
+    def anchor_dim(self):
+        return 4
 
 
 class DefaultAnchorGenerator(BaseAnchorGenerator):
     """default retinanet anchor generator.
     This class generate anchors by feature map in level.
-
     Args:
         base_size (int): anchor base size.
         anchor_scales (np.ndarray): anchor scales based on stride.
             The practical anchor scale is anchor_scale * stride
         anchor_ratios(np.ndarray): anchor aspect ratios.
         offset (float): center point offset.default is 0.
-
     """
 
     def __init__(
         self,
-        base_size=8,
-        anchor_scales: list = [2, 3, 4],
-        anchor_ratios: list = [0.5, 1, 2],
+        anchor_scales: list = [[32], [64], [128], [256], [512]],
+        anchor_ratios: list = [[0.5, 1, 2]],
+        strides: list = [4, 8, 16, 32, 64],
         offset: float = 0,
     ):
         super().__init__()
-        self.base_size = base_size
         self.anchor_scales = np.array(anchor_scales, dtype=np.float32)
         self.anchor_ratios = np.array(anchor_ratios, dtype=np.float32)
+        self.strides = strides
         self.offset = offset
+        self.num_features = len(strides)
 
-    def _whctrs(self, anchor):
-        """convert anchor box into (w, h, ctr_x, ctr_y)
-        """
-        w = anchor[:, 2] - anchor[:, 0] + 1
-        h = anchor[:, 3] - anchor[:, 1] + 1
-        x_ctr = anchor[:, 0] + 0.5 * (w - 1)
-        y_ctr = anchor[:, 1] + 0.5 * (h - 1)
+        self.base_anchors = self._different_level_anchors(anchor_scales, anchor_ratios)
 
-        return w, h, x_ctr, y_ctr
+    def _different_level_anchors(self, scales, ratios):
+        if len(scales) == 1:
+            scales *= self.num_features
+        assert len(scales) == self.num_features
 
-    def get_plane_anchors(self, anchor_scales: np.ndarray):
-        """get anchors per location on feature map.
-        The anchor number is anchor_scales x anchor_ratios
-        """
-        base_anchor = tensor([0, 0, self.base_size - 1, self.base_size - 1])
-        base_anchor = F.add_axis(base_anchor, 0)
-        w, h, x_ctr, y_ctr = self._whctrs(base_anchor)
-        # ratio enumerate
-        size = w * h
-        size_ratios = size / self.anchor_ratios
+        if len(ratios) == 1:
+            ratios *= self.num_features
+        assert len(ratios) == self.num_features
+        return [
+            tensor(self.generate_base_anchors(scale, ratio))
+            for scale, ratio in zip(scales, ratios)
+        ]
 
-        ws = size_ratios.sqrt().round()
-        hs = (ws * self.anchor_ratios).round()
+    def generate_base_anchors(self, scales, ratios):
+        base_anchors = []
+        areas = [s ** 2.0 for s in scales]
+        for area in areas:
+            for ratio in ratios:
+                w = math.sqrt(area / ratio)
+                h = ratio * w
+                # center-based anchor
+                x0, y0, x1, y1 = -w / 2.0, -h / 2.0, w / 2.0, h / 2.0
+                base_anchors.append([x0, y0, x1, y1])
+        return base_anchors
 
-        # scale enumerate
-        anchor_scales = anchor_scales[None, ...]
-        ws = F.add_axis(ws, 1)
-        hs = F.add_axis(hs, 1)
-        ws = (ws * anchor_scales).reshape(-1, 1)
-        hs = (hs * anchor_scales).reshape(-1, 1)
-
-        anchors = F.concat(
-            [
-                x_ctr - 0.5 * (ws - 1),
-                y_ctr - 0.5 * (hs - 1),
-                x_ctr + 0.5 * (ws - 1),
-                y_ctr + 0.5 * (hs - 1),
-            ],
-            axis=1,
+    def generate_anchors_by_features(self, sizes, device):
+        all_anchors = []
+        assert len(sizes) == self.num_features, (
+            "input features expected {}, got {}".format(self.num_features, len(sizes))
         )
-
-        return anchors.astype(np.float32)
-
-    def get_center_offsets(self, featmap, stride):
-        f_shp = featmap.shape
-        fm_height, fm_width = f_shp[-2], f_shp[-1]
-
-        shift_x = F.linspace(0, fm_width - 1, fm_width) * stride
-        shift_y = F.linspace(0, fm_height - 1, fm_height) * stride
-
-        # make the mesh grid of shift_x and shift_y
-        mesh_shape = (fm_height, fm_width)
-        broad_shift_x = shift_x.reshape(-1, shift_x.shape[0]).broadcast(*mesh_shape)
-        broad_shift_y = shift_y.reshape(shift_y.shape[0], -1).broadcast(*mesh_shape)
-
-        flatten_shift_x = F.add_axis(broad_shift_x.reshape(-1), 1)
-        flatten_shift_y = F.add_axis(broad_shift_y.reshape(-1), 1)
-
-        centers = F.concat(
-            [flatten_shift_x, flatten_shift_y, flatten_shift_x, flatten_shift_y,],
-            axis=1,
-        )
-        centers = centers + self.offset * self.base_size
-        return centers
-
-    def get_anchors_by_feature(self, featmap, stride):
-        # shifts shape: [A, 4]
-        shifts = self.get_center_offsets(featmap, stride)
-        # plane_anchors shape: [B, 4], e.g. B=9
-        plane_anchors = self.get_plane_anchors(self.anchor_scales * stride)
-
-        all_anchors = F.add_axis(plane_anchors, 0) + F.add_axis(shifts, 1)
-        all_anchors = all_anchors.reshape(-1, 4)
-
+        for size, stride, base_anchor in zip(sizes, self.strides, self.base_anchors):
+            grid_x, grid_y = create_anchor_grid(size, self.offset, stride, device)
+            grids = F.stack([grid_x, grid_y, grid_x, grid_y], axis=1)
+            all_anchors.append(
+                (grids.reshape(-1, 1, 4) + base_anchor.reshape(1, -1, 4)).reshape(-1, 4)
+            )
         return all_anchors
-
-    def __call__(self, featmap, stride):
-        return self.get_anchors_by_feature(featmap, stride)
