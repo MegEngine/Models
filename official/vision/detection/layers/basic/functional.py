@@ -8,9 +8,8 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import numpy as np
 
-import megengine as mge
 import megengine.functional as F
-from megengine.core import Tensor
+from megengine import Tensor
 
 
 def get_padded_tensor(
@@ -34,27 +33,15 @@ def get_padded_tensor(
     )
     padded_width = (t_width + multiple_number - 1) // multiple_number * multiple_number
 
-    padded_array = (
-        mge.ones(
-            F.concat([batch, chl, padded_height, padded_width], axis=0),
-            dtype=np.float32,
-        )
-        * pad_value
+    padded_array = F.full(
+        (batch, chl, padded_height, padded_width), pad_value, dtype=array.dtype
     )
 
     ndim = array.ndim
     if ndim == 4:
-        padded_array = padded_array.set_subtensor(array)[:, :, :t_height, :t_width]
+        padded_array[:, :, :t_height, :t_width] = array
     elif ndim == 3:
-        padded_array = padded_array.set_subtensor(array)[:, :t_height, :t_width]
+        padded_array[:, :t_height, :t_width] = array
     else:
         raise Exception("Not supported tensor dim: %d" % ndim)
     return padded_array
-
-
-def softplus(x: Tensor) -> Tensor:
-    return F.log(1 + F.exp(-F.abs(x))) + F.relu(x)
-
-
-def logsigmoid(x: Tensor) -> Tensor:
-    return -softplus(-x)

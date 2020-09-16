@@ -21,7 +21,7 @@ import megengine.distributed as dist
 from megengine.data import DataLoader, SequentialSampler
 
 from official.vision.detection.tools.data_mapper import data_mapper
-from official.vision.detection.tools.utils import DetEvaluator
+from official.vision.detection.tools.utils import DetEvaluator, PseudoDetectionDataset
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
@@ -186,12 +186,12 @@ def worker(
         })
 
 
+def build_dataset():
+    return PseudoDetectionDataset(length=5000, order=["image", "info"])
+
+
 def build_dataloader(rank, world_size, data_dir, cfg):
-    val_dataset = data_mapper[cfg.test_dataset["name"]](
-        os.path.join(data_dir, cfg.test_dataset["name"], cfg.test_dataset["root"]),
-        os.path.join(data_dir, cfg.test_dataset["name"], cfg.test_dataset["ann_file"]),
-        order=["image", "info"],
-    )
+    val_dataset = build_dataset()
     val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
     val_dataloader = DataLoader(val_dataset, sampler=val_sampler, num_workers=2)
     return val_dataloader

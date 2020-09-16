@@ -31,7 +31,8 @@ from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import (
     AverageMeter,
     DetectionPadCollator,
-    GroupedRandomSampler
+    GroupedRandomSampler,
+    PseudoDetectionDataset
 )
 
 logger = mge.get_logger(__name__)
@@ -241,18 +242,8 @@ def adjust_learning_rate(optimizer, epoch_id, step, model):
         param_group["lr"] = base_lr * lr_factor
 
 
-def build_dataset(data_dir, cfg):
-    data_cfg = copy.deepcopy(cfg.train_dataset)
-    data_name = data_cfg.pop("name")
-
-    data_cfg["root"] = os.path.join(data_dir, data_name, data_cfg["root"])
-
-    if "ann_file" in data_cfg:
-        data_cfg["ann_file"] = os.path.join(data_dir, data_name, data_cfg["ann_file"])
-
-    data_cfg["order"] = ["image", "boxes", "boxes_category", "info"]
-
-    return data_mapper[data_name](**data_cfg)
+def build_dataset(*args):
+    return PseudoDetectionDataset(order=["image", "boxes", "boxes_category", "info"])
 
 
 def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):

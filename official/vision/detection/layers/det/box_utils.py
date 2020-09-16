@@ -11,7 +11,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 import megengine.functional as F
-from megengine.core import Tensor
+from megengine import Tensor
 
 
 class BoxCoderBase(metaclass=ABCMeta):
@@ -47,18 +47,6 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
         super().__init__()
 
     @staticmethod
-    def _concat_new_axis(t1, t2, t3, t4, axis=1):
-        return F.concat(
-            [
-                F.add_axis(t1, -1),
-                F.add_axis(t2, -1),
-                F.add_axis(t3, -1),
-                F.add_axis(t4, -1),
-            ],
-            axis=axis,
-        )
-
-    @staticmethod
     def _box_ltrb_to_cs_opr(bbox, addaxis=None):
         """ transform the left-top right-bottom encoding bounding boxes
         to center and size encodings"""
@@ -77,16 +65,14 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
             )
 
     def encode(self, bbox: Tensor, gt: Tensor) -> Tensor:
-        (bbox_width, bbox_height, bbox_ctr_x, bbox_ctr_y,) = self._box_ltrb_to_cs_opr(
-            bbox
-        )
+        bbox_width, bbox_height, bbox_ctr_x, bbox_ctr_y = self._box_ltrb_to_cs_opr(bbox)
         gt_width, gt_height, gt_ctr_x, gt_ctr_y = self._box_ltrb_to_cs_opr(gt)
 
         target_dx = (gt_ctr_x - bbox_ctr_x) / bbox_width
         target_dy = (gt_ctr_y - bbox_ctr_y) / bbox_height
         target_dw = F.log(gt_width / bbox_width)
         target_dh = F.log(gt_height / bbox_height)
-        target = self._concat_new_axis(target_dx, target_dy, target_dw, target_dh)
+        target = F.stack([target_dx, target_dy, target_dw, target_dh], axis=1)
 
         target -= self.reg_mean
         target /= self.reg_std
@@ -112,8 +98,8 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
         pred_x2 = pred_ctr_x + 0.5 * pred_width
         pred_y2 = pred_ctr_y + 0.5 * pred_height
 
-        pred_box = self._concat_new_axis(pred_x1, pred_y1, pred_x2, pred_y2, 2)
-        pred_box = pred_box.reshape(pred_box.shapeof(0), -1)
+        pred_box = F.stack([pred_x1, pred_y1, pred_x2, pred_y2], axis=2)
+        pred_box = pred_box.reshape(pred_box.shape[0], -1)
 
         return pred_box
 
@@ -133,7 +119,7 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     """
     box = boxes1
     gt = boxes2
-    target_shape = (boxes1.shapeof(0), boxes2.shapeof(0), 4)
+    target_shape = (boxes1.shape[0], boxes2.shape[0], 4)
 
     b_box = F.add_axis(boxes1, 1).broadcast(*target_shape)
     b_gt = F.add_axis(boxes2[:, :4], 0).broadcast(*target_shape)
@@ -149,7 +135,7 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     area_box = (box[:, 2] - box[:, 0]) * (box[:, 3] - box[:, 1])
     area_gt = (gt[:, 2] - gt[:, 0]) * (gt[:, 3] - gt[:, 1])
 
-    area_target_shape = (box.shapeof(0), gt.shapeof(0))
+    area_target_shape = (box.shape[0], gt.shape[0])
 
     b_area_box = F.add_axis(area_box, 1).broadcast(*area_target_shape)
     b_area_gt = F.add_axis(area_gt, 0).broadcast(*area_target_shape)
