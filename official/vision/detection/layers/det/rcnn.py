@@ -6,7 +6,6 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 
@@ -14,6 +13,7 @@ from official.vision.detection import layers
 
 
 class RCNN(M.Module):
+
     def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
@@ -33,7 +33,7 @@ class RCNN(M.Module):
 
         # box predictor
         self.pred_cls = M.Linear(1024, cfg.num_classes + 1)
-        self.pred_delta = M.Linear(1024, (cfg.num_classes + 1) * 4)
+        self.pred_delta = M.Linear(1024, cfg.num_classes * 4)
         M.init.normal_(self.pred_cls.weight, std=0.01)
         M.init.normal_(self.pred_delta.weight, std=0.001)
         for l in [self.pred_cls, self.pred_delta]:
@@ -58,22 +58,24 @@ class RCNN(M.Module):
             # loss for rcnn classification
             loss_rcnn_cls = layers.softmax_loss(pred_logits, labels)
             # loss for rcnn regression
-            pred_offsets = pred_offsets.reshape(-1, self.cfg.num_classes + 1, 4)
+            pred_offsets = pred_offsets.reshape(-1, self.cfg.num_classes, 4)
+            num_samples = labels.shape[0]
+            _, fg_inds = F.cond_take(labels > 0, labels)
+            # -1 for removing background class
+            non_bg_labels = labels - 1
+            loss_rcnn_loc = layers.smooth_l1_loss(
+                pred_offsets[fg_inds, non_bg_labels[fg_inds]],
+                bbox_targets[fg_inds],
+                self.cfg.rcnn_smooth_l1_beta,
+            ).sum() / F.maximum(num_samples, 1.0)
 
-            vlabels = labels.reshape(-1, 1).broadcast((labels.shape[0], 4))
-            pred_offsets = F.indexing_one_hot(pred_offsets, vlabels, axis=1)
-            fg_mask = (labels > 0).astype("float32")
-            num_samples = int((labels != -1).astype("int32").sum())
-            loss_rcnn_loc = (layers.smooth_l1_loss(
-                pred_offsets, bbox_targets, self.cfg.rcnn_smooth_l1_beta,
-            ).sum(axis=1) * fg_mask).sum() / F.maximum(num_samples, 1.0)
             loss_dict = {"loss_rcnn_cls": loss_rcnn_cls, "loss_rcnn_loc": loss_rcnn_loc}
             return loss_dict
         else:
             # TODO
             # slice 1 for removing background
             pred_scores = F.softmax(pred_logits, axis=1)[:, 1:]
-            pred_offsets = pred_offsets[:, 4:].reshape(-1, 4)
+            pred_offsets = pred_offsets.reshape(-1, 4)
             target_shape = (rcnn_rois.shape[0], self.cfg.num_classes, 4)
             # rois (N, 4) -> (N, 1, 4) -> (N, 80, 4) -> (N * 80, 4)
             base_rois = (
@@ -103,47 +105,27 @@ class RCNN(M.Module):
             # all_rois : [batch_id, x1, y1, x2, y2]
             all_rois = F.concat([rpn_rois[batch_roi_inds], gt_rois])
 
-            overlaps_normal, overlaps_ignore = layers.get_iou(
-                all_rois[:, 1:5], gt_boxes_per_img, return_ioa=True,
-            )
+            overlaps = layers.get_iou(all_rois[:, 1:5], gt_boxes_per_img)
 
-            max_overlaps_normal = overlaps_normal.max(axis=1)
-            gt_assignment_normal = F.argmax(overlaps_normal, axis=1)
-
-            max_overlaps_ignore = overlaps_ignore.max(axis=1)
-            gt_assignment_ignore = F.argmax(overlaps_ignore, axis=1)
-
-            # FIXME bool astype
-            ignore_assign_mask = F.logical_and(
-                (max_overlaps_normal < self.cfg.fg_threshold),
-                (max_overlaps_ignore > max_overlaps_normal)
-            ).astype("float32")
-            max_overlaps = (
-                max_overlaps_normal * (1 - ignore_assign_mask).astype("float32")
-                + max_overlaps_ignore * ignore_assign_mask
-            )
-            gt_assignment = (
-                gt_assignment_normal.astype("float32") * (1 - ignore_assign_mask)
-                + gt_assignment_ignore.astype("float32") * ignore_assign_mask
-            )
-            gt_assignment = gt_assignment.astype("int32")
+            max_overlaps = overlaps.max(axis=1)
+            gt_assignment = F.argmax(overlaps, axis=1).astype("int32")
             labels = gt_boxes_per_img[gt_assignment, 4]
 
             # ---------------- get the fg/bg labels for each roi ---------------#
-            # FIXME bool astype
             fg_mask = F.logical_and(
                 (max_overlaps >= self.cfg.fg_threshold), (labels != self.cfg.ignore_label)
             ).astype("float32")
+
             bg_mask = F.logical_and(
                 max_overlaps < self.cfg.bg_threshold_high,
                 max_overlaps >= self.cfg.bg_threshold_low
             ).astype("float32")
 
-            num_fg_rois = self.cfg.num_rois * self.cfg.fg_ratio
+            num_fg_rois = int(self.cfg.num_rois * self.cfg.fg_ratio)
 
-            fg_inds_mask = self._bernoulli_sample_masks(fg_mask, num_fg_rois, 1)
-            num_bg_rois = self.cfg.num_rois - fg_inds_mask.sum()
-            bg_inds_mask = self._bernoulli_sample_masks(bg_mask, num_bg_rois, 1)
+            fg_inds_mask = layers.sample_mask_from_labels(fg_mask, num_fg_rois, 1)
+            num_bg_rois = int(self.cfg.num_rois - fg_inds_mask.sum())
+            bg_inds_mask = layers.sample_mask_from_labels(bg_mask, num_bg_rois, 1)
 
             labels = labels * fg_inds_mask
 
@@ -152,7 +134,6 @@ class RCNN(M.Module):
             # Add next line to avoid memory exceed
             keep_inds = keep_inds[:min(self.cfg.num_rois, keep_inds.shape[0])]
 
-            # labels
             labels = labels[keep_inds].astype("int32")
             rois = all_rois[keep_inds]
             target_boxes = gt_boxes_per_img[gt_assignment[keep_inds], :4]
@@ -168,16 +149,3 @@ class RCNN(M.Module):
             F.concat(return_labels, axis=0).detach(),
             F.concat(return_bbox_targets, axis=0).detach(),
         )
-
-    def _bernoulli_sample_masks(self, masks, num_samples, sample_value):
-        """ Using the bernoulli sampling method"""
-        # NOTE: use new sample logic
-        # FIXME bool astype
-        sample_mask = (masks == sample_value).astype("float32")
-        num_mask = sample_mask.sum()
-        num_final_samples = F.minimum(num_mask, num_samples)
-        # here, we use the bernoulli probability to sample the anchors
-        sample_prob = num_final_samples / num_mask
-        uniform_rng = mge.random.uniform(sample_mask.shape[0])
-        after_sampled_mask = (uniform_rng <= sample_prob) * sample_mask
-        return after_sampled_mask

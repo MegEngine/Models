@@ -28,15 +28,19 @@ class RPN(M.Module):
         anchor_scales = [[x] for x in [32, 64, 128, 256, 512]]
         anchor_ratios = [[0.5, 1, 2]]
         stride = [4, 8, 16, 32, 64]
-        self.anchors_generator = layers.DefaultAnchorGenerator(
+        self.anchors_generator = layers.AnchorBoxGenerator(
             anchor_scales=anchor_scales,
             anchor_ratios=anchor_ratios,
             strides=stride,
         )
 
+        match_thresh = [cfg.rpn_negative_overlap, cfg.rpn_positive_overlap]
+        match_label = [0, cfg.ignore_label, 1]
+        self.matcher = layers.Matcher(match_thresh, match_label, cfg.allow_low_quality)
+
         self.rpn_conv = M.Conv2d(256, rpn_channel, kernel_size=3, stride=1, padding=1)
         self.rpn_cls_score = M.Conv2d(
-            rpn_channel, self.num_cell_anchors * 2, kernel_size=1, stride=1
+            rpn_channel, self.num_cell_anchors, kernel_size=1, stride=1
         )
         self.rpn_bbox_offsets = M.Conv2d(
             rpn_channel, self.num_cell_anchors * 4, kernel_size=1, stride=1
@@ -60,7 +64,7 @@ class RPN(M.Module):
             scores = self.rpn_cls_score(t)
             pred_cls_logit_list.append(
                 scores.reshape(
-                    scores.shape[0], 2,
+                    scores.shape[0],
                     self.num_cell_anchors,
                     scores.shape[2],
                     scores.shape[3],
@@ -90,10 +94,16 @@ class RPN(M.Module):
             )
 
             # rpn classification loss
-            loss_rpn_cls = layers.softmax_loss(pred_cls_logits, rpn_labels)
+            _, valid_inds = F.cond_take(rpn_labels != -1, rpn_labels)
+            num_samples = valid_inds.shape[0]
+
+            # loss_rpn_cls = layers.softmax_loss(pred_cls_logits, rpn_labels)
+            loss_rpn_cls = layers.binary_cross_entropy_with_logits(
+                pred_cls_logits[valid_inds], rpn_labels[valid_inds].astype("float32")
+            ).sum() / F.maximum(num_samples, 1.0)
+
             # rpn regression loss
             fg_mask = (rpn_labels > 0).astype("float32")
-            num_samples = (rpn_labels != -1).astype("int32").sum()
             loss_rpn_loc = (layers.smooth_l1_loss(
                 pred_bbox_offsets,
                 rpn_bbox_targets,
@@ -136,7 +146,7 @@ class RPN(M.Module):
                 all_anchors = all_anchors_list[l]
                 proposals = self.box_coder.decode(all_anchors, offsets)
 
-                scores = rpn_cls_score_list[l][bid, 1].transpose(1, 2, 0).reshape(-1)
+                scores = rpn_cls_score_list[l][bid].transpose(1, 2, 0).reshape(-1)
                 scores.detach()
                 # prev nms top n
                 scores, order = F.topk(scores, descending=True, k=prev_nms_top_n)
@@ -180,7 +190,7 @@ class RPN(M.Module):
             batch_rpn_bbox_offset_list = []
 
             for i in range(len(self.in_features)):
-                rpn_cls_scores = rpn_cls_score_list[i][bid].transpose(2, 3, 1, 0).reshape(-1, 2)
+                rpn_cls_scores = rpn_cls_score_list[i][bid].transpose(1, 2, 0).reshape(-1)
                 rpn_bbox_offsets = (
                     rpn_bbox_offset_list[i][bid].transpose(2, 3, 0, 1).reshape(-1, 4)
                 )
@@ -198,40 +208,14 @@ class RPN(M.Module):
         final_rpn_bbox_offsets = F.concat(final_rpn_bbox_offset_list, axis=0)
         return final_rpn_cls_scores, final_rpn_bbox_offsets
 
-    def per_level_gt(self, gt_boxes, im_info, anchors, allow_low_quality_matches=True):
-        # TODO: use Matcher instead
-        ignore_label = self.cfg.ignore_label
+    def _per_level_ground_truth(self, anchors, gt_boxes, im_info):
         # get the gt boxes
         valid_gt_boxes = gt_boxes[:im_info[4], :]
-        # compute the iou matrix
-        overlaps = layers.get_iou(anchors, valid_gt_boxes[:, :4])
-        # match the dtboxes
-        max_overlaps = F.max(overlaps, axis=1)
-        argmax_overlaps = F.argmax(overlaps, axis=1)
-        # all ignore
-        labels = F.full((anchors.shape[0],), ignore_label).astype("int32")
-        # set negative ones
-        labels = labels * (max_overlaps >= self.cfg.rpn_negative_overlap).astype("int32")
-        # set positive ones
-        # FIXME: bool astype
-        fg_mask = (max_overlaps >= self.cfg.rpn_positive_overlap).astype("int32")
-        if allow_low_quality_matches:
-            # make sure that max iou of gt matched
-            gt_argmax_overlaps = F.argmax(overlaps, axis=0)
-            num_valid_boxes = valid_gt_boxes.shape[0]
-            gt_id = F.linspace(
-                0, num_valid_boxes - 1, num_valid_boxes, device=argmax_overlaps.device
-            ).astype("int32")
-            argmax_overlaps[gt_argmax_overlaps] = gt_id
-            max_overlaps[gt_argmax_overlaps] = F.ones((num_valid_boxes,))
-            # FIXME：bool astype
-            fg_mask = (max_overlaps >= self.cfg.rpn_positive_overlap).astype("int32")
-
-        # set positive ones
-        _, fg_mask_ind = F.cond_take(fg_mask == 1, fg_mask)
-        labels[fg_mask_ind] = F.ones((fg_mask_ind.shape[0],), dtype=labels.dtype)
+        # compute the iou matrix, (num_gt, num_anchors) shape
+        iou_matrix = layers.get_iou(valid_gt_boxes[:, :4], anchors)
+        matched_indices, labels = self.matcher(iou_matrix)
         # compute the targets
-        bbox_targets = self.box_coder.encode(anchors, valid_gt_boxes[argmax_overlaps, :4])
+        bbox_targets = self.box_coder.encode(anchors, valid_gt_boxes[matched_indices, :4])
         return labels, bbox_targets
 
     def get_ground_truth(self, gt_boxes, im_info, all_anchors_list):
@@ -242,8 +226,8 @@ class RPN(M.Module):
             batch_labels_list = []
             batch_bbox_targets_list = []
             for anchors in all_anchors_list:
-                rpn_labels_perlvl, rpn_bbox_targets_perlvl = self.per_level_gt(
-                    gt_boxes[bid], im_info[bid], anchors,
+                rpn_labels_perlvl, rpn_bbox_targets_perlvl = self._per_level_ground_truth(
+                    anchors, gt_boxes[bid], im_info[bid],
                 )
                 batch_labels_list.append(rpn_labels_perlvl)
                 batch_bbox_targets_list.append(rpn_bbox_targets_perlvl)

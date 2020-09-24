@@ -108,6 +108,7 @@ def worker(master_ip, port, world_size, rank, args):
 
     if dist.get_rank() == 0:
         logger.info(get_config_info(model.cfg))
+        logger.info(repr(model))
 
     params_with_grad = []
     for name, param in model.named_parameters():
