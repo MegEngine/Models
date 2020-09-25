@@ -43,7 +43,7 @@
 import megengine.functional as F
 import megengine.module as M
 
-__all__ = ['MobileNetV2', 'mobilenet_v2']
+__all__ = ["MobileNetV2", "mobilenet_v2"]
 
 
 def _make_divisible(v, divisor, min_value=None):
@@ -79,13 +79,22 @@ class InvertedResidual(M.Module):
         if expand_ratio != 1:
             # pw
             layers.append(M.ConvBnRelu2d(inp, hidden_dim, kernel_size=1, bias=False))
-        layers.extend([
-            # dw
-            M.ConvBnRelu2d(hidden_dim, hidden_dim, kernel_size=3, padding=1,
-                           stride=stride, groups=hidden_dim, bias=False),
-            # pw-linear
-            M.ConvBn2d(hidden_dim, oup, kernel_size=1, bias=False)
-        ])
+        layers.extend(
+            [
+                # dw
+                M.ConvBnRelu2d(
+                    hidden_dim,
+                    hidden_dim,
+                    kernel_size=3,
+                    padding=1,
+                    stride=stride,
+                    groups=hidden_dim,
+                    bias=False,
+                ),
+                # pw-linear
+                M.ConvBn2d(hidden_dim, oup, kernel_size=1, bias=False),
+            ]
+        )
         self.conv = M.Sequential(*layers)
         self.add = M.Elemwise("ADD")
 
@@ -97,7 +106,13 @@ class InvertedResidual(M.Module):
 
 
 class MobileNetV2(M.Module):
-    def __init__(self, num_classes=1000, width_mult=1.0, inverted_residual_setting=None, round_nearest=8):
+    def __init__(
+        self,
+        num_classes=1000,
+        width_mult=1.0,
+        inverted_residual_setting=None,
+        round_nearest=8,
+    ):
         """
         MobileNet V2 main class
 
@@ -126,31 +141,46 @@ class MobileNetV2(M.Module):
             ]
 
         # only check the first element, assuming user knows t,c,n,s are required
-        if len(inverted_residual_setting) == 0 or len(inverted_residual_setting[0]) != 4:
-            raise ValueError("inverted_residual_setting should be non-empty "
-                             "or a 4-element list, got {}".format(inverted_residual_setting))
+        if (
+            len(inverted_residual_setting) == 0
+            or len(inverted_residual_setting[0]) != 4
+        ):
+            raise ValueError(
+                "inverted_residual_setting should be non-empty "
+                "or a 4-element list, got {}".format(inverted_residual_setting)
+            )
 
         # building first layer
         input_channel = _make_divisible(input_channel * width_mult, round_nearest)
-        self.last_channel = _make_divisible(last_channel * max(1.0, width_mult), round_nearest)
-        features = [M.ConvBnRelu2d(3, input_channel, kernel_size=3, padding=1, stride=2, bias=False)]
+        self.last_channel = _make_divisible(
+            last_channel * max(1.0, width_mult), round_nearest
+        )
+        features = [
+            M.ConvBnRelu2d(
+                3, input_channel, kernel_size=3, padding=1, stride=2, bias=False
+            )
+        ]
         # building inverted residual blocks
         for t, c, n, s in inverted_residual_setting:
             output_channel = _make_divisible(c * width_mult, round_nearest)
             for i in range(n):
                 stride = s if i == 0 else 1
-                features.append(block(input_channel, output_channel, stride, expand_ratio=t))
+                features.append(
+                    block(input_channel, output_channel, stride, expand_ratio=t)
+                )
                 input_channel = output_channel
         # building last several layers
-        features.append(M.ConvBnRelu2d(input_channel, self.last_channel, kernel_size=1, bias=False))
+        features.append(
+            M.ConvBnRelu2d(input_channel, self.last_channel, kernel_size=1, bias=False)
+        )
         # make it M.Sequential
         self.features = M.Sequential(*features)
 
         # building classifier
         self.classifier = M.Sequential(
-            M.Dropout(0.2),
-            M.Linear(self.last_channel, num_classes),
+            M.Dropout(0.2), M.Linear(self.last_channel, num_classes),
         )
+        self.classifier.disable_quantize()
 
         self.quant = M.QuantStub()
         self.dequant = M.DequantStub()
@@ -158,7 +188,7 @@ class MobileNetV2(M.Module):
         # weight initialization
         for m in self.modules():
             if isinstance(m, M.Conv2d):
-                M.init.msra_normal_(m.weight, mode='fan_out')
+                M.init.msra_normal_(m.weight, mode="fan_out")
                 if m.bias is not None:
                     M.init.zeros_(m.bias)
             elif isinstance(m, M.BatchNorm2d):

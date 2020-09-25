@@ -46,7 +46,7 @@ import math
 import megengine.functional as F
 import megengine.hub as hub
 import megengine.module as M
-from megengine.quantization.quantize import quantize_qat, quantize
+from megengine.quantization.quantize import quantize, quantize_qat
 
 
 class BasicBlock(M.Module):
@@ -62,7 +62,7 @@ class BasicBlock(M.Module):
         dilation=1,
         norm=M.BatchNorm2d,
     ):
-        assert norm is M.BatchNorm2d, 'Quant mode only support BatchNorm2d currently.'
+        assert norm is M.BatchNorm2d, "Quant mode only support BatchNorm2d currently."
         super(BasicBlock, self).__init__()
         if groups != 1 or base_width != 64:
             raise ValueError("BasicBlock only supports groups=1 and base_width=64")
@@ -71,9 +71,7 @@ class BasicBlock(M.Module):
         self.conv_bn_relu1 = M.ConvBnRelu2d(
             in_channels, channels, 3, stride, padding=dilation, bias=False
         )
-        self.conv_bn2 = M.ConvBn2d(
-            channels, channels, 3, 1, padding=1, bias=False
-        )
+        self.conv_bn2 = M.ConvBn2d(channels, channels, 3, 1, padding=1, bias=False)
         self.downsample = (
             M.Identity()
             if in_channels == channels and stride == 1
@@ -116,13 +114,13 @@ class Bottleneck(M.Module):
             dilation=dilation,
             bias=False,
         )
-        self.conv_bn3 = M.ConvBn2d(
-            width, channels * self.expansion, 1, 1, bias=False
-        )
+        self.conv_bn3 = M.ConvBn2d(width, channels * self.expansion, 1, 1, bias=False)
         self.downsample = (
             M.Identity()
             if in_channels == channels * self.expansion and stride == 1
-            else M.ConvBn2d(in_channels, channels * self.expansion, 1, stride, bias=False)
+            else M.ConvBn2d(
+                in_channels, channels * self.expansion, 1, stride, bias=False
+            )
         )
         self.add = M.Elemwise("FUSE_ADD_RELU")
 

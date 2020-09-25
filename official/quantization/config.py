@@ -16,8 +16,9 @@ class ShufflenetConfig:
     BATCH_SIZE = 128
     LEARNING_RATE = 0.0625
     MOMENTUM = 0.9
-    WEIGHT_DECAY = lambda self, n, p: \
-        4e-5 if n.find("weight") >= 0 and len(p.shape) > 1 else 0
+    WEIGHT_DECAY = (
+        lambda self, n, p: 4e-5 if n.find("weight") >= 0 and len(p.shape) > 1 else 0
+    )
     EPOCHS = 240
 
     SCHEDULER = "Linear"
@@ -47,7 +48,7 @@ def get_config(arch: str):
 
 
 class ShufflenetFinetuneConfig(ShufflenetConfig):
-    BATCH_SIZE = 128 // 2
+    BATCH_SIZE = 64 // 2
     LEARNING_RATE = 0.003125 / 2
     EPOCHS = 30
 
@@ -58,7 +59,9 @@ class ResnetFinetuneConfig(ResnetConfig):
     EPOCHS = 12
 
     SCHEDULER = "Multistep"
-    SCHEDULER_STEPS = [6,]
+    SCHEDULER_STEPS = [
+        6,
+    ]
     SCHEDULER_GAMMA = 0.1
 
 

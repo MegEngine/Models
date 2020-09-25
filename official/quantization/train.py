@@ -8,24 +8,24 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """Train a model in fp32"""
 import argparse
+import bisect
 import collections
-import multiprocessing as mp
 import numbers
 import os
-import bisect
 import time
 
+import config
+import models
+
 import megengine as mge
+import megengine.autodiff as autodiff
 import megengine.data as data
 import megengine.data.transform as T
 import megengine.distributed as dist
 import megengine.functional as F
-import megengine.jit as jit
 import megengine.optimizer as optim
 import megengine.quantization as Q
-
-import config
-import models
+from megengine.quantization.quantize import quantize_qat
 
 logger = mge.get_logger(__name__)
 
@@ -36,64 +36,56 @@ def main():
     parser.add_argument("-d", "--data", default=None, type=str)
     parser.add_argument("-s", "--save", default="/data/models", type=str)
 
-    parser.add_argument("-m", "--mode", default="normal", type=str,
-        choices=["normal", "qat", "quantized"],
+    parser.add_argument(
+        "-m",
+        "--mode",
+        default="normal",
+        type=str,
+        choices=["normal", "qat"],
         help="Quantization Mode\n"
-             "normal: no quantization, using float32\n"
-             "qat: quantization aware training, simulate int8\n"
-             "quantized: convert mode to int8 quantized, inference only")
+        "normal: no quantization, using float32\n"
+        "qat: quantization aware training, simulate int8",
+    )
 
     parser.add_argument("-n", "--ngpus", default=None, type=int)
     parser.add_argument("-w", "--workers", default=4, type=int)
     parser.add_argument("--report-freq", default=50, type=int)
     args = parser.parse_args()
 
-    world_size = mge.get_device_count("gpu") if args.ngpus is None else args.ngpus
-
-    if world_size > 1:
-        # start distributed training, dispatch sub-processes
-        mp.set_start_method("spawn")
-        processes = []
-        for rank in range(world_size):
-            p = mp.Process(target=worker, args=(rank, world_size, args))
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
-    else:
-        worker(0, 1, args)
+    world_size = (
+        dist.helper.get_device_count_by_fork("gpu")
+        if args.ngpus is None
+        else args.ngpus
+    )
+    if world_size == 0:
+        raise ValueError("Please train use GPU")
+    train_proc = dist.launcher(worker) if world_size > 1 else worker
+    train_proc(world_size, args)
 
 
 def get_parameters(model, cfg):
     if isinstance(cfg.WEIGHT_DECAY, numbers.Number):
-        return {"params": model.parameters(requires_grad=True),
-                "weight_decay": cfg.WEIGHT_DECAY}
+        return {
+            "params": model.parameters(requires_grad=True),
+            "weight_decay": cfg.WEIGHT_DECAY,
+        }
 
     groups = collections.defaultdict(list)  # weight_decay -> List[param]
     for pname, p in model.named_parameters(requires_grad=True):
         wd = cfg.WEIGHT_DECAY(pname, p)
         groups[wd].append(p)
     groups = [
-        {"params": params, "weight_decay": wd}
-        for wd, params in groups.items()
+        {"params": params, "weight_decay": wd} for wd, params in groups.items()
     ]  # List[{param, weight_decay}]
     return groups
 
 
-def worker(rank, world_size, args):
+def worker(world_size, args):
     # pylint: disable=too-many-statements
 
+    rank = dist.get_rank()
     if world_size > 1:
-        # Initialize distributed process group
         logger.info("init distributed process group {} / {}".format(rank, world_size))
-        dist.init_process_group(
-            master_ip="localhost",
-            master_port=23456,
-            world_size=world_size,
-            rank=rank,
-            dev=rank,
-        )
 
     save_dir = os.path.join(args.save, args.arch + "." + args.mode)
     if not os.path.exists(save_dir):
@@ -109,50 +101,46 @@ def worker(rank, world_size, args):
     total_steps = steps_per_epoch * cfg.EPOCHS
 
     if args.mode != "normal":
-        Q.quantize_qat(model, Q.ema_fakequant_qconfig)
+        quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
 
-    if args.mode == "quantized":
-        raise ValueError("mode = quantized only used during inference")
-        Q.quantize(model)
+    if world_size > 1:
+        # Sync parameters
+        dist.bcast_list_(model.parameters(), dist.WORLD)
+
+    # Autodiff gradient manager
+    gm = autodiff.GradManager().attach(
+        model.parameters(),
+        callbacks=dist.make_allreduce_cb("MEAN") if world_size > 1 else None,
+    )
 
     optimizer = optim.SGD(
-        get_parameters(model, cfg),
-        lr=cfg.LEARNING_RATE,
-        momentum=cfg.MOMENTUM,
+        get_parameters(model, cfg), lr=cfg.LEARNING_RATE, momentum=cfg.MOMENTUM,
     )
 
     # Define train and valid graph
-    @jit.trace(symbolic=True)
     def train_func(image, label):
-        model.train()
-        logits = model(image)
-        loss = F.cross_entropy_with_softmax(logits, label, label_smooth=0.1)
-        acc1, acc5 = F.accuracy(logits, label, (1, 5))
-        optimizer.backward(loss)  # compute gradients
-        if dist.is_distributed():  # all_reduce_mean
-            loss = dist.all_reduce_sum(loss, "train_loss") / dist.get_world_size()
-            acc1 = dist.all_reduce_sum(acc1, "train_acc1") / dist.get_world_size()
-            acc5 = dist.all_reduce_sum(acc5, "train_acc5") / dist.get_world_size()
+        with gm:
+            model.train()
+            logits = model(image)
+            loss = F.loss.cross_entropy(logits, label, label_smooth=0.1)
+            acc1, acc5 = F.topk_accuracy(logits, label, (1, 5))
+            gm.backward(loss)
+            optimizer.step().clear_grad()
         return loss, acc1, acc5
 
-    @jit.trace(symbolic=True)
     def valid_func(image, label):
         model.eval()
         logits = model(image)
-        loss = F.cross_entropy_with_softmax(logits, label, label_smooth=0.1)
-        acc1, acc5 = F.accuracy(logits, label, (1, 5))
-        if dist.is_distributed():  # all_reduce_mean
-            loss = dist.all_reduce_sum(loss, "valid_loss") / dist.get_world_size()
-            acc1 = dist.all_reduce_sum(acc1, "valid_acc1") / dist.get_world_size()
-            acc5 = dist.all_reduce_sum(acc5, "valid_acc5") / dist.get_world_size()
+        loss = F.loss.cross_entropy(logits, label, label_smooth=0.1)
+        acc1, acc5 = F.topk_accuracy(logits, label, (1, 5))
         return loss, acc1, acc5
 
     # Build train and valid datasets
     logger.info("preparing dataset..")
     train_dataset = data.dataset.ImageNet(args.data, train=True)
-    train_sampler = data.Infinite(data.RandomSampler(
-        train_dataset, batch_size=cfg.BATCH_SIZE, drop_last=True
-    ))
+    train_sampler = data.Infinite(
+        data.RandomSampler(train_dataset, batch_size=cfg.BATCH_SIZE, drop_last=True)
+    )
     train_queue = data.DataLoader(
         train_dataset,
         sampler=train_sampler,
@@ -176,12 +164,7 @@ def worker(rank, world_size, args):
         valid_dataset,
         sampler=valid_sampler,
         transform=T.Compose(
-            [
-                T.Resize(256),
-                T.CenterCrop(224),
-                T.Normalize(mean=128),
-                T.ToMode("CHW"),
-            ]
+            [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW"),]
         ),
         num_workers=args.workers,
     )
@@ -191,7 +174,9 @@ def worker(rank, world_size, args):
         if cfg.SCHEDULER == "Linear":
             learning_rate *= 1 - float(step) / total_steps
         elif cfg.SCHEDULER == "Multistep":
-            learning_rate *= cfg.SCHEDULER_GAMMA ** bisect.bisect_right(cfg.SCHEDULER_STEPS, epoch)
+            learning_rate *= cfg.SCHEDULER_GAMMA ** bisect.bisect_right(
+                cfg.SCHEDULER_STEPS, epoch
+            )
         else:
             raise ValueError(cfg.SCHEDULER)
         for param_group in optimizer.param_groups:
@@ -211,14 +196,12 @@ def worker(rank, world_size, args):
         learning_rate = adjust_learning_rate(step, epoch)
 
         image, label = next(train_queue)
-        image = image.astype("float32")
-        label = label.astype("int32")
+        image = mge.tensor(image, dtype="float32")
+        label = mge.tensor(label, dtype="int32")
 
         n = image.shape[0]
 
-        optimizer.zero_grad()
         loss, acc1, acc5 = train_func(image, label)
-        optimizer.step()
 
         top1.update(100 * acc1.numpy()[0], n)
         top5.update(100 * acc5.numpy()[0], n)
@@ -228,14 +211,19 @@ def worker(rank, world_size, args):
         if step % args.report_freq == 0 and rank == 0:
             logger.info(
                 "TRAIN e%d %06d %f %s %s %s %s",
-                epoch, step, learning_rate,
-                objs, top1, top5, total_time
+                epoch,
+                step,
+                learning_rate,
+                objs,
+                top1,
+                top5,
+                total_time,
             )
             objs.reset()
             top1.reset()
             top5.reset()
             total_time.reset()
-        if step % 10000 == 0 and rank == 0:
+        if step != 0 and step % 10000 == 0 and rank == 0:
             logger.info("SAVING %06d", step)
             mge.save(
                 {"step": step, "state_dict": model.state_dict()},
@@ -247,7 +235,7 @@ def worker(rank, world_size, args):
 
     mge.save(
         {"step": step, "state_dict": model.state_dict()},
-        os.path.join(save_dir, "checkpoint-final.pkl")
+        os.path.join(save_dir, "checkpoint-final.pkl"),
     )
     _, valid_acc, valid_acc5 = infer(valid_func, valid_queue, args)
     logger.info("TEST %06d %f, %f", step, valid_acc, valid_acc5)
@@ -262,8 +250,8 @@ def infer(model, data_queue, args):
     t = time.time()
     for step, (image, label) in enumerate(data_queue):
         n = image.shape[0]
-        image = image.astype("float32")  # convert np.uint8 to float32
-        label = label.astype("int32")
+        image = mge.tensor(image, dtype="float32")
+        label = mge.tensor(label, dtype="int32")
 
         loss, acc1, acc5 = model(image, label)
 
@@ -274,8 +262,7 @@ def infer(model, data_queue, args):
         t = time.time()
 
         if step % args.report_freq == 0 and dist.get_rank() == 0:
-            logger.info("Step %d, %s %s %s %s",
-                        step, objs, top1, top5, total_time)
+            logger.info("Step %d, %s %s %s %s", step, objs, top1, top5, total_time)
 
     return objs.avg, top1.avg, top5.avg
 
