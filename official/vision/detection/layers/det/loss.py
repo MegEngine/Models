@@ -28,10 +28,7 @@ def binary_cross_entropy_with_logits(logits: Tensor, targets: Tensor) -> Tensor:
 
 
 def sigmoid_focal_loss(
-    logits: Tensor,
-    targets: Tensor,
-    alpha: float = -1,
-    gamma: float = 0,
+    logits: Tensor, targets: Tensor, alpha: float = -1, gamma: float = 0,
 ) -> Tensor:
     r"""Focal Loss for Dense Object Detection:
     <https://arxiv.org/pdf/1708.02002.pdf>
@@ -84,6 +81,54 @@ def smooth_l1_loss(pred: Tensor, target: Tensor, beta: float = 1.0) -> Tensor:
         in_loss = 0.5 * x ** 2 / beta
         out_loss = abs_x - 0.5 * beta
         loss = F.where(abs_x < beta, in_loss, out_loss)
+    return loss
+
+
+def iou_loss(
+    pred: Tensor, target: Tensor, box_mode: str = "xyxy", loss_type: str = "iou", eps: float = 1e-8,
+) -> Tensor:
+    if box_mode == "ltrb":
+        pred = F.concat([-pred[..., :2], pred[..., 2:]], axis=-1)
+        target = F.concat([-target[..., :2], target[..., 2:]], axis=-1)
+    elif box_mode != "xyxy":
+        raise NotImplementedError
+
+    pred_area = F.clamp(pred[..., 2] - pred[..., 0], lower=0) * F.clamp(
+        pred[..., 3] - pred[..., 1], lower=0
+    )
+    target_area = F.clamp(target[..., 2] - target[..., 0], lower=0) * F.clamp(
+        target[..., 3] - target[..., 1], lower=0
+    )
+
+    w_intersect = F.clamp(
+        F.minimum(pred[..., 2], target[..., 2])
+        - F.maximum(pred[..., 0], target[..., 0]),
+        lower=0,
+    )
+    h_intersect = F.clamp(
+        F.minimum(pred[..., 3], target[..., 3])
+        - F.maximum(pred[..., 1], target[..., 1]),
+        lower=0,
+    )
+
+    area_intersect = w_intersect * h_intersect
+    area_union = pred_area + target_area - area_intersect
+    ious = area_intersect / F.clamp(area_union, lower=eps)
+
+    if loss_type == "iou":
+        loss = -F.log(F.clamp(ious, lower=eps))
+    elif loss_type == "linear_iou":
+        loss = 1 - ious
+    elif loss_type == "giou":
+        g_w_intersect = F.maximum(pred[..., 2], target[..., 2]) - F.minimum(
+            pred[..., 0], target[..., 0]
+        )
+        g_h_intersect = F.maximum(pred[..., 3], target[..., 3]) - F.minimum(
+            pred[..., 1], target[..., 1]
+        )
+        ac_union = g_w_intersect * g_h_intersect
+        gious = ious - (ac_union - area_union) / F.clamp(ac_union, lower=eps)
+        loss = 1 - gious
     return loss
 
 

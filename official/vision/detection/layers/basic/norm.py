@@ -56,10 +56,45 @@ class FrozenBatchNorm2d(M.Module):
         return x * scale.detach() + bias.detach()
 
 
-def get_norm(norm, out_channels=None):
+class GroupNorm(M.Module):
+    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True):
+        super().__init__()
+        self.num_groups = num_groups
+        self.num_channels = num_channels
+        self.eps = eps
+        self.affine = affine
+        if self.affine:
+            self.weight = Parameter(np.ones(num_channels, dtype=np.float32))
+            self.bias = Parameter(np.zeros(num_channels, dtype=np.float32))
+        else:
+            self.weight = None
+            self.bias = None
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        if self.affine:
+            M.init.ones_(self.weight)
+            M.init.zeros_(self.bias)
+
+    def forward(self, x):
+        output = x.reshape(x.shape[0], self.num_groups, -1)
+        mean = F.mean(output, axis=2, keepdims=True)
+        mean2 = F.mean(output ** 2, axis=2, keepdims=True)
+        var = mean2 - mean * mean
+
+        output = (output - mean) / F.sqrt(var + self.eps)
+        output = output.reshape(x.shape)
+        if self.affine:
+            output = self.weight.reshape(1, -1, 1, 1) * output + \
+                self.bias.reshape(1, -1, 1, 1)
+
+        return output
+
+
+def get_norm(norm):
     """
     Args:
-        norm (str): currently support "BN", "SyncBN" and "FrozenBN"
+        norm (str): currently support "BN", "SyncBN", "FrozenBN" and "GN"
 
     Returns:
         M.Module or None: the normalization layer
@@ -70,8 +105,6 @@ def get_norm(norm, out_channels=None):
         "BN": M.BatchNorm2d,
         "SyncBN": M.SyncBatchNorm,
         "FrozenBN": FrozenBatchNorm2d,
+        "GN": GroupNorm,
     }[norm]
-    if out_channels is not None:
-        return norm(out_channels)
-    else:
-        return norm
+    return norm

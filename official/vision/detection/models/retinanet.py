@@ -26,7 +26,7 @@ class RetinaNet(M.Module):
         self.cfg = cfg
         self.batch_size = batch_size
 
-        self.anchor_generator = layers.DefaultAnchorGenerator(
+        self.anchor_generator = layers.AnchorBoxGenerator(
             anchor_scales=self.cfg.anchor_scales,
             anchor_ratios=self.cfg.anchor_ratios,
             strides=self.cfg.stride,
@@ -34,7 +34,6 @@ class RetinaNet(M.Module):
         )
         self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
-        self.stride_list = np.array(cfg.stride, dtype=np.float32)
         self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         # ----------------------- build the backbone ------------------------ #
@@ -42,14 +41,6 @@ class RetinaNet(M.Module):
             norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
         )
         del bottom_up.fc
-
-        # # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
-        # if self.cfg.backbone_freeze_at >= 1:
-        #     for p in bottom_up.conv1.parameters():
-        #         p.requires_grad = False
-        # if self.cfg.backbone_freeze_at >= 2:
-        #     for p in bottom_up.layer1.parameters():
-        #         p.requires_grad = False
 
         # ----------------------- build the FPN ----------------------------- #
         in_channels_p6p7 = 2048
@@ -66,7 +57,7 @@ class RetinaNet(M.Module):
         feature_shapes = [backbone_shape[f] for f in self.in_features]
 
         # ----------------------- build the RetinaNet Head ------------------ #
-        self.head = layers.RetinaNetHead(cfg, feature_shapes)
+        self.head = layers.BoxHead(cfg, feature_shapes)
 
         self.matcher = layers.Matcher(
             cfg.match_thresholds, cfg.match_labels, cfg.match_allow_low_quality
@@ -119,25 +110,24 @@ class RetinaNet(M.Module):
             gt_targets = F.zeros_like(all_level_box_logits)
             gt_targets[fg_mask, gt_labels[fg_mask] - 1] = 1
 
-            rpn_cls_loss = layers.sigmoid_focal_loss(
+            cls_loss = layers.sigmoid_focal_loss(
                 all_level_box_logits[valid_mask],
                 gt_targets[valid_mask],
                 alpha=self.cfg.focal_loss_alpha,
                 gamma=self.cfg.focal_loss_gamma,
             ).sum() / F.maximum(1, num_fg)
 
-            rpn_bbox_loss = layers.smooth_l1_loss(
+            bbox_loss = layers.smooth_l1_loss(
                 all_level_box_offsets[fg_mask],
                 gt_offsets[fg_mask],
                 beta=self.cfg.smooth_l1_beta,
-            ).sum() / F.maximum(1, num_fg)
-            rpn_bbox_loss *= self.cfg.reg_loss_weight
+            ).sum() / F.maximum(1, num_fg) * self.cfg.bbox_loss_weight
 
-            total = rpn_cls_loss + rpn_bbox_loss
+            total = cls_loss + bbox_loss
             loss_dict = {
                 "total_loss": total,
-                "loss_cls": rpn_cls_loss,
-                "loss_loc": rpn_bbox_loss,
+                "loss_cls": cls_loss,
+                "loss_bbox": bbox_loss,
             }
             self.cfg.losses_keys = list(loss_dict.keys())
             return loss_dict
@@ -214,8 +204,7 @@ class RetinaNetConfig:
         self.reg_std = [1.0, 1.0, 1.0, 1.0]
 
         self.anchor_scales = [
-            [x, x * 2 ** (1.0 / 3), x * 2 ** (2.0 / 3)]
-            for x in [32, 64, 128, 256, 512]
+            [x, x * 2 ** (1.0 / 3), x * 2 ** (2.0 / 3)] for x in [32, 64, 128, 256, 512]
         ]
         self.anchor_ratios = [[0.5, 1, 2]]
         self.anchor_offset = 0.5
@@ -230,7 +219,7 @@ class RetinaNetConfig:
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.smooth_l1_beta = 0  # use L1 loss
-        self.reg_loss_weight = 1.0
+        self.bbox_loss_weight = 1.0
         self.num_losses = 3
 
         # ------------------------ training cfg ---------------------- #
