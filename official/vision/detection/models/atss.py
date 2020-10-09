@@ -109,12 +109,8 @@ class ATSS(M.Module):
             num_fg = fg_mask.sum()
             sum_ctr = gt_ctrness[fg_mask].sum()
             # add detach() to avoid syncing across ranks in backward
-            num_fg = (
-                dist.functional.all_reduce_sum(num_fg) / dist.get_world_size()
-            ).detach()
-            sum_ctr = (
-                dist.functional.all_reduce_sum(sum_ctr) / dist.get_world_size()
-            ).detach()
+            num_fg = layers.all_reduce_mean(num_fg).detach()
+            sum_ctr = layers.all_reduce_mean(sum_ctr).detach()
 
             gt_targets = F.zeros_like(all_level_box_logits)
             gt_targets[fg_mask, gt_labels[fg_mask] - 1] = 1

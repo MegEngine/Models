@@ -45,3 +45,9 @@ def get_padded_tensor(
     else:
         raise Exception("Not supported tensor dim: %d" % ndim)
     return padded_array
+
+
+def all_reduce_mean(array: Tensor) -> Tensor:
+    if dist.get_world_size() > 1:
+        array = dist.functional.all_reduce_sum(array) / dist.get_world_size()
+    return array
