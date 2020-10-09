@@ -19,12 +19,12 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
 
         # ------------------------ training cfg ---------------------- #
         self.max_epoch = 36
-        self.lr_decay_stages = [24, 32, 34]
+        self.lr_decay_stages = [24, 32]
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "retinanet_resx101_coco_2x_800size_41dot8_f92909a1.pkl"
+    "retinanet_resx101_coco_2x_800size_42dot7_cb5c723e.pkl"
 )
 def retinanet_resx101_coco_2x_800size(batch_size=1, **kwargs):
     r"""

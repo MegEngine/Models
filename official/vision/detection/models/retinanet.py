@@ -105,7 +105,7 @@ class RetinaNet(M.Module):
 
             valid_mask = gt_labels >= 0
             fg_mask = gt_labels > 0
-            num_fg = fg_mask.astype(np.float32).sum()
+            num_fg = fg_mask.sum()
 
             gt_targets = F.zeros_like(all_level_box_logits)
             gt_targets[fg_mask, gt_labels[fg_mask] - 1] = 1

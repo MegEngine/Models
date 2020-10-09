@@ -13,7 +13,7 @@ from official.vision.detection import models
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "fcos_res50_coco_1x_800size_36dot4_b782a619.pkl"
+    "fcos_res50_coco_1x_800size_39dot7_313ef718.pkl"
 )
 def fcos_res50_coco_1x_800size(batch_size=1, **kwargs):
     r"""

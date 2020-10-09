@@ -38,8 +38,7 @@ class Matcher:
             labels[mask] = label
 
         if self.allow_low_quality_matches:
-            mask = matrix == F.max(matrix, axis=1, keepdims=True)
-            mask = mask.astype(labels.dtype).sum(axis=0) > 0
+            mask = (matrix == F.max(matrix, axis=1, keepdims=True)).sum(axis=0) > 0
             labels[mask] = 1
 
         return match_indices, labels

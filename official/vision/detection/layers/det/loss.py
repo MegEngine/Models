@@ -137,5 +137,5 @@ def softmax_loss(logits: Tensor, targets: Tensor, ignore_label: int = -1) -> Ten
     mask = targets != ignore_label
     vtargets = targets * mask
     loss = -(F.indexing_one_hot(log_prob, vtargets.astype("int32"), 1) * mask).sum()
-    loss = loss / F.maximum(mask.astype(loss.dtype).sum(), 1)
+    loss = loss / F.maximum(mask.sum(), 1)
     return loss

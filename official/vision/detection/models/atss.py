@@ -106,7 +106,7 @@ class ATSS(M.Module):
 
             valid_mask = gt_labels >= 0
             fg_mask = gt_labels > 0
-            num_fg = fg_mask.astype(np.float32).sum()
+            num_fg = fg_mask.sum()
             sum_ctr = gt_ctrness[fg_mask].sum()
             # add detach() to avoid syncing across ranks in backward
             num_fg = (
