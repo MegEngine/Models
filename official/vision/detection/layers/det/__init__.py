@@ -7,13 +7,14 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from .anchor import *
+from .box_head import *
 from .box_utils import *
 from .fpn import *
 from .loss import *
 from .matcher import *
+from .point_head import *
 from .pooler import *
 from .rcnn import *
-from .retina_head import *
 from .rpn import *
 
 _EXCLUDE = {}

@@ -9,6 +9,7 @@
 import numpy as np
 
 import megengine as mge
+import megengine.distributed as dist
 import megengine.functional as F
 import megengine.module as M
 
@@ -16,9 +17,9 @@ import official.vision.classification.resnet.model as resnet
 from official.vision.detection import layers
 
 
-class RetinaNet(M.Module):
+class ATSS(M.Module):
     """
-    Implement RetinaNet (https://arxiv.org/abs/1708.02002).
+    Implement ATSS (https://arxiv.org/abs/1912.02424).
     """
 
     def __init__(self, cfg, batch_size):
@@ -26,13 +27,12 @@ class RetinaNet(M.Module):
         self.cfg = cfg
         self.batch_size = batch_size
 
-        self.anchor_generator = layers.AnchorBoxGenerator(
-            anchor_scales=self.cfg.anchor_scales,
-            anchor_ratios=self.cfg.anchor_ratios,
+        self.anchor_generator = layers.AnchorPointGenerator(
+            cfg.num_anchors,
             strides=self.cfg.stride,
             offset=self.cfg.anchor_offset,
         )
-        self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
+        self.box_coder = layers.PointCoder()
 
         self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
@@ -56,12 +56,8 @@ class RetinaNet(M.Module):
         backbone_shape = self.backbone.output_shape()
         feature_shapes = [backbone_shape[f] for f in self.in_features]
 
-        # ----------------------- build the RetinaNet Head ------------------ #
-        self.head = layers.BoxHead(cfg, feature_shapes)
-
-        self.matcher = layers.Matcher(
-            cfg.match_thresholds, cfg.match_labels, cfg.match_allow_low_quality
-        )
+        # ----------------------- build the ATSS Head ----------------------- #
+        self.head = layers.PointHead(cfg, feature_shapes)
 
     def preprocess_image(self, image):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
@@ -76,7 +72,7 @@ class RetinaNet(M.Module):
         features = self.backbone(image)
         features = [features[f] for f in self.in_features]
 
-        box_logits, box_offsets = self.head(features)
+        box_logits, box_offsets, box_ctrness = self.head(features)
 
         box_logits_list = [
             _.transpose(0, 2, 3, 1).reshape(self.batch_size, -1, self.cfg.num_classes)
@@ -85,27 +81,36 @@ class RetinaNet(M.Module):
         box_offsets_list = [
             _.transpose(0, 2, 3, 1).reshape(self.batch_size, -1, 4) for _ in box_offsets
         ]
+        box_ctrness_list = [
+            _.transpose(0, 2, 3, 1).reshape(self.batch_size, -1, 1) for _ in box_ctrness
+        ]
 
         anchors_list = self.anchor_generator(features)
 
         all_level_box_logits = F.concat(box_logits_list, axis=1)
         all_level_box_offsets = F.concat(box_offsets_list, axis=1)
-        all_level_anchors = F.concat(anchors_list, axis=0)
+        all_level_box_ctrness = F.concat(box_ctrness_list, axis=1)
 
         if self.training:
-            gt_labels, gt_offsets = self.get_ground_truth(
-                all_level_anchors, gt_boxes, im_info[:, 4].astype(np.int32),
+            gt_labels, gt_offsets, gt_ctrness = self.get_ground_truth(
+                anchors_list, gt_boxes, im_info[:, 4].astype(np.int32),
             )
 
             all_level_box_logits = all_level_box_logits.reshape(-1, self.cfg.num_classes)
             all_level_box_offsets = all_level_box_offsets.reshape(-1, 4)
+            all_level_box_ctrness = all_level_box_ctrness.flatten()
 
             gt_labels = gt_labels.flatten()
             gt_offsets = gt_offsets.reshape(-1, 4)
+            gt_ctrness = gt_ctrness.flatten()
 
             valid_mask = gt_labels >= 0
             fg_mask = gt_labels > 0
             num_fg = fg_mask.sum()
+            sum_ctr = gt_ctrness[fg_mask].sum()
+            # add detach() to avoid syncing across ranks in backward
+            num_fg = layers.all_reduce_mean(num_fg).detach()
+            sum_ctr = layers.all_reduce_mean(sum_ctr).detach()
 
             gt_targets = F.zeros_like(all_level_box_logits)
             gt_targets[fg_mask, gt_labels[fg_mask] - 1] = 1
@@ -117,17 +122,26 @@ class RetinaNet(M.Module):
                 gamma=self.cfg.focal_loss_gamma,
             ).sum() / F.maximum(1, num_fg)
 
-            bbox_loss = layers.smooth_l1_loss(
-                all_level_box_offsets[fg_mask],
-                gt_offsets[fg_mask],
-                beta=self.cfg.smooth_l1_beta,
-            ).sum() / F.maximum(1, num_fg) * self.cfg.bbox_loss_weight
+            bbox_loss = (
+                layers.iou_loss(
+                    all_level_box_offsets[fg_mask],
+                    gt_offsets[fg_mask],
+                    box_mode="ltrb",
+                    loss_type=self.cfg.iou_loss_type,
+                ) * gt_ctrness[fg_mask]
+            ).sum() / F.maximum(1, sum_ctr) * self.cfg.bbox_loss_weight
 
-            total = cls_loss + bbox_loss
+            ctr_loss = layers.binary_cross_entropy_with_logits(
+                all_level_box_ctrness[fg_mask],
+                gt_ctrness[fg_mask],
+            ).sum() / F.maximum(1, num_fg)
+
+            total = cls_loss + bbox_loss + ctr_loss
             loss_dict = {
                 "total_loss": total,
                 "loss_cls": cls_loss,
                 "loss_bbox": bbox_loss,
+                "loss_ctr": ctr_loss,
             }
             self.cfg.losses_keys = list(loss_dict.keys())
             return loss_dict
@@ -135,6 +149,7 @@ class RetinaNet(M.Module):
             # currently not support multi-batch testing
             assert self.batch_size == 1
 
+            all_level_anchors = F.concat(anchors_list, axis=0)
             transformed_box = self.box_coder.decode(
                 all_level_anchors, all_level_box_offsets[0]
             )
@@ -148,34 +163,84 @@ class RetinaNet(M.Module):
             clipped_box = layers.get_clipped_box(
                 transformed_box, im_info[0, 2:4]
             ).reshape(-1, 4)
-            all_level_box_scores = F.sigmoid(all_level_box_logits)
+            all_level_box_scores = F.sqrt(
+                F.sigmoid(all_level_box_logits) * F.sigmoid(all_level_box_ctrness)
+            )
             return all_level_box_scores[0], clipped_box
 
-    def get_ground_truth(self, anchors, batched_gt_boxes, batched_valid_gt_box_number):
+    def get_ground_truth(self, anchors_list, batched_gt_boxes, batched_valid_gt_box_number):
         labels_list = []
         offsets_list = []
+        ctrness_list = []
 
+        all_level_anchors = F.concat(anchors_list, axis=0)
         for b_id in range(self.batch_size):
             gt_boxes = batched_gt_boxes[b_id, : batched_valid_gt_box_number[b_id]]
 
-            overlaps = layers.get_iou(gt_boxes[:, :4], anchors)
-            match_indices, labels = self.matcher(overlaps)
-            gt_boxes_matched = gt_boxes[match_indices]
+            ious = []
+            candidate_idxs = []
+            base = 0
+            for stride, anchors_i in zip(self.cfg.stride, anchors_list):
+                ious.append(layers.get_iou(
+                    gt_boxes[:, :4],
+                    F.concat([
+                        anchors_i - stride * self.cfg.anchor_scale / 2,
+                        anchors_i + stride * self.cfg.anchor_scale / 2,
+                    ], axis=1)
+                ))
+                gt_centers = (gt_boxes[:, :2] + gt_boxes[:, 2:4]) / 2
+                distances = F.sqrt(
+                    F.sum((F.add_axis(gt_centers, axis=1) - anchors_i) ** 2, axis=2)
+                )
+                _, topk_idxs = F.topk(distances, self.cfg.anchor_topk)
+                candidate_idxs.append(base + topk_idxs)
+                base += anchors_i.shape[0]
+            ious = F.concat(ious, axis=1)
+            candidate_idxs = F.concat(candidate_idxs, axis=1)
 
-            fg_mask = labels == 1
-            labels[fg_mask] = gt_boxes_matched[fg_mask, 4].astype(np.int32)
-            offsets = self.box_coder.encode(anchors, gt_boxes_matched[:, :4])
+            candidate_ious = F.gather(ious, 1, candidate_idxs)
+            ious_thr = F.mean(candidate_ious, axis=1, keepdims=True) + \
+                       F.std(candidate_ious, axis=1, keepdims=True)
+            is_foreground = F.scatter(
+                F.zeros(ious.shape), 1, candidate_idxs, F.ones(candidate_idxs.shape)
+            ).astype(bool) & (ious >= ious_thr)
+
+            is_in_boxes = F.min(self.box_coder.encode(
+                all_level_anchors, F.add_axis(gt_boxes[:, :4], axis=1)
+            ), axis=2) > 0
+
+            ious[~is_foreground] = -1
+            ious[~is_in_boxes] = -1
+
+            match_indices = F.argmax(ious, axis=0)
+            gt_boxes_matched = gt_boxes[match_indices]
+            anchor_max_iou = F.remove_axis(
+                F.gather(ious, 0, F.add_axis(match_indices, axis=0)), axis=0
+            )
+
+            labels = gt_boxes_matched[:, 4].astype(np.int32)
+            labels[anchor_max_iou == -1] = 0
+            offsets = self.box_coder.encode(all_level_anchors, gt_boxes_matched[:, :4])
+
+            left_right = offsets[:, [0, 2]]
+            top_bottom = offsets[:, [1, 3]]
+            ctrness = F.sqrt(
+                F.clamp(F.min(left_right, axis=1) / F.max(left_right, axis=1), lower=0)
+                * F.clamp(F.min(top_bottom, axis=1) / F.max(top_bottom, axis=1), lower=0)
+            )
 
             labels_list.append(labels)
             offsets_list.append(offsets)
+            ctrness_list.append(ctrness)
 
         return (
             F.stack(labels_list, axis=0).detach(),
             F.stack(offsets_list, axis=0).detach(),
+            F.stack(ctrness_list, axis=0).detach(),
         )
 
 
-class RetinaNetConfig:
+class ATSSConfig:
     def __init__(self):
         self.backbone = "resnet50"
         self.backbone_pretrained = True
@@ -200,27 +265,21 @@ class RetinaNetConfig:
         self.img_mean = [103.530, 116.280, 123.675]  # BGR
         self.img_std = [57.375, 57.120, 58.395]
         self.stride = [8, 16, 32, 64, 128]
-        self.reg_mean = [0.0, 0.0, 0.0, 0.0]
-        self.reg_std = [1.0, 1.0, 1.0, 1.0]
 
-        self.anchor_scales = [
-            [x, x * 2 ** (1.0 / 3), x * 2 ** (2.0 / 3)] for x in [32, 64, 128, 256, 512]
-        ]
-        self.anchor_ratios = [[0.5, 1, 2]]
+        self.num_anchors = 1
         self.anchor_offset = 0.5
 
-        self.match_thresholds = [0.4, 0.5]
-        self.match_labels = [0, -1, 1]
-        self.match_allow_low_quality = True
+        self.anchor_scale = 8
+        self.anchor_topk = 9
         self.class_aware_box = False
         self.cls_prior_prob = 0.01
 
         # ------------------------ loss cfg -------------------------- #
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
-        self.smooth_l1_beta = 0  # use L1 loss
-        self.bbox_loss_weight = 1.0
-        self.num_losses = 3
+        self.iou_loss_type = "giou"
+        self.bbox_loss_weight = 2.0
+        self.num_losses = 4
 
         # ------------------------ training cfg ---------------------- #
         self.train_image_short_size = (640, 672, 704, 736, 768, 800)
@@ -242,4 +301,4 @@ class RetinaNetConfig:
         self.test_max_boxes_per_image = 100
         self.test_vis_threshold = 0.3
         self.test_cls_threshold = 0.05
-        self.test_nms = 0.5
+        self.test_nms = 0.6

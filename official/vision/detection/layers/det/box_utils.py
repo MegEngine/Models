@@ -104,6 +104,19 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
         return pred_box
 
 
+class PointCoder(BoxCoderBase, metaclass=ABCMeta):
+    def encode(self, point: Tensor, gt: Tensor) -> Tensor:
+        return F.concat([point - gt[..., :2], gt[..., 2:] - point], axis=-1)
+
+    def decode(self, anchors: Tensor, deltas: Tensor) -> Tensor:
+        return F.stack([
+            F.add_axis(anchors[:, 0], axis=1) - deltas[:, 0::4],
+            F.add_axis(anchors[:, 1], axis=1) - deltas[:, 1::4],
+            F.add_axis(anchors[:, 0], axis=1) + deltas[:, 2::4],
+            F.add_axis(anchors[:, 1], axis=1) + deltas[:, 3::4],
+        ], axis=2).reshape(deltas.shape)
+
+
 def get_iou(boxes1: Tensor, boxes2: Tensor, return_ignore=False) -> Tensor:
     """
     Given two lists of boxes of size N and M,

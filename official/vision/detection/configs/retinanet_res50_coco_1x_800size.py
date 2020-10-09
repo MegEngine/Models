@@ -13,7 +13,7 @@ from official.vision.detection import models
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "retinanet_res50_coco_1x_800size_36dot4_b782a619.pkl"
+    "retinanet_res50_coco_1x_800size_37dot0_d1dafa1d.pkl"
 )
 def retinanet_res50_coco_1x_800size(batch_size=1, **kwargs):
     r"""

@@ -67,14 +67,15 @@ class FPN(M.Module):
 
         in_strides = strides
         in_channels = channels
+        norm = layers.get_norm(norm)
 
-        use_bias = norm == ""
+        use_bias = norm is None
         self.lateral_convs = list()
         self.output_convs = list()
 
         for idx, in_channels in enumerate(in_channels):
-            lateral_norm = layers.get_norm(norm, out_channels)
-            output_norm = layers.get_norm(norm, out_channels)
+            lateral_norm = None if norm is None else norm(out_channels)
+            output_norm = None if norm is None else norm(out_channels)
 
             lateral_conv = layers.Conv2d(
                 in_channels,
