@@ -7,6 +7,7 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import math
+
 import numpy as np
 
 import megengine.functional as F
@@ -43,11 +44,11 @@ def roi_pool(
         level_rois = rois[inds]
 
         if pooler_type == "roi_pool":
-            pool_fm = F.roi_pooling(
+            pool_fm = F.nn.roi_pooling(
                 rpn_fms[i], level_rois, pool_shape, mode="max", scale=1.0 / stride[i]
             )
         elif pooler_type == "roi_align":
-            pool_fm = F.roi_align(
+            pool_fm = F.nn.roi_align(
                 rpn_fms[i],
                 level_rois,
                 pool_shape,

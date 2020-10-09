@@ -32,7 +32,7 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
         self.nr_images_epoch = 400000
 
 
-def retinanet_res50_objects365_1x_800size(batch_size=1, **kwargs):
+def retinanet_res50_objects365_1x_800size(**kwargs):
     r"""
     RetinaNet trained from Objects365 dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
@@ -40,7 +40,7 @@ def retinanet_res50_objects365_1x_800size(batch_size=1, **kwargs):
     """
     cfg = CustomRetinaNetConfig()
     cfg.backbone_pretrained = False
-    return models.RetinaNet(cfg, batch_size=batch_size, **kwargs)
+    return models.RetinaNet(cfg, **kwargs)
 
 
 Net = models.RetinaNet

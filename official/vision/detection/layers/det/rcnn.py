@@ -56,20 +56,21 @@ class RCNN(M.Module):
 
         if self.training:
             # loss for rcnn classification
-            loss_rcnn_cls = layers.softmax_loss(pred_logits, labels)
+            loss_rcnn_cls = F.loss.cross_entropy(pred_logits, labels, axis=1)
             # loss for rcnn regression
             pred_offsets = pred_offsets.reshape(-1, self.cfg.num_classes, 4)
             num_samples = labels.shape[0]
             fg_mask = labels > 0
-            # -1 for removing background class
-            non_bg_labels = labels - 1
-            loss_rcnn_loc = layers.smooth_l1_loss(
-                pred_offsets[fg_mask, non_bg_labels[fg_mask]],
+            loss_rcnn_bbox = layers.smooth_l1_loss(
+                pred_offsets[fg_mask, labels[fg_mask] - 1],
                 bbox_targets[fg_mask],
                 self.cfg.rcnn_smooth_l1_beta,
-            ).sum() / F.maximum(num_samples, 1.0)
+            ).sum() / F.maximum(num_samples, 1)
 
-            loss_dict = {"loss_rcnn_cls": loss_rcnn_cls, "loss_rcnn_loc": loss_rcnn_loc}
+            loss_dict = {
+                "loss_rcnn_cls": loss_rcnn_cls,
+                "loss_rcnn_bbox": loss_rcnn_bbox,
+            }
             return loss_dict
         else:
             # slice 1 for removing background
@@ -77,9 +78,8 @@ class RCNN(M.Module):
             pred_offsets = pred_offsets.reshape(-1, 4)
             target_shape = (rcnn_rois.shape[0], self.cfg.num_classes, 4)
             # rois (N, 4) -> (N, 1, 4) -> (N, 80, 4) -> (N * 80, 4)
-            base_rois = (
-                F.add_axis(rcnn_rois[:, 1:5], 1).broadcast(target_shape).reshape(-1, 4)
-            )
+            base_rois = F.broadcast_to(
+                F.expand_dims(rcnn_rois[:, 1:5], axis=1), target_shape).reshape(-1, 4)
             pred_bbox = self.box_coder.decode(base_rois, pred_offsets)
             return pred_bbox, pred_scores
 
@@ -92,11 +92,10 @@ class RCNN(M.Module):
         return_bbox_targets = []
 
         # get per image proposals and gt_boxes
-        for bid in range(self.cfg.batch_per_gpu):
-            num_valid_boxes = im_info[bid, 4]
+        for bid in range(gt_boxes.shape[0]):
+            num_valid_boxes = im_info[bid, 4].astype("int32")
             gt_boxes_per_img = gt_boxes[bid, :num_valid_boxes, :]
             batch_inds = F.full((gt_boxes_per_img.shape[0], 1), bid)
-            # if config.proposal_append_gt:
             gt_rois = F.concat([batch_inds, gt_boxes_per_img[:, :4]], axis=1)
             batch_roi_mask = rpn_rois[:, 0] == bid
             # all_rois : [batch_id, x1, y1, x2, y2]
@@ -109,13 +108,10 @@ class RCNN(M.Module):
             labels = gt_boxes_per_img[gt_assignment, 4]
 
             # ---------------- get the fg/bg labels for each roi ---------------#
-            fg_mask = (
-                (max_overlaps >= self.cfg.fg_threshold)
-                & (labels != self.cfg.ignore_label)
-            )
+            fg_mask = (max_overlaps >= self.cfg.fg_threshold) & (labels >= 0)
             bg_mask = (
-                (max_overlaps < self.cfg.bg_threshold_high)
-                & (max_overlaps >= self.cfg.bg_threshold_low)
+                (max_overlaps >= self.cfg.bg_threshold_low)
+                & (max_overlaps < self.cfg.bg_threshold_high)
             )
 
             num_fg_rois = int(self.cfg.num_rois * self.cfg.fg_ratio)

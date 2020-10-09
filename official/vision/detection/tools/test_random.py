@@ -7,21 +7,21 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import importlib
 import json
 import os
-import sys
 from multiprocessing import Process, Queue
 from tqdm import tqdm
 
-import numpy as np
-
 import megengine as mge
 import megengine.distributed as dist
-from megengine.data import DataLoader, SequentialSampler
+from megengine.data import DataLoader
 
 from official.vision.detection.tools.data_mapper import data_mapper
-from official.vision.detection.tools.utils import DetEvaluator, PseudoDetectionDataset
+from official.vision.detection.tools.utils import (
+    InferenceSampler,
+    DetEvaluator,
+    import_from_file
+)
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
@@ -54,8 +54,7 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
-    sys.path.insert(0, os.path.dirname(args.file))
-    current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
+    current_network = import_from_file(args.file)
     cfg = current_network.Cfg()
 
     if args.weight_file:
@@ -69,17 +68,17 @@ def main():
 
     master_ip = "localhost"
     port = dist.get_free_ports(1)[0]
-    server = dist.Server(port)
+    dist.Server(port)
 
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
         if args.weight_file:
-            model_file = args.weight_file
+            weight_file = args.weight_file
         else:
-            model_file = "log-of-{}/epoch_{}.pkl".format(
+            weight_file = "log-of-{}/epoch_{}.pkl".format(
                 os.path.basename(args.file).split(".")[0], epoch_num
             )
 
-        results_list = []
+        result_list = []
         result_queue = Queue(2000)
         procs = []
         for i in range(args.ngpus):
@@ -87,12 +86,12 @@ def main():
                 target=worker,
                 args=(
                     current_network,
-                    model_file,
+                    weight_file,
                     args.dataset_dir,
-                    i,
-                    args.ngpus,
                     master_ip,
                     port,
+                    args.ngpus,
+                    i,
                     result_queue,
                 ),
             )
@@ -102,11 +101,11 @@ def main():
         num_imgs = dict(coco=5000, objects365=30000)
 
         for _ in tqdm(range(num_imgs[cfg.test_dataset["name"]])):
-            results_list.append(result_queue.get())
+            result_list.append(result_queue.get())
         for p in procs:
             p.join()
 
-        all_results = DetEvaluator.format(results_list, cfg)
+        all_results = DetEvaluator.format(result_list, cfg)
         json_path = "log-of-{}/epoch_{}.json".format(
             os.path.basename(args.file).split(".")[0], epoch_num
         )
@@ -147,7 +146,7 @@ def main():
 
 
 def worker(
-    current_network, model_file, data_dir, rank, world_size, master_ip, port, result_queue
+    current_network, weight_file, dataset_dir, master_ip, port, world_size, rank, result_queue
 ):
     dist.init_process_group(
         master_ip=master_ip,
@@ -160,17 +159,18 @@ def worker(
 
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
-    model = current_network.Net(cfg, batch_size=1)
+    model = current_network.Net(cfg)
     model.eval()
-    state_dict = mge.load(model_file)
+
+    state_dict = mge.load(weight_file)
     if "state_dict" in state_dict:
         state_dict = state_dict["state_dict"]
     model.load_state_dict(state_dict)
 
     evaluator = DetEvaluator(model)
 
-    dataloader = build_dataloader(rank, world_size, data_dir, model.cfg)
-    for data in dataloader:
+    test_loader = build_dataloader(rank, world_size, dataset_dir, model.cfg)
+    for data in test_loader:
         image, im_info = DetEvaluator.process_inputs(
             data[0][0],
             model.cfg.test_image_short_size,
@@ -186,13 +186,9 @@ def worker(
         })
 
 
-def build_dataset():
-    return PseudoDetectionDataset(length=5000, order=["image", "info"])
-
-
-def build_dataloader(rank, world_size, data_dir, cfg):
-    val_dataset = build_dataset()
-    val_sampler = SequentialSampler(val_dataset, 1, world_size=world_size, rank=rank)
+def build_dataloader(rank, world_size, dataset_dir, cfg):
+    val_dataset = PseudoDetectionDataset(length=5000, order=["image", "info"])
+    val_sampler = InferenceSampler(val_dataset, 1, world_size=world_size, rank=rank)
     val_dataloader = DataLoader(val_dataset, sampler=val_sampler, num_workers=2)
     return val_dataloader
 

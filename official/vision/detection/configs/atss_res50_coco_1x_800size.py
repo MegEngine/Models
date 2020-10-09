@@ -15,7 +15,7 @@ from official.vision.detection import models
     "https://data.megengine.org.cn/models/weights/"
     "atss_res50_coco_1x_800size_40dot1_7b30f6cf.pkl"
 )
-def atss_res50_coco_1x_800size(batch_size=1, **kwargs):
+def atss_res50_coco_1x_800size(**kwargs):
     r"""
     ATSS trained from COCO dataset.
     `"ATSS" <https://arxiv.org/abs/1912.02424>`_
@@ -24,7 +24,7 @@ def atss_res50_coco_1x_800size(batch_size=1, **kwargs):
     """
     cfg = models.ATSSConfig()
     cfg.backbone_pretrained = False
-    return models.ATSS(cfg, batch_size=batch_size, **kwargs)
+    return models.ATSS(cfg, **kwargs)
 
 
 Net = models.ATSS

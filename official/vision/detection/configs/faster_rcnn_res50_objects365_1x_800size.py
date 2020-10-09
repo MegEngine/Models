@@ -32,7 +32,7 @@ class CustomFasterRCNNConfig(models.FasterRCNNConfig):
         self.nr_images_epoch = 400000
 
 
-def faster_rcnn_res50_objects365_1x_800size(batch_size=1, **kwargs):
+def faster_rcnn_res50_objects365_1x_800size(**kwargs):
     r"""
     Faster-RCNN FPN trained from Objects365 dataset.
     `"Faster-RCNN" <https://arxiv.org/abs/1506.01497>`_
@@ -40,7 +40,7 @@ def faster_rcnn_res50_objects365_1x_800size(batch_size=1, **kwargs):
     """
     cfg = CustomFasterRCNNConfig()
     cfg.backbone_pretrained = False
-    return models.FasterRCNN(cfg, batch_size=batch_size, **kwargs)
+    return models.FasterRCNN(cfg, **kwargs)
 
 
 Net = models.FasterRCNN

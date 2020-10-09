@@ -8,8 +8,6 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import numpy as np
 
-import megengine as mge
-import megengine.distributed as dist
 import megengine.functional as F
 import megengine.module as M
 
@@ -22,27 +20,26 @@ class ATSS(M.Module):
     Implement ATSS (https://arxiv.org/abs/1912.02424).
     """
 
-    def __init__(self, cfg, batch_size):
+    def __init__(self, cfg):
         super().__init__()
         self.cfg = cfg
-        self.batch_size = batch_size
 
         self.anchor_generator = layers.AnchorPointGenerator(
             cfg.num_anchors,
             strides=self.cfg.stride,
             offset=self.cfg.anchor_offset,
         )
-        self.box_coder = layers.PointCoder()
+        self.point_coder = layers.PointCoder()
 
-        self.in_features = ["p3", "p4", "p5", "p6", "p7"]
+        self.in_features = cfg.in_features
 
-        # ----------------------- build the backbone ------------------------ #
+        # ----------------------- build backbone ------------------------ #
         bottom_up = getattr(resnet, cfg.backbone)(
             norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
         )
         del bottom_up.fc
 
-        # ----------------------- build the FPN ----------------------------- #
+        # ----------------------- build FPN ----------------------------- #
         in_channels_p6p7 = 2048
         out_channels = 256
         self.backbone = layers.FPN(
@@ -56,7 +53,7 @@ class ATSS(M.Module):
         backbone_shape = self.backbone.output_shape()
         feature_shapes = [backbone_shape[f] for f in self.in_features]
 
-        # ----------------------- build the ATSS Head ----------------------- #
+        # ----------------------- build ATSS Head ----------------------- #
         self.head = layers.PointHead(cfg, feature_shapes)
 
     def preprocess_image(self, image):
@@ -75,14 +72,14 @@ class ATSS(M.Module):
         box_logits, box_offsets, box_ctrness = self.head(features)
 
         box_logits_list = [
-            _.transpose(0, 2, 3, 1).reshape(self.batch_size, -1, self.cfg.num_classes)
+            _.transpose(0, 2, 3, 1).reshape(image.shape[0], -1, self.cfg.num_classes)
             for _ in box_logits
         ]
         box_offsets_list = [
-            _.transpose(0, 2, 3, 1).reshape(self.batch_size, -1, 4) for _ in box_offsets
+            _.transpose(0, 2, 3, 1).reshape(image.shape[0], -1, 4) for _ in box_offsets
         ]
         box_ctrness_list = [
-            _.transpose(0, 2, 3, 1).reshape(self.batch_size, -1, 1) for _ in box_ctrness
+            _.transpose(0, 2, 3, 1).reshape(image.shape[0], -1, 1) for _ in box_ctrness
         ]
 
         anchors_list = self.anchor_generator(features)
@@ -115,67 +112,67 @@ class ATSS(M.Module):
             gt_targets = F.zeros_like(all_level_box_logits)
             gt_targets[fg_mask, gt_labels[fg_mask] - 1] = 1
 
-            cls_loss = layers.sigmoid_focal_loss(
+            loss_cls = layers.sigmoid_focal_loss(
                 all_level_box_logits[valid_mask],
                 gt_targets[valid_mask],
                 alpha=self.cfg.focal_loss_alpha,
                 gamma=self.cfg.focal_loss_gamma,
-            ).sum() / F.maximum(1, num_fg)
+            ).sum() / F.maximum(num_fg, 1)
 
-            bbox_loss = (
+            loss_bbox = (
                 layers.iou_loss(
                     all_level_box_offsets[fg_mask],
                     gt_offsets[fg_mask],
                     box_mode="ltrb",
                     loss_type=self.cfg.iou_loss_type,
                 ) * gt_ctrness[fg_mask]
-            ).sum() / F.maximum(1, sum_ctr) * self.cfg.bbox_loss_weight
+            ).sum() / F.maximum(sum_ctr, 1e-5) * self.cfg.loss_bbox_weight
 
-            ctr_loss = layers.binary_cross_entropy_with_logits(
+            loss_ctr = layers.binary_cross_entropy(
                 all_level_box_ctrness[fg_mask],
                 gt_ctrness[fg_mask],
-            ).sum() / F.maximum(1, num_fg)
+            ).sum() / F.maximum(num_fg, 1)
 
-            total = cls_loss + bbox_loss + ctr_loss
+            total = loss_cls + loss_bbox + loss_ctr
             loss_dict = {
                 "total_loss": total,
-                "loss_cls": cls_loss,
-                "loss_bbox": bbox_loss,
-                "loss_ctr": ctr_loss,
+                "loss_cls": loss_cls,
+                "loss_bbox": loss_bbox,
+                "loss_ctr": loss_ctr,
             }
             self.cfg.losses_keys = list(loss_dict.keys())
             return loss_dict
         else:
             # currently not support multi-batch testing
-            assert self.batch_size == 1
+            assert image.shape[0] == 1
 
             all_level_anchors = F.concat(anchors_list, axis=0)
-            transformed_box = self.box_coder.decode(
+            pred_boxes = self.point_coder.decode(
                 all_level_anchors, all_level_box_offsets[0]
             )
-            transformed_box = transformed_box.reshape(-1, 4)
+            pred_boxes = pred_boxes.reshape(-1, 4)
 
             scale_w = im_info[0, 1] / im_info[0, 3]
             scale_h = im_info[0, 0] / im_info[0, 2]
-            transformed_box = transformed_box / F.concat(
+            pred_boxes = pred_boxes / F.concat(
                 [scale_w, scale_h, scale_w, scale_h], axis=0
             )
-            clipped_box = layers.get_clipped_box(
-                transformed_box, im_info[0, 2:4]
+            clipped_boxes = layers.get_clipped_boxes(
+                pred_boxes, im_info[0, 2:4]
             ).reshape(-1, 4)
-            all_level_box_scores = F.sqrt(
+            pred_score = F.sqrt(
                 F.sigmoid(all_level_box_logits) * F.sigmoid(all_level_box_ctrness)
-            )
-            return all_level_box_scores[0], clipped_box
+            )[0]
+            return pred_score, clipped_boxes
 
-    def get_ground_truth(self, anchors_list, batched_gt_boxes, batched_valid_gt_box_number):
+    def get_ground_truth(self, anchors_list, batched_gt_boxes, batched_num_gts):
         labels_list = []
         offsets_list = []
         ctrness_list = []
 
         all_level_anchors = F.concat(anchors_list, axis=0)
-        for b_id in range(self.batch_size):
-            gt_boxes = batched_gt_boxes[b_id, : batched_valid_gt_box_number[b_id]]
+        for bid in range(batched_gt_boxes.shape[0]):
+            gt_boxes = batched_gt_boxes[bid, :batched_num_gts[bid]]
 
             ious = []
             candidate_idxs = []
@@ -190,7 +187,7 @@ class ATSS(M.Module):
                 ))
                 gt_centers = (gt_boxes[:, :2] + gt_boxes[:, 2:4]) / 2
                 distances = F.sqrt(
-                    F.sum((F.add_axis(gt_centers, axis=1) - anchors_i) ** 2, axis=2)
+                    F.sum((F.expand_dims(gt_centers, axis=1) - anchors_i) ** 2, axis=2)
                 )
                 _, topk_idxs = F.topk(distances, self.cfg.anchor_topk)
                 candidate_idxs.append(base + topk_idxs)
@@ -205,8 +202,8 @@ class ATSS(M.Module):
                 F.zeros(ious.shape), 1, candidate_idxs, F.ones(candidate_idxs.shape)
             ).astype(bool) & (ious >= ious_thr)
 
-            is_in_boxes = F.min(self.box_coder.encode(
-                all_level_anchors, F.add_axis(gt_boxes[:, :4], axis=1)
+            is_in_boxes = F.min(self.point_coder.encode(
+                all_level_anchors, F.expand_dims(gt_boxes[:, :4], axis=1)
             ), axis=2) > 0
 
             ious[~is_foreground] = -1
@@ -214,19 +211,17 @@ class ATSS(M.Module):
 
             match_indices = F.argmax(ious, axis=0)
             gt_boxes_matched = gt_boxes[match_indices]
-            anchor_max_iou = F.remove_axis(
-                F.gather(ious, 0, F.add_axis(match_indices, axis=0)), axis=0
-            )
+            anchor_max_iou = F.indexing_one_hot(ious, match_indices, axis=0)
 
             labels = gt_boxes_matched[:, 4].astype(np.int32)
             labels[anchor_max_iou == -1] = 0
-            offsets = self.box_coder.encode(all_level_anchors, gt_boxes_matched[:, :4])
+            offsets = self.point_coder.encode(all_level_anchors, gt_boxes_matched[:, :4])
 
             left_right = offsets[:, [0, 2]]
             top_bottom = offsets[:, [1, 3]]
             ctrness = F.sqrt(
-                F.clamp(F.min(left_right, axis=1) / F.max(left_right, axis=1), lower=0)
-                * F.clamp(F.min(top_bottom, axis=1) / F.max(top_bottom, axis=1), lower=0)
+                F.clip(F.min(left_right, axis=1) / F.max(left_right, axis=1), lower=0)
+                * F.clip(F.min(top_bottom, axis=1) / F.max(top_bottom, axis=1), lower=0)
             )
 
             labels_list.append(labels)
@@ -264,7 +259,10 @@ class ATSSConfig:
         self.num_classes = 80
         self.img_mean = [103.530, 116.280, 123.675]  # BGR
         self.img_std = [57.375, 57.120, 58.395]
+
+        # ----------------------- net cfg ------------------------- #
         self.stride = [8, 16, 32, 64, 128]
+        self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         self.num_anchors = 1
         self.anchor_offset = 0.5
@@ -278,7 +276,7 @@ class ATSSConfig:
         self.focal_loss_alpha = 0.25
         self.focal_loss_gamma = 2
         self.iou_loss_type = "giou"
-        self.bbox_loss_weight = 2.0
+        self.loss_bbox_weight = 2.0
         self.num_losses = 4
 
         # ------------------------ training cfg ---------------------- #

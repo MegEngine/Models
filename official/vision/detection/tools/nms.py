@@ -20,17 +20,18 @@ def py_cpu_nms(dets, thresh):
     keep = list()
 
     while order.size > 0:
-        pick_ind = order[0]
-        keep.append(pick_ind)
+        pick_idx = order[0]
+        keep.append(pick_idx)
+        order = order[1:]
 
-        xx1 = np.maximum(x1[pick_ind], x1[order[1:]])
-        yy1 = np.maximum(y1[pick_ind], y1[order[1:]])
-        xx2 = np.minimum(x2[pick_ind], x2[order[1:]])
-        yy2 = np.minimum(y2[pick_ind], y2[order[1:]])
+        xx1 = np.maximum(x1[pick_idx], x1[order])
+        yy1 = np.maximum(y1[pick_idx], y1[order])
+        xx2 = np.minimum(x2[pick_idx], x2[order])
+        yy2 = np.minimum(y2[pick_idx], y2[order])
 
-        inter = np.maximum(0.0, xx2 - xx1) * np.maximum(0.0, yy2 - yy1)
-        iou = inter / (areas[pick_ind] + areas[order[1:]] - inter)
+        inter = np.maximum(xx2 - xx1, 0) * np.maximum(yy2 - yy1, 0)
+        iou = inter / np.maximum(areas[pick_idx] + areas[order] - inter, 1e-5)
 
-        order = order[np.where(iou <= thresh)[0] + 1]
+        order = order[iou <= thresh]
 
     return keep

@@ -6,14 +6,19 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import functools
+import importlib
+import math
 import random
 from collections import defaultdict
+from tabulate import tabulate
 
 import cv2
 import numpy as np
 
-from megengine.data import Collator, RandomSampler
+from megengine.data import Collator, RandomSampler, Sampler
 from megengine.data.dataset import VisionDataset
+# from megengine.jit import trace
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.nms import py_cpu_nms
@@ -24,8 +29,7 @@ class AverageMeter:
 
     def __init__(self, record_len=1):
         self.record_len = record_len
-        self.sum = [0 for i in range(self.record_len)]
-        self.cnt = 0
+        self.reset()
 
     def reset(self):
         self.sum = [0 for i in range(self.record_len)]
@@ -37,6 +41,28 @@ class AverageMeter:
 
     def average(self):
         return [s / self.cnt for s in self.sum]
+
+
+def import_from_file(cfg_file):
+    spec = importlib.util.spec_from_file_location("config", cfg_file)
+    cfg_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cfg_module)
+    return cfg_module
+
+
+def get_config_info(config):
+    config_table = []
+    for c, v in config.__dict__.items():
+        if not isinstance(v, (int, float, str, list, tuple, dict, np.ndarray)):
+            if hasattr(v, "__name__"):
+                v = v.__name__
+            elif hasattr(v, "__class__"):
+                v = v.__class__
+            elif isinstance(v, functools.partial):
+                v = v.func.__name__
+        config_table.append((str(c), str(v)))
+    config_table = tabulate(config_table)
+    return config_table
 
 
 class GroupedRandomSampler(RandomSampler):
@@ -76,6 +102,22 @@ class GroupedRandomSampler(RandomSampler):
 
     def __len__(self):
         raise NotImplementedError("len() of GroupedRandomSampler is not well-defined.")
+
+
+class InferenceSampler(Sampler):
+    def __init__(self, dataset, batch_size=1, world_size=None, rank=None):
+        super().__init__(dataset, batch_size, False, None, world_size, rank)
+        begin = self.num_samples * self.rank
+        end = min(self.num_samples * (self.rank + 1), len(self.dataset))
+        self.indices = list(range(begin, end))
+
+    def batch(self):
+        step, length = self.batch_size, len(self.indices)
+        batch_index = [self.indices[i : i + step] for i in range(0, length, step)]
+        return iter(batch_index)
+
+    def __len__(self):
+        return int(math.ceil(len(self.indices) / self.batch_size))
 
 
 class DetectionPadCollator(Collator):
@@ -133,7 +175,12 @@ class DetectionPadCollator(Collator):
 
 class DetEvaluator:
     def __init__(self, model):
+        # @trace(symbolic=True)
+        def pred_func(image, im_info):
+            return model(image, im_info)
+
         self.model = model
+        self.pred_func = pred_func
 
     @staticmethod
     def get_hw_by_short_size(im_height, im_width, short_size, max_size):
@@ -189,18 +236,17 @@ class DetEvaluator:
         Returns:
             results boxes: detection model output
         """
-        model = self.model
-
-        box_cls, box_delta = model(**inputs)
+        box_cls, box_delta = self.pred_func(**inputs)
+        # box_cls, box_delta = self.model(**inputs)
         box_cls, box_delta = box_cls.numpy(), box_delta.numpy()
         dtboxes_all = list()
-        all_inds = np.where(box_cls > model.cfg.test_cls_threshold)
+        all_inds = np.where(box_cls > self.model.cfg.test_cls_threshold)
 
-        for c in range(0, model.cfg.num_classes):
+        for c in range(self.model.cfg.num_classes):
             inds = np.where(all_inds[1] == c)[0]
             inds = all_inds[0][inds]
             scores = box_cls[inds, c]
-            if model.cfg.class_aware_box:
+            if self.model.cfg.class_aware_box:
                 bboxes = box_delta[inds, c, :]
             else:
                 bboxes = box_delta[inds, :]
@@ -208,15 +254,15 @@ class DetEvaluator:
             dtboxes = np.hstack((bboxes, scores[:, np.newaxis])).astype(np.float32)
 
             if dtboxes.size > 0:
-                keep = py_cpu_nms(dtboxes, model.cfg.test_nms)
+                keep = py_cpu_nms(dtboxes, self.model.cfg.test_nms)
                 dtboxes = np.hstack(
                     (dtboxes[keep], np.ones((len(keep), 1), np.float32) * c)
                 ).astype(np.float32)
                 dtboxes_all.extend(dtboxes)
 
-        if len(dtboxes_all) > model.cfg.test_max_boxes_per_image:
+        if len(dtboxes_all) > self.model.cfg.test_max_boxes_per_image:
             dtboxes_all = sorted(dtboxes_all, reverse=True, key=lambda i: i[4])[
-                : model.cfg.test_max_boxes_per_image
+                :self.model.cfg.test_max_boxes_per_image
             ]
 
         dtboxes_all = np.array(dtboxes_all, dtype=np.float)
@@ -323,7 +369,7 @@ class PseudoDetectionDataset(VisionDataset):
             self.image.append(np.random.randint(256, size=(h, w, 3), dtype=np.uint8))
             b = []
             c = []
-            for i in range(np.random.randint(1, 10)):
+            for _ in range(np.random.randint(1, 10)):
                 x, y, w, h = np.random.uniform(320, size=4)
                 b.append(np.array([x, y, x + w, y + h], dtype=np.float32))
                 c.append(np.random.randint(1, 81, dtype=np.int32))

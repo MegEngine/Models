@@ -15,7 +15,7 @@ from official.vision.detection import models
     "https://data.megengine.org.cn/models/weights/"
     "fcos_res50_coco_1x_800size_39dot7_313ef718.pkl"
 )
-def fcos_res50_coco_1x_800size(batch_size=1, **kwargs):
+def fcos_res50_coco_1x_800size(**kwargs):
     r"""
     FCOS trained from COCO dataset.
     `"FCOS" <https://arxiv.org/abs/1904.01355>`_
@@ -24,7 +24,7 @@ def fcos_res50_coco_1x_800size(batch_size=1, **kwargs):
     """
     cfg = models.FCOSConfig()
     cfg.backbone_pretrained = False
-    return models.FCOS(cfg, batch_size=batch_size, **kwargs)
+    return models.FCOS(cfg, **kwargs)
 
 
 Net = models.FCOS
