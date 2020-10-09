@@ -6,15 +6,14 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-from typing import List
-from abc import ABCMeta, abstractmethod
 import math
+from abc import ABCMeta, abstractmethod
+from typing import List
+
 import numpy as np
 
-from megengine import Tensor, tensor
 import megengine.functional as F
-
-from official.vision.detection import layers
+from megengine import Tensor, tensor
 
 
 def meshgrid(x, y):
@@ -43,6 +42,11 @@ class BaseAnchorGenerator(metaclass=ABCMeta):
     def __init__(self):
         pass
 
+    @property
+    @abstractmethod
+    def anchor_dim(self):
+        pass
+
     @abstractmethod
     def generate_anchors_by_features(self, sizes, device) -> List[Tensor]:
         pass
@@ -51,20 +55,16 @@ class BaseAnchorGenerator(metaclass=ABCMeta):
         feat_sizes = [fmap.shape[-2:] for fmap in featmaps]
         return self.generate_anchors_by_features(feat_sizes, featmaps[0].device)
 
-    @property
-    def anchor_dim(self):
-        return 4
 
-
-class DefaultAnchorGenerator(BaseAnchorGenerator):
-    """default retinanet anchor generator.
+class AnchorBoxGenerator(BaseAnchorGenerator):
+    """default anchor box generator, usually used in anchor-based methods.
     This class generate anchors by feature map in level.
     Args:
-        base_size (int): anchor base size.
-        anchor_scales (np.ndarray): anchor scales based on stride.
+        anchor_scales (list): anchor scales based on stride.
             The practical anchor scale is anchor_scale * stride
-        anchor_ratios(np.ndarray): anchor aspect ratios.
-        offset (float): center point offset.default is 0.
+        anchor_ratios (list): anchor aspect ratios.
+        strides (list): strides of inputs.
+        offset (float): center point offset. default is 0.5.
     """
 
     def __init__(
@@ -72,7 +72,7 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         anchor_scales: list = [[32], [64], [128], [256], [512]],
         anchor_ratios: list = [[0.5, 1, 2]],
         strides: list = [4, 8, 16, 32, 64],
-        offset: float = 0,
+        offset: float = 0.5,
     ):
         super().__init__()
         self.anchor_scales = np.array(anchor_scales, dtype=np.float32)
@@ -82,6 +82,10 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
         self.num_features = len(strides)
 
         self.base_anchors = self._different_level_anchors(anchor_scales, anchor_ratios)
+
+    @property
+    def anchor_dim(self):
+        return 4
 
     def _different_level_anchors(self, scales, ratios):
         if len(scales) == 1:
@@ -119,4 +123,44 @@ class DefaultAnchorGenerator(BaseAnchorGenerator):
             all_anchors.append(
                 (grids.reshape(-1, 1, 4) + base_anchor.reshape(1, -1, 4)).reshape(-1, 4)
             )
+        return all_anchors
+
+
+class AnchorPointGenerator(BaseAnchorGenerator):
+    """default anchor point generator, usually used in anchor-free methods.
+    This class generate anchors by feature map in level.
+    Args:
+        num_anchors (int): number of anchors per location
+        strides (list): strides of inputs.
+        offset (float): center point offset. default is 0.5.
+    """
+
+    def __init__(
+        self,
+        num_anchors: int = 1,
+        strides: list = [4, 8, 16, 32, 64],
+        offset: float = 0.5,
+    ):
+        super().__init__()
+        self.num_anchors = num_anchors
+        self.strides = strides
+        self.offset = offset
+        self.num_features = len(strides)
+
+    @property
+    def anchor_dim(self):
+        return 2
+
+    def generate_anchors_by_features(self, sizes, device):
+        all_anchors = []
+        assert len(sizes) == self.num_features, (
+            "input features expected {}, got {}".format(self.num_features, len(sizes))
+        )
+        for size, stride in zip(sizes, self.strides):
+            grid_x, grid_y = create_anchor_grid(size, self.offset, stride, device)
+            grids = F.stack([grid_x, grid_y], axis=1)
+            all_anchors.append(
+                grids.reshape(-1, 1, 2).broadcast(
+                    grids.shape[0], self.num_anchors, 2).reshape(-1, 2)
+            )  # FIXME: need F.repeat
         return all_anchors

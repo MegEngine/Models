@@ -11,31 +11,21 @@ from megengine import hub
 from official.vision.detection import models
 
 
-class CustomRetinaNetConfig(models.RetinaNetConfig):
-    def __init__(self):
-        super().__init__()
-
-        self.resnet_norm = "SyncBN"
-        self.fpn_norm = "SyncBN"
-        self.backbone_freeze_at = 0
-
-
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "retinanet_res50_coco_1x_800size_syncbn_37dot1_35cedcdf.pkl"
+    "atss_res50_coco_1x_800size_40dot1_7b30f6cf.pkl"
 )
-def retinanet_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
+def atss_res50_coco_1x_800size(batch_size=1, **kwargs):
     r"""
-    RetinaNet with SyncBN trained from COCO dataset.
-    `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
+    ATSS trained from COCO dataset.
+    `"ATSS" <https://arxiv.org/abs/1912.02424>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
-    `"SyncBN" <https://arxiv.org/abs/1711.07240>`_
     """
-    cfg = CustomRetinaNetConfig()
+    cfg = models.ATSSConfig()
     cfg.backbone_pretrained = False
-    return models.RetinaNet(cfg, batch_size=batch_size, **kwargs)
+    return models.ATSS(cfg, batch_size=batch_size, **kwargs)
 
 
-Net = models.RetinaNet
-Cfg = CustomRetinaNetConfig
+Net = models.ATSS
+Cfg = models.ATSSConfig

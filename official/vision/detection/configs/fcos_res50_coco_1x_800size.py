@@ -11,31 +11,21 @@ from megengine import hub
 from official.vision.detection import models
 
 
-class CustomFasterRCNNConfig(models.FasterRCNNConfig):
-    def __init__(self):
-        super().__init__()
-
-        self.resnet_norm = "SyncBN"
-        self.fpn_norm = "SyncBN"
-        self.backbone_freeze_at = 0
-
-
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "faster_rcnn_res50_coco_1x_800size_syncbn_39dot3_09b99bce.pkl"
+    "fcos_res50_coco_1x_800size_39dot7_313ef718.pkl"
 )
-def faster_rcnn_res50_coco_1x_800size_syncbn(batch_size=1, **kwargs):
+def fcos_res50_coco_1x_800size(batch_size=1, **kwargs):
     r"""
-    Faster-RCNN FPN trained from COCO dataset.
-    `"Faster-RCNN" <https://arxiv.org/abs/1506.01497>`_
+    FCOS trained from COCO dataset.
+    `"FCOS" <https://arxiv.org/abs/1904.01355>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
-    `"SyncBN" <https://arxiv.org/abs/1711.07240>`_
     """
-    cfg = CustomFasterRCNNConfig()
+    cfg = models.FCOSConfig()
     cfg.backbone_pretrained = False
-    return models.FasterRCNN(cfg, batch_size=batch_size, **kwargs)
+    return models.FCOS(cfg, batch_size=batch_size, **kwargs)
 
 
-Net = models.FasterRCNN
-Cfg = CustomFasterRCNNConfig
+Net = models.FCOS
+Cfg = models.FCOSConfig

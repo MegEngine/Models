@@ -15,9 +15,9 @@ from megengine import Tensor
 from official.vision.detection import layers
 
 
-class RetinaNetHead(M.Module):
+class BoxHead(M.Module):
     """
-    The head used in RetinaNet for object classification and box regression.
+    The head used when anchor boxes are adopted for object classification and box regression.
     """
 
     def __init__(self, cfg, input_shape: List[layers.ShapeSpec]):
