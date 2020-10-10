@@ -13,7 +13,7 @@ import megengine.functional as F
 
 
 def roi_pool(
-    rpn_fms, rois, stride, pool_shape, roi_type="roi_align",
+    rpn_fms, rois, stride, pool_shape, pooler_type="roi_align",
 ):
     rois = rois.detach()
     assert len(stride) == len(rpn_fms)
@@ -24,29 +24,29 @@ def roi_pool(
 
     num_fms = len(rpn_fms)
     box_area = (rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2])
-    level_assignments = F.floor(
+    assigned_level = F.floor(
         canonical_level + F.log(F.sqrt(box_area) / canonical_box_size) / np.log(2)
     ).astype("int32")
-    level_assignments = F.minimum(level_assignments, max_level)
-    level_assignments = F.maximum(level_assignments, min_level)
-    level_assignments = level_assignments - min_level
+    assigned_level = F.minimum(assigned_level, max_level)
+    assigned_level = F.maximum(assigned_level, min_level)
+    assigned_level = assigned_level - min_level
 
     # avoid empty assignment
-    level_assignments = F.concat(
-        [level_assignments, F.arange(0, num_fms, dtype="int32", device=level_assignments.device)],
+    assigned_level = F.concat(
+        [assigned_level, F.arange(num_fms, dtype="int32", device=assigned_level.device)],
     )
     rois = F.concat([rois, F.zeros((num_fms, rois.shape[-1]))])
 
     pool_list, inds_list = [], []
     for i in range(num_fms):
-        _, inds = F.cond_take(level_assignments == i, level_assignments)
+        _, inds = F.cond_take(assigned_level == i, assigned_level)
         level_rois = rois[inds]
 
-        if roi_type == "roi_pool":
+        if pooler_type == "roi_pool":
             pool_fm = F.roi_pooling(
                 rpn_fms[i], level_rois, pool_shape, mode="max", scale=1.0 / stride[i]
             )
-        elif roi_type == "roi_align":
+        elif pooler_type == "roi_align":
             pool_fm = F.roi_align(
                 rpn_fms[i],
                 level_rois,

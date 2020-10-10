@@ -60,19 +60,18 @@ class RCNN(M.Module):
             # loss for rcnn regression
             pred_offsets = pred_offsets.reshape(-1, self.cfg.num_classes, 4)
             num_samples = labels.shape[0]
-            _, fg_inds = F.cond_take(labels > 0, labels)
+            fg_mask = labels > 0
             # -1 for removing background class
             non_bg_labels = labels - 1
             loss_rcnn_loc = layers.smooth_l1_loss(
-                pred_offsets[fg_inds, non_bg_labels[fg_inds]],
-                bbox_targets[fg_inds],
+                pred_offsets[fg_mask, non_bg_labels[fg_mask]],
+                bbox_targets[fg_mask],
                 self.cfg.rcnn_smooth_l1_beta,
             ).sum() / F.maximum(num_samples, 1.0)
 
             loss_dict = {"loss_rcnn_cls": loss_rcnn_cls, "loss_rcnn_loc": loss_rcnn_loc}
             return loss_dict
         else:
-            # TODO
             # slice 1 for removing background
             pred_scores = F.softmax(pred_logits, axis=1)[:, 1:]
             pred_offsets = pred_offsets.reshape(-1, 4)
@@ -99,11 +98,9 @@ class RCNN(M.Module):
             batch_inds = F.full((gt_boxes_per_img.shape[0], 1), bid)
             # if config.proposal_append_gt:
             gt_rois = F.concat([batch_inds, gt_boxes_per_img[:, :4]], axis=1)
-            # FIXME bool astype
-            batch_roi_mask = (rpn_rois[:, 0] == bid).astype("int32")
-            _, batch_roi_inds = F.cond_take(batch_roi_mask == 1, batch_roi_mask)
+            batch_roi_mask = rpn_rois[:, 0] == bid
             # all_rois : [batch_id, x1, y1, x2, y2]
-            all_rois = F.concat([rpn_rois[batch_roi_inds], gt_rois])
+            all_rois = F.concat([rpn_rois[batch_roi_mask], gt_rois])
 
             overlaps = layers.get_iou(all_rois[:, 1:5], gt_boxes_per_img)
 
@@ -112,17 +109,16 @@ class RCNN(M.Module):
             labels = gt_boxes_per_img[gt_assignment, 4]
 
             # ---------------- get the fg/bg labels for each roi ---------------#
-            fg_mask = F.logical_and(
-                (max_overlaps >= self.cfg.fg_threshold), (labels != self.cfg.ignore_label)
-            ).astype("float32")
-
-            bg_mask = F.logical_and(
-                max_overlaps < self.cfg.bg_threshold_high,
-                max_overlaps >= self.cfg.bg_threshold_low
-            ).astype("float32")
+            fg_mask = (
+                (max_overlaps >= self.cfg.fg_threshold)
+                & (labels != self.cfg.ignore_label)
+            )
+            bg_mask = (
+                (max_overlaps < self.cfg.bg_threshold_high)
+                & (max_overlaps >= self.cfg.bg_threshold_low)
+            )
 
             num_fg_rois = int(self.cfg.num_rois * self.cfg.fg_ratio)
-
             fg_inds_mask = layers.sample_mask_from_labels(fg_mask, num_fg_rois, 1)
             num_bg_rois = int(self.cfg.num_rois - fg_inds_mask.sum())
             bg_inds_mask = layers.sample_mask_from_labels(bg_mask, num_bg_rois, 1)

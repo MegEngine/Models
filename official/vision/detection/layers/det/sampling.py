@@ -17,16 +17,16 @@ def sample_labels(labels, num_samples, label_value, ignore_label=-1):
         label(Tensor): label after sampling
     """
     assert labels.ndim == 1, "Only tensor of dim 1 is supported."
-    _, mask_inds = F.cond_take(labels == label_value, labels)
-    num_class = mask_inds.shape[0]
+    mask = (labels == label_value)
+    num_class = mask.sum()
     if num_class <= num_samples:
         return labels
 
     topk_tensor = F.zeros_like(labels).astype("float32")
-    topk_tensor[mask_inds] = uniform(size=num_class).astype("float32")
-    _, mask_inds = F.topk(topk_tensor, k=num_samples-num_class)
+    topk_tensor[mask] = uniform(size=num_class)
+    _, select_inds = F.topk(topk_tensor, k=num_samples-num_class)
 
-    labels[mask_inds] = ignore_label
+    labels[select_inds] = ignore_label
     return labels
 
 
@@ -42,6 +42,7 @@ def sample_mask_from_labels(labels, num_sample, sample_value):
         sample_mask (Tensor)
     """
     assert labels.ndim == 1, "Only tensor of dim 1 is supported."
+    # TODO: support bool mask
     sample_mask = (labels == sample_value).astype("float32")
     num_mask = sample_mask.sum().astype("int32")
     if num_mask <= num_sample:

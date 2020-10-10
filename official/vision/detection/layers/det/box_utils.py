@@ -181,6 +181,5 @@ def get_clipped_box(boxes, hw):
 def filter_boxes(boxes, size=0):
     width = boxes[:, 2] - boxes[:, 0]
     height = boxes[:, 3] - boxes[:, 1]
-    # FIXME: bool support
-    keep = (width > size).astype("int32") * (height > size).astype("int32")
+    keep = (width > size) & (height > size)
     return keep

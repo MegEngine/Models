@@ -21,21 +21,13 @@ class FasterRCNN(M.Module):
         self.cfg = cfg
         cfg.batch_per_gpu = batch_size
         self.batch_size = batch_size
-        # ----------------------- build the backbone ------------------------ #
+        # ----------------------- build backbone ------------------------ #
         bottom_up = getattr(resnet, cfg.backbone)(
             norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
         )
         del bottom_up.fc
 
-        # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
-        # if self.cfg.backbone_freeze_at >= 1:
-        #     for p in bottom_up.conv1.parameters():
-        #         p.requires_grad = False
-        # if self.cfg.backbone_freeze_at >= 2:
-        #     for p in bottom_up.layer1.parameters():
-        #         p.requires_grad = False
-
-        # ----------------------- build the FPN ----------------------------- #
+        # ----------------------- build FPN ----------------------------- #
         out_channels = 256
         self.backbone = layers.FPN(
             bottom_up=bottom_up,
@@ -47,17 +39,19 @@ class FasterRCNN(M.Module):
             channels=[256, 512, 1024, 2048],
         )
 
-        # ----------------------- build the RPN ----------------------------- #
+        # ----------------------- build RPN ----------------------------- #
         self.RPN = layers.RPN(cfg)
 
-        # ----------------------- build the RCNN head ----------------------- #
+        # ----------------------- build RCNN head ----------------------- #
         self.RCNN = layers.RCNN(cfg)
 
     def preprocess_image(self, image):
+        padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
-            image - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
+            padded_image
+            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
         ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
-        return layers.get_padded_tensor(normed_image, 32, 0.0)
+        return normed_image
 
     def forward(self, image, im_info, gt_boxes=None):
         image = self.preprocess_image(image)
@@ -128,10 +122,8 @@ class FasterRCNNConfig:
         self.img_std = [57.375, 57.120, 58.395]
 
         # ----------------------- rpn cfg ------------------------- #
-        self.anchor_base_size = 16
-        self.anchor_scales = [0.5]
-        self.anchor_ratios = [0.5, 1, 2]
-        self.anchor_offset = -0.5
+        self.anchor_scales = [[x] for x in [32, 64, 128, 256, 512]]
+        self.anchor_ratios = [[0.5, 1, 2]]
 
         self.rpn_stride = [4, 8, 16, 32, 64]
         self.rpn_reg_mean = [0.0, 0.0, 0.0, 0.0]

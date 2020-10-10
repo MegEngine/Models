@@ -19,19 +19,20 @@ class RPN(M.Module):
         super().__init__()
         self.cfg = cfg
         self.box_coder = layers.BoxCoder(cfg.rpn_reg_mean, cfg.rpn_reg_std)
-        self.num_cell_anchors = len(cfg.anchor_scales) * len(cfg.anchor_ratios)
+
+        # check anchor settings
+        assert len(set(len(x) for x in cfg.anchor_scales)) == 1
+        assert len(set(len(x) for x in cfg.anchor_ratios)) == 1
+        self.num_cell_anchors = len(cfg.anchor_scales[0]) * len(cfg.anchor_ratios[0])
 
         self.stride_list = np.array(cfg.rpn_stride).astype(np.float32)
         rpn_channel = cfg.rpn_channel
         self.in_features = cfg.rpn_in_features
 
-        anchor_scales = [[x] for x in [32, 64, 128, 256, 512]]
-        anchor_ratios = [[0.5, 1, 2]]
-        stride = [4, 8, 16, 32, 64]
         self.anchors_generator = layers.AnchorBoxGenerator(
-            anchor_scales=anchor_scales,
-            anchor_ratios=anchor_ratios,
-            strides=stride,
+            anchor_scales=cfg.anchor_scales,
+            anchor_ratios=cfg.anchor_ratios,
+            strides=cfg.rpn_stride,
         )
 
         match_thresh = [cfg.rpn_negative_overlap, cfg.rpn_positive_overlap]
@@ -94,21 +95,21 @@ class RPN(M.Module):
             )
 
             # rpn classification loss
-            _, valid_inds = F.cond_take(rpn_labels != -1, rpn_labels)
-            num_samples = valid_inds.shape[0]
+            valid_mask = rpn_labels != -1
+            num_samples = valid_mask.sum()
 
             # loss_rpn_cls = layers.softmax_loss(pred_cls_logits, rpn_labels)
             loss_rpn_cls = layers.binary_cross_entropy_with_logits(
-                pred_cls_logits[valid_inds], rpn_labels[valid_inds].astype("float32")
+                pred_cls_logits[valid_mask], rpn_labels[valid_mask].astype("float32")
             ).sum() / F.maximum(num_samples, 1.0)
 
             # rpn regression loss
-            fg_mask = (rpn_labels > 0).astype("float32")
-            loss_rpn_loc = (layers.smooth_l1_loss(
-                pred_bbox_offsets,
-                rpn_bbox_targets,
+            fg_mask = rpn_labels > 0
+            loss_rpn_loc = layers.smooth_l1_loss(
+                pred_bbox_offsets[fg_mask],
+                rpn_bbox_targets[fg_mask],
                 self.cfg.rpn_smooth_l1_beta,
-            ).sum(axis=1) * fg_mask).sum() / F.maximum(num_samples, 1.0)
+            ).sum() / F.maximum(num_samples, 1.0)
 
             loss_dict = {"loss_rpn_cls": loss_rpn_cls, "loss_rpn_loc": loss_rpn_loc}
             return rpn_rois, loss_dict
@@ -236,15 +237,14 @@ class RPN(M.Module):
             concated_batch_bbox_targets = F.concat(batch_bbox_targets_list, axis=0)
 
             # sample labels
-            num_positive = self.cfg.num_sample_anchors * self.cfg.positive_anchor_ratio
+            num_positive = int(self.cfg.num_sample_anchors * self.cfg.positive_anchor_ratio)
             # sample positive labels
             concated_batch_labels = concated_batch_labels.detach()
             concated_batch_labels = layers.sample_labels(
                 concated_batch_labels, num_positive, 1, self.cfg.ignore_label
             )
             # sample negative labels
-            # FIXME bool astype
-            num_positive = (concated_batch_labels == 1).astype("int32").sum()
+            num_positive = (concated_batch_labels == 1).sum()
             num_negative = self.cfg.num_sample_anchors - num_positive
             concated_batch_labels = layers.sample_labels(
                 concated_batch_labels, num_negative, 0, self.cfg.ignore_label
