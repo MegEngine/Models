@@ -24,7 +24,7 @@ import megengine.distributed as dist
 from megengine.autodiff import GradManager
 from megengine.data import DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-from megengine.jit import trace
+# from megengine.jit import trace
 from megengine.optimizer import SGD
 
 from official.vision.detection.tools.data_mapper import data_mapper
@@ -74,7 +74,7 @@ def main():
     if args.ngpus > 1:
         master_ip = "localhost"
         port = dist.get_free_ports(1)[0]
-        server = dist.Server(port)
+        dist.Server(port)
         processes = list()
         for rank in range(args.ngpus):
             process = mp.Process(
@@ -108,6 +108,7 @@ def worker(master_ip, port, world_size, rank, args):
 
     if dist.get_rank() == 0:
         logger.info(get_config_info(model.cfg))
+        logger.info(repr(model))
 
     params_with_grad = []
     for name, param in model.named_parameters():
@@ -135,7 +136,7 @@ def worker(master_ip, port, world_size, rank, args):
 
     if args.weight_file is not None:
         weights = mge.load(args.weight_file)
-        model.backbone.bottom_up.load_state_dict(weights)
+        model.backbone.bottom_up.load_state_dict(weights, strict=False)
     if dist.get_world_size() > 1:
         dist.bcast_list_(model.parameters(), dist.WORLD)  # sync parameters
 

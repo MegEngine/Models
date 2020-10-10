@@ -8,7 +8,6 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import numpy as np
 
-import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 
@@ -22,21 +21,13 @@ class FasterRCNN(M.Module):
         self.cfg = cfg
         cfg.batch_per_gpu = batch_size
         self.batch_size = batch_size
-        # ----------------------- build the backbone ------------------------ #
+        # ----------------------- build backbone ------------------------ #
         bottom_up = getattr(resnet, cfg.backbone)(
             norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
         )
         del bottom_up.fc
 
-        # ------------ freeze the weights of resnet stage1 and stage 2 ------ #
-        if self.cfg.backbone_freeze_at >= 1:
-            for p in bottom_up.conv1.parameters():
-                p.requires_grad = False
-        if self.cfg.backbone_freeze_at >= 2:
-            for p in bottom_up.layer1.parameters():
-                p.requires_grad = False
-
-        # ----------------------- build the FPN ----------------------------- #
+        # ----------------------- build FPN ----------------------------- #
         out_channels = 256
         self.backbone = layers.FPN(
             bottom_up=bottom_up,
@@ -48,10 +39,10 @@ class FasterRCNN(M.Module):
             channels=[256, 512, 1024, 2048],
         )
 
-        # ----------------------- build the RPN ----------------------------- #
+        # ----------------------- build RPN ----------------------------- #
         self.RPN = layers.RPN(cfg)
 
-        # ----------------------- build the RCNN head ----------------------- #
+        # ----------------------- build RCNN head ----------------------- #
         self.RCNN = layers.RCNN(cfg)
 
     def preprocess_image(self, image):
@@ -99,10 +90,9 @@ class FasterRCNN(M.Module):
         scale_w = im_info[0, 1] / im_info[0, 3]
         scale_h = im_info[0, 0] / im_info[0, 2]
         pred_boxes = pred_boxes / F.concat([scale_w, scale_h, scale_w, scale_h], axis=0)
-
-        clipped_boxes = layers.get_clipped_box(pred_boxes, im_info[0, 2:4]).reshape(
-            -1, self.cfg.num_classes, 4
-        )
+        clipped_boxes = layers.get_clipped_box(
+            pred_boxes, im_info[0, 2:4]
+        ).reshape(-1, self.cfg.num_classes, 4)
         return pred_score, clipped_boxes
 
 
@@ -132,10 +122,8 @@ class FasterRCNNConfig:
         self.img_std = [57.375, 57.120, 58.395]
 
         # ----------------------- rpn cfg ------------------------- #
-        self.anchor_base_size = 16
-        self.anchor_scales = [0.5]
-        self.anchor_ratios = [0.5, 1, 2]
-        self.anchor_offset = -0.5
+        self.anchor_scales = [[x] for x in [32, 64, 128, 256, 512]]
+        self.anchor_ratios = [[0.5, 1, 2]]
 
         self.rpn_stride = [4, 8, 16, 32, 64]
         self.rpn_reg_mean = [0.0, 0.0, 0.0, 0.0]
@@ -177,7 +165,7 @@ class FasterRCNNConfig:
         self.train_prev_nms_top_n = 2000
         self.train_post_nms_top_n = 1000
 
-        self.basic_lr = 0.02 / 16  # The basic learning rate for single-image
+        self.basic_lr = 0.02 / 16.0  # The basic learning rate for single-image
         self.momentum = 0.9
         self.weight_decay = 1e-4
         self.log_interval = 20
