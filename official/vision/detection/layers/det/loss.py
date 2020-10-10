@@ -9,8 +9,6 @@
 import megengine.functional as F
 from megengine.core import Tensor
 
-from official.vision.detection import layers
-
 
 def binary_cross_entropy_with_logits(logits: Tensor, targets: Tensor) -> Tensor:
     r"""Binary Cross Entropy
@@ -132,10 +130,9 @@ def iou_loss(
     return loss
 
 
-def softmax_loss(logits: Tensor, targets: Tensor, ignore_label: int = -1) -> Tensor:
+def softmax_loss(logits: Tensor, labels: Tensor) -> Tensor:
     log_prob = F.log_softmax(logits, axis=1)
-    mask = targets != ignore_label
-    vtargets = targets * mask
-    loss = -(F.indexing_one_hot(log_prob, vtargets.astype("int32"), 1) * mask).sum()
-    loss = loss / F.maximum(mask.sum(), 1)
+
+    loss = -F.indexing_one_hot(log_prob, labels.astype("int32"), 1).sum()
+    loss = loss / F.maximum(labels.shape[0], 1)
     return loss

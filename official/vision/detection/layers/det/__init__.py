@@ -16,6 +16,7 @@ from .point_head import *
 from .pooler import *
 from .rcnn import *
 from .rpn import *
+from .sampling import sample_labels, sample_mask_from_labels
 
 _EXCLUDE = {}
 __all__ = [k for k in globals().keys() if k not in _EXCLUDE and not k.startswith("_")]
