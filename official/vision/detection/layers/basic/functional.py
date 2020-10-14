@@ -6,6 +6,9 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+from typing import Optional
+
+import megengine.distributed as dist
 import megengine.functional as F
 from megengine import Tensor
 
@@ -43,6 +46,58 @@ def get_padded_tensor(
     else:
         raise Exception("Not supported tensor dim: %d" % ndim)
     return padded_array
+
+
+def batched_nms(
+    boxes: Tensor, scores: Tensor, idxs: Tensor, iou_thresh: float, max_output: Optional[int] = None
+) -> Tensor:
+    r"""
+    Performs non-maximum suppression (NMS) on the boxes according to their intersection-over-union (IoU).
+
+    :param boxes: tensor of shape `(N, 4)`; the boxes to perform nms on; each box is expected to be in `(x1, y1, x2, y2)` format.
+    :param iou_thresh: ``IoU`` threshold for overlapping.
+    :param idxs: tensor of shape `(N,)`, the class indexs of boxes in the batch.
+    :param scores: tensor of shape `(N,)`, the score of boxes.
+    :return: indices of the elements that have been kept by NMS.
+
+    Examples:
+
+    .. testcode::
+
+        import numpy as np
+        from megengine import tensor
+
+        x = np.zeros((100,4))
+        np.random.seed(42)
+        x[:,:2] = np.random.rand(100,2) * 20
+        x[:,2:] = np.random.rand(100,2) * 20 + 100
+        scores = tensor(np.random.rand(100))
+        idxs = tensor(np.random.randint(0, 10, 100))
+        inp = tensor(x)
+        result = batched_nms(inp, scores, idxs, iou_thresh=0.6)
+        print(result.numpy())
+
+    Outputs:
+
+    .. testoutput::
+
+        [75 41 99 98 69 64 11 27 35 18]
+
+    """
+    assert (
+        boxes.ndim == 2 and boxes.shape[1] == 4
+    ), "the expected shape of boxes is (N, 4)"
+    assert scores.ndim == 1, "the expected shape of scores is (N,)"
+    assert idxs.ndim == 1, "the expected shape of idxs is (N,)"
+    assert (
+        boxes.shape[0] == scores.shape[0] == idxs.shape[0]
+    ), "number of boxes, scores and idxs are not matched"
+
+    idxs = idxs.detach()
+    max_coordinate = boxes.max()
+    offsets = idxs.astype("float32") * (max_coordinate + 1)
+    boxes = boxes + offsets.reshape(-1, 1)
+    return F.nn.nms(boxes, scores, iou_thresh, max_output)
 
 
 def all_reduce_mean(array: Tensor) -> Tensor:

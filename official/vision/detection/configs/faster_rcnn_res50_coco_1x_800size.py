@@ -13,9 +13,9 @@ from official.vision.detection import models
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "faster_rcnn_res50_coco_1x_800size_38dot8_5e195d80.pkl"
+    "faster_rcnn_res50_coco_1x_800size_38dot0_f5e2000d.pkl"
 )
-def faster_rcnn_res50_coco_1x_800size(batch_size=1, **kwargs):
+def faster_rcnn_res50_coco_1x_800size(**kwargs):
     r"""
     Faster-RCNN FPN trained from COCO dataset.
     `"Faster-RCNN" <https://arxiv.org/abs/1506.01497>`_
@@ -24,7 +24,7 @@ def faster_rcnn_res50_coco_1x_800size(batch_size=1, **kwargs):
     """
     cfg = models.FasterRCNNConfig()
     cfg.backbone_pretrained = False
-    return models.FasterRCNN(cfg, batch_size=batch_size, **kwargs)
+    return models.FasterRCNN(cfg, **kwargs)
 
 
 Net = models.FasterRCNN

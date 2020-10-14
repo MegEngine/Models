@@ -7,18 +7,13 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import importlib
-import os
-import sys
 
 import cv2
-import numpy as np
 
 import megengine as mge
-from megengine.data.dataset import COCO
 
 from official.vision.detection.tools.data_mapper import data_mapper
-from official.vision.detection.tools.utils import DetEvaluator
+from official.vision.detection.tools.utils import DetEvaluator, import_from_file
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
@@ -26,8 +21,12 @@ logger.setLevel("INFO")
 
 def make_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file", type=str, help="net description file")
-    parser.add_argument("-w", "--weight_file", type=str, help="weights file")
+    parser.add_argument(
+        "-f", "--file", default="net.py", type=str, help="net description file"
+    )
+    parser.add_argument(
+        "-w", "--weight_file", default=None, type=str, help="weights file",
+    )
     parser.add_argument("-i", "--image", type=str)
     return parser
 
@@ -36,11 +35,10 @@ def main():
     parser = make_parser()
     args = parser.parse_args()
 
-    sys.path.insert(0, os.path.dirname(args.file))
-    current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
+    current_network = import_from_file(args.file)
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
-    model = current_network.Net(cfg, batch_size=1)
+    model = current_network.Net(cfg)
     model.eval()
     state_dict = mge.load(args.weight_file)
     if "state_dict" in state_dict:

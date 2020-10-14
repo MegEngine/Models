@@ -47,8 +47,8 @@ class FPN(M.Module):
         out_channels: int = 256,
         norm: str = None,
         top_block: M.Module = None,
-        strides=[8, 16, 32],
-        channels=[512, 1024, 2048],
+        strides: List[int] = [8, 16, 32],
+        channels: List[int] = [512, 1024, 2048],
     ):
         """
         Args:
@@ -136,7 +136,7 @@ class FPN(M.Module):
         for features, lateral_conv, output_conv in zip(
             x[1:], self.lateral_convs[1:], self.output_convs[1:]
         ):
-            top_down_features = F.interpolate(
+            top_down_features = F.nn.interpolate(
                 prev_features, scale_factor=2, mode="BILINEAR"
             )
             lateral_features = lateral_conv(features)
@@ -174,9 +174,10 @@ class FPNP6(M.Module):
         super().__init__()
         self.num_levels = 1
         self.in_feature = in_feature
+        self.pool = M.MaxPool2d(kernel_size=1, stride=2, padding=0)
 
     def forward(self, x):
-        return [F.max_pool2d(x, kernel_size=1, stride=2, padding=0)]
+        return [self.pool(x)]
 
 
 class LastLevelP6P7(M.Module):

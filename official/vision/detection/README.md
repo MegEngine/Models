@@ -1,45 +1,53 @@
-# Megengine Detection Models
+# Megengine Object Detection Models
 
 ## 介绍
 
 本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[Faster R-CNN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
 
-网络的性能在COCO2017数据集上的测试结果如下：
+网络在COCO2017验证集上的性能和结果如下：
 
 | 模型                                | mAP<br>@5-95 | batch<br>/gpu |
 | ---                                 | :---:        | :---:         |
 | retinanet-res50-coco-1x-800size     | 37.0         | 2             |
 | retinanet-res101-coco-2x-800size    | 41.1         | 2             |
 | retinanet-resx101-coco-2x-800size   | 42.7         | 2             |
-| faster-rcnn-res50-coco-1x-800size   | 38.8 *       | 2             |
-| faster-rcnn-res101-coco-2x-800size  | 43.0 *       | 2             |
+| faster-rcnn-res50-coco-1x-800size   | 38.0         | 2             |
+| faster-rcnn-res101-coco-2x-800size  | 42.5         | 2             |
 | faster-rcnn-resx101-coco-2x-800size | 44.7 *       | 2             |
 | fcos-res50-coco-1x-800size          | 39.7         | 2             |
+| fcos-res101-coco-2x-800size         | 44.1         | 2             |
+| fcos-resx101-coco-2x-800size        | 39.7 *       | 2             |
 | atss-res50-coco-1x-800size          | 40.1         | 2             |
+| atss-res101-coco-2x-800size         | 44.5         | 2             |
+| atss-resx101-coco-2x-800size        | 45.9         | 2             |
 
-* MegEngine v1.0
+## 安装和环境配置
+
+本目录下代码基于MegEngine v1.0，在开始运行本目录下的代码之前，请确保按照[README](../../../README.md)进行了正确的环境配置。
 
 ## 如何使用
 
-以RetinaNet为例，模型训练好之后，可以通过如下命令测试单张图片:
+以RetinaNet为例，模型训练好之后，可以通过如下命令测试单张图片：
 
 ```bash
 python3 tools/inference.py -f configs/retinanet_res50_coco_1x_800size.py \
-                           -w /path/to/retinanet_weights.pkl \
+                           -w /path/to/model_weights.pkl \
                            -i ../../assets/cat.jpg
 ```
 
 `tools/inference.py`的命令行选项如下:
 
 - `-f`, 测试的网络结构描述文件。
+- `-w`, 需要测试的模型权重。
 - `-i`, 需要测试的样例图片。
-- `-w`, 网络结构文件所对应的训练权重, 可以从顶部的表格中下载训练好的检测器权重。
 
 使用默认图片和默认模型测试的结果见下图:
 
 ![demo image](../../assets/cat_det_out.jpg)
 
 ## 如何训练
+
+以RetinaNet在COCO2017数据集上训练为例。
 
 1. 在开始训练前，请确保已经下载解压好[COCO2017数据集](http://cocodataset.org/#download)，
 并放在合适的数据目录下，准备好的数据集的目录结构如下所示(目前默认使用COCO2017数据集)：
@@ -52,76 +60,62 @@ python3 tools/inference.py -f configs/retinanet_res50_coco_1x_800size.py \
     |    |val2017
 ```
 
-2. 准备预训练的`backbone`网络权重：可使用 megengine.hub 下载`megengine`官方提供的在ImageNet上训练的ResNet-50模型, 并存放在 `/path/to/pretrain.pkl`。
+2. 准备预训练的`backbone`网络权重：可使用 megengine.hub 下载`megengine`官方提供的在ImageNet上训练的模型, 并存放在 `/path/to/pretrain.pkl`。
 
-3. 在开始运行本目录下的代码之前，请确保按照[README](../../../README.md)进行了正确的环境配置。
-
-4. 开始训练:
+3. 开始训练:
 
 ```bash
-python3 tools/train.py -f configs/retinanet_res50_coco_1x_800size.py -n 8
+python3 tools/train.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
+                       -d /path/to/COCO2017
 ```
 
-`tools/train.py`提供了灵活的命令行选项，包括：
+`tools/train.py`的命令行选项如下：
 
-- `-f`, 所需要训练的网络结构描述文件。可以是RetinaNet、Faster R-CNN等。
-- `-n`, 用于训练的devices(gpu)数量，默认使用所有可用的gpu。
-- `-w`, 预训练的backbone网络权重的路径。
+- `-f`, 所需要训练的网络结构描述文件。
+- `-n`, 用于训练的devices(gpu)数量。
+- `-w`, 预训练的backbone网络权重。
 - `-b`，训练时采用的`batch size`, 默认2，表示每张卡训2张图。
-- `-d`, COCO2017数据集的上级目录，默认`/data/datasets`。
-- `--enable_sublinear`, 开启sublinear memory优化，可用于在有限的显存中训练大模型。
+- `-d`, 数据集的上级目录，默认`/data/datasets`。
 
 默认情况下模型会存在 `log-of-模型名`目录下。
 
-5. 编译可能需要的lib
-
-GPU NMS位于tools下的GPU NMS文件夹下面，我们需要进入tools文件夹下进行编译.
-
-首先需要找到MegEngine编译的头文件所在路径，可以通过命令
-
-```bash
-python3 -c "import megengine as mge; print(mge.__file__)"
-```
-将输出结果中__init__.py之前的部分复制(以MegEngine结尾)，将其赋值给shell变量MGE，接下来，运行如下命令进行编译。
-
-```bash
-cd tools
-nvcc -I $MGE/_internal/include -shared -o lib_nms.so -Xcompiler "-fno-strict-aliasing -fPIC" gpu_nms/nms.cu
-```
-
 ## 如何测试
 
-在得到训练完保存的模型之后，可以通过tools下的test.py文件测试模型在`COCO2017`验证集的性能。
+以RetinaNet在COCO2017数据集上测试为例。
+
+在得到训练完保存的模型之后，可以通过tools下的test.py文件测试模型在验证集上的性能。
 
 验证某个epoch的性能：
 
 ```bash
 python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
-                      -se 15
+                      -se 15 \
+                      -d /path/to/COCO2017
 ```
 
 验证连续若干个epoch性能：
 ```bash
 python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
-                      -se 15 -ee 17
+                      -se 15 -ee 17 \
+                      -d /path/to/COCO2017
 ```
 
 验证某个指定weights的性能：
 
 ```bash
 python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
-                      -w /path/to/retinanet_weights.pt
+                      -w /path/to/model_weights.pkl \
+                      -d /path/to/COCO2017
 ```
 
 `tools/test.py`的命令行选项如下：
 
 - `-f`, 所需要测试的网络结构描述文件。
-- `-n`, 用于测试的devices(gpu)数量，默认1。
-- `-w`, 需要测试的模型；可以从顶部的表格中下载训练好的检测器权重, 也可以用自行训练好的权重，指定该参数时会忽略`-se`与`-ee`参数。
-- `-d`，COCO2017数据集的上级目录，默认`/data/datasets`
+- `-n`, 用于测试的devices(gpu)数量。
+- `-w`, 需要测试的模型权重。
+- `-d`，数据集的上级目录，默认`/data/datasets`。
 - `-se`，连续测试的起始epoch数，默认为最后一个epoch，该参数的值必须大于等于0且小于模型的最大epoch数。
 - `-ee`，连续测试的结束epoch数，默认等于`-se`（即只测试1个epoch），该参数的值必须大于等于`-se`且小于模型的最大epoch数。
-
 
 ## 参考文献
 

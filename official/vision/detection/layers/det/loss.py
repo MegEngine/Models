@@ -10,7 +10,7 @@ import megengine.functional as F
 from megengine.core import Tensor
 
 
-def binary_cross_entropy_with_logits(logits: Tensor, targets: Tensor) -> Tensor:
+def binary_cross_entropy(logits: Tensor, targets: Tensor) -> Tensor:
     r"""Binary Cross Entropy
 
     Args:
@@ -49,7 +49,7 @@ def sigmoid_focal_loss(
         the calculated focal loss.
     """
     scores = F.sigmoid(logits)
-    loss = binary_cross_entropy_with_logits(logits, targets)
+    loss = binary_cross_entropy(logits, targets)
     if gamma != 0:
         loss *= (targets * (1 - scores) + (1 - targets) * scores) ** gamma
     if alpha >= 0:
@@ -91,30 +91,26 @@ def iou_loss(
     elif box_mode != "xyxy":
         raise NotImplementedError
 
-    pred_area = F.clamp(pred[..., 2] - pred[..., 0], lower=0) * F.clamp(
-        pred[..., 3] - pred[..., 1], lower=0
+    pred_area = F.maximum(pred[..., 2] - pred[..., 0], 0) * F.maximum(
+        pred[..., 3] - pred[..., 1], 0
     )
-    target_area = F.clamp(target[..., 2] - target[..., 0], lower=0) * F.clamp(
-        target[..., 3] - target[..., 1], lower=0
+    target_area = F.maximum(target[..., 2] - target[..., 0], 0) * F.maximum(
+        target[..., 3] - target[..., 1], 0
     )
 
-    w_intersect = F.clamp(
-        F.minimum(pred[..., 2], target[..., 2])
-        - F.maximum(pred[..., 0], target[..., 0]),
-        lower=0,
+    w_intersect = F.maximum(
+        F.minimum(pred[..., 2], target[..., 2]) - F.maximum(pred[..., 0], target[..., 0]), 0
     )
-    h_intersect = F.clamp(
-        F.minimum(pred[..., 3], target[..., 3])
-        - F.maximum(pred[..., 1], target[..., 1]),
-        lower=0,
+    h_intersect = F.maximum(
+        F.minimum(pred[..., 3], target[..., 3]) - F.maximum(pred[..., 1], target[..., 1]), 0
     )
 
     area_intersect = w_intersect * h_intersect
     area_union = pred_area + target_area - area_intersect
-    ious = area_intersect / F.clamp(area_union, lower=eps)
+    ious = area_intersect / F.maximum(area_union, eps)
 
     if loss_type == "iou":
-        loss = -F.log(F.clamp(ious, lower=eps))
+        loss = -F.log(F.maximum(ious, eps))
     elif loss_type == "linear_iou":
         loss = 1 - ious
     elif loss_type == "giou":
@@ -125,14 +121,6 @@ def iou_loss(
             pred[..., 1], target[..., 1]
         )
         ac_union = g_w_intersect * g_h_intersect
-        gious = ious - (ac_union - area_union) / F.clamp(ac_union, lower=eps)
+        gious = ious - (ac_union - area_union) / F.maximum(ac_union, eps)
         loss = 1 - gious
-    return loss
-
-
-def softmax_loss(logits: Tensor, labels: Tensor) -> Tensor:
-    log_prob = F.log_softmax(logits, axis=1)
-
-    loss = -F.indexing_one_hot(log_prob, labels.astype("int32"), 1).sum()
-    loss = loss / F.maximum(labels.shape[0], 1)
     return loss

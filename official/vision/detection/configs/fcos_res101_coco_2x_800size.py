@@ -11,21 +11,32 @@ from megengine import hub
 from official.vision.detection import models
 
 
+class CustomFCOSConfig(models.FCOSConfig):
+    def __init__(self):
+        super().__init__()
+
+        self.backbone = "resnet101"
+
+        # ------------------------ training cfg ---------------------- #
+        self.max_epoch = 36
+        self.lr_decay_stages = [24, 32]
+
+
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "retinanet_res50_coco_1x_800size_37dot0_d1dafa1d.pkl"
+    "fcos_res101_coco_2x_800size_43dot3_a93b7d16.pkl"
 )
-def retinanet_res50_coco_1x_800size(**kwargs):
+def fcos_res101_coco_2x_800size(**kwargs):
     r"""
-    RetinaNet trained from COCO dataset.
-    `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
+    FCOS trained from COCO dataset.
+    `"FCOS" <https://arxiv.org/abs/1904.01355>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    cfg = models.RetinaNetConfig()
+    cfg = CustomFCOSConfig()
     cfg.backbone_pretrained = False
-    return models.RetinaNet(cfg, **kwargs)
+    return models.FCOS(cfg, **kwargs)
 
 
-Net = models.RetinaNet
-Cfg = models.RetinaNetConfig
+Net = models.FCOS
+Cfg = CustomFCOSConfig

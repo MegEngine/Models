@@ -26,7 +26,7 @@ class CustomRetinaNetConfig(models.RetinaNetConfig):
     "https://data.megengine.org.cn/models/weights/"
     "retinanet_resx101_coco_2x_800size_42dot7_cb5c723e.pkl"
 )
-def retinanet_resx101_coco_2x_800size(batch_size=1, **kwargs):
+def retinanet_resx101_coco_2x_800size(**kwargs):
     r"""
     RetinaNet trained from COCO dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
@@ -35,7 +35,7 @@ def retinanet_resx101_coco_2x_800size(batch_size=1, **kwargs):
     """
     cfg = CustomRetinaNetConfig()
     cfg.backbone_pretrained = False
-    return models.RetinaNet(cfg, batch_size=batch_size, **kwargs)
+    return models.RetinaNet(cfg, **kwargs)
 
 
 Net = models.RetinaNet

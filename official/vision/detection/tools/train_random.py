@@ -9,22 +9,16 @@
 import argparse
 import bisect
 import copy
-import functools
-import importlib
 import multiprocessing as mp
 import os
-import sys
 import time
-from tabulate import tabulate
-
-import numpy as np
 
 import megengine as mge
 import megengine.distributed as dist
 from megengine.autodiff import GradManager
 from megengine.data import DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-from megengine.jit import trace
+# from megengine.jit import trace
 from megengine.optimizer import SGD
 
 from official.vision.detection.tools.data_mapper import data_mapper
@@ -32,12 +26,14 @@ from official.vision.detection.tools.utils import (
     AverageMeter,
     DetectionPadCollator,
     GroupedRandomSampler,
-    PseudoDetectionDataset
+    PseudoDetectionDataset,
+    get_config_info,
+    import_from_file
 )
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
-mge.device.set_prealloc_config(1024, 1024, 512 * 1024 * 1024, 4)
+mge.device.set_prealloc_config(1024, 1024, 512 * 1024 * 1024, 2.0)
 
 
 def make_parser():
@@ -75,7 +71,7 @@ def main():
     if args.ngpus > 1:
         master_ip = "localhost"
         port = dist.get_free_ports(1)[0]
-        server = dist.Server(port)
+        dist.Server(port)
         processes = list()
         for rank in range(args.ngpus):
             process = mp.Process(
@@ -101,14 +97,14 @@ def worker(master_ip, port, world_size, rank, args):
         )
         logger.info("Init process group for gpu{} done".format(rank))
 
-    sys.path.insert(0, os.path.dirname(args.file))
-    current_network = importlib.import_module(os.path.basename(args.file).split(".")[0])
+    current_network = import_from_file(args.file)
 
-    model = current_network.Net(current_network.Cfg(), batch_size=args.batch_size)
+    model = current_network.Net(current_network.Cfg())
     model.train()
 
     if dist.get_rank() == 0:
         logger.info(get_config_info(model.cfg))
+        logger.info(repr(model))
 
     params_with_grad = []
     for name, param in model.named_parameters():
@@ -120,7 +116,7 @@ def worker(master_ip, port, world_size, rank, args):
 
     opt = SGD(
         params_with_grad,
-        lr=model.cfg.basic_lr * model.batch_size,
+        lr=model.cfg.basic_lr * args.batch_size,
         momentum=model.cfg.momentum,
         weight_decay=model.cfg.weight_decay * dist.get_world_size(),
     )
@@ -136,29 +132,28 @@ def worker(master_ip, port, world_size, rank, args):
 
     if args.weight_file is not None:
         weights = mge.load(args.weight_file)
-        model.backbone.bottom_up.load_state_dict(weights)
+        model.backbone.bottom_up.load_state_dict(weights, strict=False)
     if dist.get_world_size() > 1:
         dist.bcast_list_(model.parameters(), dist.WORLD)  # sync parameters
 
     if dist.get_rank() == 0:
         logger.info("Prepare dataset")
-    train_loader = iter(build_dataloader(model.batch_size, args.dataset_dir, model.cfg))
+    train_loader = iter(build_dataloader(args.batch_size, args.dataset_dir, model.cfg))
 
-    for epoch_id in range(model.cfg.max_epoch):
-        tot_steps = model.cfg.nr_images_epoch // (model.batch_size * dist.get_world_size())
-        train_one_epoch(model, train_loader, opt, gm, tot_steps, epoch_id)
+    for epoch in range(model.cfg.max_epoch):
+        train_one_epoch(model, train_loader, opt, gm, epoch, args)
         if dist.get_rank() == 0:
             save_path = "log-of-{}/epoch_{}.pkl".format(
-                os.path.basename(args.file).split(".")[0], epoch_id
+                os.path.basename(args.file).split(".")[0], epoch
             )
             mge.save(
-                {"epoch": epoch_id, "state_dict": model.state_dict()}, save_path,
+                {"epoch": epoch, "state_dict": model.state_dict()}, save_path,
             )
             logger.info("dump weights to %s", save_path)
 
 
-def train_one_epoch(model, data_queue, opt, gm, tot_steps, epoch_id):
-    # @trace(symbolic=False)
+def train_one_epoch(model, data_queue, opt, gm, epoch, args):
+    # @trace(symbolic=True)
     def train_func(image, im_info, gt_boxes):
         with gm:
             loss_dict = model(image=image, im_info=im_info, gt_boxes=gt_boxes)
@@ -170,8 +165,9 @@ def train_one_epoch(model, data_queue, opt, gm, tot_steps, epoch_id):
     meter = AverageMeter(record_len=model.cfg.num_losses)
     time_meter = AverageMeter(record_len=2)
     log_interval = model.cfg.log_interval
-    for step in range(tot_steps):
-        adjust_learning_rate(opt, epoch_id, step, model)
+    tot_step = model.cfg.nr_images_epoch // (args.batch_size * dist.get_world_size())
+    for step in range(tot_step):
+        adjust_learning_rate(opt, epoch, step, model.cfg, args)
 
         data_tik = time.time()
         mini_batch = next(data_queue)
@@ -196,48 +192,30 @@ def train_one_epoch(model, data_queue, opt, gm, tot_steps, epoch_id):
             log_info_str = info_str + loss_str + time_str
             meter.update([loss.numpy() for loss in loss_list])
             if step % log_interval == 0:
-                average_loss = meter.average()
                 logger.info(
                     log_info_str,
-                    epoch_id,
+                    epoch,
                     step,
-                    tot_steps,
+                    tot_step,
                     opt.param_groups[0]["lr"],
-                    *average_loss,
+                    *meter.average(),
                     *time_meter.average()
                 )
                 meter.reset()
                 time_meter.reset()
 
 
-def get_config_info(config):
-    config_table = []
-    for c, v in config.__dict__.items():
-        if not isinstance(v, (int, float, str, list, tuple, dict, np.ndarray)):
-            if hasattr(v, "__name__"):
-                v = v.__name__
-            elif hasattr(v, "__class__"):
-                v = v.__class__
-            elif isinstance(v, functools.partial):
-                v = v.func.__name__
-        config_table.append((str(c), str(v)))
-    config_table = tabulate(config_table)
-    return config_table
-
-
-def adjust_learning_rate(optimizer, epoch_id, step, model):
+def adjust_learning_rate(optimizer, epoch, step, cfg, args):
     base_lr = (
-        model.cfg.basic_lr
-        * model.batch_size
-        * (
-            model.cfg.lr_decay_rate
-            ** bisect.bisect_right(model.cfg.lr_decay_stages, epoch_id)
+        cfg.basic_lr * args.batch_size * (
+            cfg.lr_decay_rate
+            ** bisect.bisect_right(cfg.lr_decay_stages, epoch)
         )
     )
     # Warm up
     lr_factor = 1.0
-    if epoch_id == 0 and step < model.cfg.warm_iters:
-        lr_factor = (step + 1.0) / model.cfg.warm_iters
+    if epoch == 0 and step < cfg.warm_iters:
+        lr_factor = (step + 1.0) / cfg.warm_iters
     for param_group in optimizer.param_groups:
         param_group["lr"] = base_lr * lr_factor
 
@@ -265,8 +243,8 @@ def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):
     return Infinite(GroupedRandomSampler(train_dataset, batch_size, group_ids))
 
 
-def build_dataloader(batch_size, data_dir, cfg):
-    train_dataset = build_dataset(data_dir, cfg)
+def build_dataloader(batch_size, dataset_dir, cfg):
+    train_dataset = build_dataset(dataset_dir, cfg)
     train_sampler = build_sampler(train_dataset, batch_size)
     train_dataloader = DataLoader(
         train_dataset,
