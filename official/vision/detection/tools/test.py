@@ -105,13 +105,12 @@ def main():
                 result_list.append(result_queue.get())
             for p in procs:
                 p.join()
-
         else:
             result_list = []
 
             worker(
                 current_network, weight_file, args.dataset_dir,
-                None, None, args.ngpus, 0, result_list
+                None, None, 1, 0, result_list
             )
 
         all_results = DetEvaluator.format(result_list, cfg)

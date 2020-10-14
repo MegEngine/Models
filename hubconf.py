@@ -29,15 +29,19 @@ from official.vision.classification.shufflenet.model import (
 )
 from official.vision.detection.configs import (
     faster_rcnn_res50_coco_1x_800size,
-    faster_rcnn_res50_coco_1x_800size_syncbn,
     faster_rcnn_res101_coco_2x_800size,
     faster_rcnn_resx101_coco_2x_800size,
     retinanet_res50_coco_1x_800size,
-    retinanet_res50_coco_1x_800size_syncbn,
     retinanet_res101_coco_2x_800size,
     retinanet_resx101_coco_2x_800size,
+    fcos_res50_coco_1x_800size,
+    fcos_res101_coco_2x_800size,
+    fcos_resx101_coco_2x_800size,
+    atss_res50_coco_1x_800size,
+    atss_res101_coco_2x_800size,
+    atss_resx101_coco_2x_800size,
 )
-from official.vision.detection.models import FasterRCNN, RetinaNet
+from official.vision.detection.models import FasterRCNN, RetinaNet, FCOS, ATSS
 from official.vision.detection.tools.utils import DetEvaluator
 from official.vision.keypoints.inference import KeypointEvaluator
 from official.vision.keypoints.models import (
@@ -46,7 +50,8 @@ from official.vision.keypoints.models import (
     simplebaseline_res101,
     simplebaseline_res152,
 )
-from official.vision.segmentation.deeplabv3plus import (
-    DeepLabV3Plus,
-    deeplabv3plus_res101,
+from official.vision.segmentation.configs import (
+    deeplabv3plus_res101_cityscapes_768size,
+    deeplabv3plus_res101_voc_512size,
 )
+from official.vision.segmentation.models import DeepLabV3Plus

@@ -9,17 +9,17 @@
 import argparse
 
 import cv2
+import numpy as np
 
 import megengine as mge
 
-from official.vision.detection.tools.data_mapper import data_mapper
-from official.vision.detection.tools.utils import DetEvaluator, import_from_file
+from official.vision.segmentation.tools.utils import class_colors, import_from_file
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
 
 
-def make_parser():
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-f", "--file", default="net.py", type=str, help="net description file"
@@ -28,11 +28,6 @@ def make_parser():
         "-w", "--weight_file", default=None, type=str, help="weights file",
     )
     parser.add_argument("-i", "--image", type=str)
-    return parser
-
-
-def main():
-    parser = make_parser()
     args = parser.parse_args()
 
     current_network = import_from_file(args.file)
@@ -46,23 +41,34 @@ def main():
         state_dict = state_dict["state_dict"]
     model.load_state_dict(state_dict)
 
-    evaluator = DetEvaluator(model)
+    img = cv2.imread(args.image)
+    pred = inference(img, model)
+    cv2.imwrite("results.jpg", pred)
 
-    ori_img = cv2.imread(args.image)
-    image, im_info = DetEvaluator.process_inputs(
-        ori_img.copy(), model.cfg.test_image_short_size, model.cfg.test_image_max_size,
+
+def inference(img, model):
+    def pred_func(data):
+        pred = model(data)
+        return pred
+
+    img = (
+        img.astype("float32") - np.array(model.cfg.img_mean)
+    ) / np.array(model.cfg.img_std)
+    ori_h, ori_w = img.shape[:2]
+    img = cv2.resize(img, (model.cfg.val_height, model.cfg.val_width))
+    img = img.transpose(2, 0, 1)[np.newaxis]
+
+    pred = pred_func(mge.tensor(img))
+    pred = pred.numpy().squeeze().argmax(0)
+    pred = cv2.resize(
+        pred.astype("uint8"), (ori_w, ori_h), interpolation=cv2.INTER_NEAREST
     )
-    pred_res = evaluator.predict(
-        image=mge.tensor(image),
-        im_info=mge.tensor(im_info)
-    )
-    res_img = DetEvaluator.vis_det(
-        ori_img,
-        pred_res,
-        is_show_label=True,
-        classes=data_mapper[cfg.test_dataset["name"]].class_names,
-    )
-    cv2.imwrite("results.jpg", res_img)
+
+    out = np.zeros((ori_h, ori_w, 3))
+    nids = np.unique(pred)
+    for t in nids:
+        out[pred == t] = class_colors[t]
+    return out
 
 
 if __name__ == "__main__":

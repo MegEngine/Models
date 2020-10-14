@@ -72,7 +72,7 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 
 ### 目标检测
 
-目标检测同样是计算机视觉中的常见任务，我们提供了两个经典的目标检测模型[Retinanet](./official/vision/detection/models/retinanet.py)和[Faster R-CNN](./official/vision/detection/models/faster_rcnn.py)，这两个模型在**COCO验证集**上的测试结果如下：
+目标检测同样是计算机视觉中的常见任务，我们提供了多个经典的目标检测模型，这些模型在COCO2017验证集上的测试结果如下：
 
 | 模型                                | mAP<br>@5-95 |
 | ---                                 | :---:        |
@@ -81,21 +81,27 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 | retinanet-resx101-coco-2x-800size   | 42.7         |
 | faster-rcnn-res50-coco-1x-800size   | 38.0         |
 | faster-rcnn-res101-coco-2x-800size  | 42.5         |
-| faster-rcnn-resx101-coco-2x-800size | 44.7 *       |
+| faster-rcnn-resx101-coco-2x-800size | 43.6         |
 | fcos-res50-coco-1x-800size          | 39.7         |
 | fcos-res101-coco-2x-800size         | 44.1         |
-| fcos-resx101-coco-2x-800size        | 39.7 *       |
+| fcos-resx101-coco-2x-800size        | 44.9         |
 | atss-res50-coco-1x-800size          | 40.1         |
 | atss-res101-coco-2x-800size         | 44.5         |
 | atss-resx101-coco-2x-800size        | 45.9         |
 
 ### 图像分割
 
-我们也提供了经典的语义分割模型--[Deeplabv3plus](./official/vision/segmentation/)，这个模型在**PASCAL VOC验证集**上的测试结果如下：
+我们也提供了经典的语义分割模型--[DeepLabV3+](./official/vision/segmentation/)，这个模型在Pascal VOC2012验证集上的测试结果如下：
 
- | 模型          | Backbone  | mIoU_single | mIoU_multi |
- | --            | :--:      | :--:        | :--:       |
- | Deeplabv3plus | Resnet101 | 79.0        | 79.8       |
+| 模型                             | mIoU |
+| ---                              | :--: |
+| deeplabv3plus-res101-voc-512size | 79.5 |
+
+在Cityscapes验证集上的测试结果如下：
+
+| 模型                                    | mIoU |
+| ---                                     | :--: |
+| deeplabv3plus-res101-cityscapes-768size | 78.5 |
 
 ### 人体关节点检测
 
