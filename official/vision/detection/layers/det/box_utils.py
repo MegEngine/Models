@@ -58,10 +58,10 @@ class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
             return bbox_width, bbox_height, bbox_ctr_x, bbox_ctr_y
         else:
             return (
-                F.add_axis(bbox_width, addaxis),
-                F.add_axis(bbox_height, addaxis),
-                F.add_axis(bbox_ctr_x, addaxis),
-                F.add_axis(bbox_ctr_y, addaxis),
+                F.expand_dims(bbox_width, addaxis),
+                F.expand_dims(bbox_height, addaxis),
+                F.expand_dims(bbox_ctr_x, addaxis),
+                F.expand_dims(bbox_ctr_y, addaxis),
             )
 
     def encode(self, bbox: Tensor, gt: Tensor) -> Tensor:
@@ -110,10 +110,10 @@ class PointCoder(BoxCoderBase, metaclass=ABCMeta):
 
     def decode(self, anchors: Tensor, deltas: Tensor) -> Tensor:
         return F.stack([
-            F.add_axis(anchors[:, 0], axis=1) - deltas[:, 0::4],
-            F.add_axis(anchors[:, 1], axis=1) - deltas[:, 1::4],
-            F.add_axis(anchors[:, 0], axis=1) + deltas[:, 2::4],
-            F.add_axis(anchors[:, 1], axis=1) + deltas[:, 3::4],
+            F.expand_dims(anchors[:, 0], axis=1) - deltas[:, 0::4],
+            F.expand_dims(anchors[:, 1], axis=1) - deltas[:, 1::4],
+            F.expand_dims(anchors[:, 0], axis=1) + deltas[:, 2::4],
+            F.expand_dims(anchors[:, 1], axis=1) + deltas[:, 3::4],
         ], axis=2).reshape(deltas.shape)
 
 
@@ -132,11 +132,8 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ioa=False) -> Tensor:
     Returns:
         iou (Tensor): IoU matrix, shape (N,M).
     """
-    N, M = boxes1.shape[0], boxes2.shape[0]
-    target_shape = (N, M, 4)
-
-    b_box1 = F.add_axis(boxes1, 1).broadcast(*target_shape)
-    b_box2 = F.add_axis(boxes2[:, :4], 0).broadcast(*target_shape)
+    b_box1 = F.expand_dims(boxes1, axis=1)
+    b_box2 = F.expand_dims(boxes2, axis=0)
 
     iw = F.minimum(b_box1[:, :, 2], b_box2[:, :, 2]) - F.maximum(
         b_box1[:, :, 0], b_box2[:, :, 0]
@@ -149,29 +146,26 @@ def get_iou(boxes1: Tensor, boxes2: Tensor, return_ioa=False) -> Tensor:
     area_box1 = (boxes1[:, 2] - boxes1[:, 0]) * (boxes1[:, 3] - boxes1[:, 1])
     area_box2 = (boxes2[:, 2] - boxes2[:, 0]) * (boxes2[:, 3] - boxes2[:, 1])
 
-    area_box1 = F.add_axis(area_box1, 1).broadcast(N, M)
-    area_box2 = F.add_axis(area_box2, 0).broadcast(N, M)
-
-    union = area_box1 + area_box2 - inter
-    overlaps = F.maximum(inter / union, 0.0)
+    union = F.expand_dims(area_box1, axis=1) + F.expand_dims(area_box2, axis=0) - inter
+    overlaps = F.maximum(inter / union, 0)
 
     if return_ioa:
-        ioa = F.maximum(inter / area_box1, 0.0)
+        ioa = F.maximum(inter / area_box1, 0)
         return overlaps, ioa
 
     return overlaps
 
 
-def get_clipped_box(boxes, hw):
+def get_clipped_boxes(boxes, hw):
     """ Clip the boxes into the image region."""
     # x1 >=0
-    box_x1 = F.clamp(boxes[:, 0::4], lower=0, upper=hw[1])
+    box_x1 = F.clip(boxes[:, 0::4], lower=0, upper=hw[1])
     # y1 >=0
-    box_y1 = F.clamp(boxes[:, 1::4], lower=0, upper=hw[0])
+    box_y1 = F.clip(boxes[:, 1::4], lower=0, upper=hw[0])
     # x2 < im_info[1]
-    box_x2 = F.clamp(boxes[:, 2::4], lower=0, upper=hw[1])
+    box_x2 = F.clip(boxes[:, 2::4], lower=0, upper=hw[1])
     # y2 < im_info[0]
-    box_y2 = F.clamp(boxes[:, 3::4], lower=0, upper=hw[0])
+    box_y2 = F.clip(boxes[:, 3::4], lower=0, upper=hw[0])
 
     clip_box = F.concat([box_x1, box_y1, box_x2, box_y2], axis=1)
 

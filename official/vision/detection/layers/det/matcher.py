@@ -34,14 +34,11 @@ class Matcher:
         labels = F.full_like(match_indices, -1)
 
         for label, low, high in zip(self.labels, self.thresholds[:-1], self.thresholds[1:]):
-            mask = (max_scores >= low) & (max_scores <= high)
+            mask = (max_scores >= low) & (max_scores < high)
             labels[mask] = label
 
         if self.allow_low_quality_matches:
-            indices = F.argmax(matrix, axis=1)
-            labels[indices] = F.full(indices.shape, value=self.labels[-1], dtype=labels.dtype)
-            match_indices[indices] = F.arange(
-                0, indices.shape[0], dtype=match_indices.dtype, device=matrix.device
-            )
+            mask = (matrix == F.max(matrix, axis=1, keepdims=True)).sum(axis=0) > 0
+            labels[mask] = 1
 
         return match_indices, labels

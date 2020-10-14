@@ -20,8 +20,8 @@ def meshgrid(x, y):
     assert len(x.shape) == 1
     assert len(y.shape) == 1
     mesh_shape = (y.shape[0], x.shape[0])
-    mesh_x = x.broadcast(mesh_shape)
-    mesh_y = y.reshape(-1, 1).broadcast(mesh_shape)
+    mesh_x = F.broadcast_to(x, mesh_shape)
+    mesh_y = F.broadcast_to(y.reshape(-1, 1), mesh_shape)
     return mesh_x, mesh_y
 
 
@@ -121,7 +121,7 @@ class AnchorBoxGenerator(BaseAnchorGenerator):
             grid_x, grid_y = create_anchor_grid(size, self.offset, stride, device)
             grids = F.stack([grid_x, grid_y, grid_x, grid_y], axis=1)
             all_anchors.append(
-                (grids.reshape(-1, 1, 4) + base_anchor.reshape(1, -1, 4)).reshape(-1, 4)
+                (F.expand_dims(grids, axis=1) + F.expand_dims(base_anchor, axis=0)).reshape(-1, 4)
             )
         return all_anchors
 
@@ -160,7 +160,8 @@ class AnchorPointGenerator(BaseAnchorGenerator):
             grid_x, grid_y = create_anchor_grid(size, self.offset, stride, device)
             grids = F.stack([grid_x, grid_y], axis=1)
             all_anchors.append(
-                grids.reshape(-1, 1, 2).broadcast(
-                    grids.shape[0], self.num_anchors, 2).reshape(-1, 2)
+                F.broadcast_to(
+                    F.expand_dims(grids, axis=1), (grids.shape[0], self.num_anchors, 2)
+                ).reshape(-1, 2)
             )  # FIXME: need F.repeat
         return all_anchors

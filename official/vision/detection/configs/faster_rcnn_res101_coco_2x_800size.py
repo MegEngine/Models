@@ -19,14 +19,14 @@ class CustomFasterRCNNConfig(models.FasterRCNNConfig):
 
         # ------------------------ training cfg ---------------------- #
         self.max_epoch = 36
-        self.lr_decay_stages = [24, 32, 34]
+        self.lr_decay_stages = [24, 32]
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "faster_rcnn_res101_coco_2x_800size_43dot0_ee249359.pkl"
+    "faster_rcnn_res101_coco_2x_800size_42dot5_b7872f2d.pkl"
 )
-def faster_rcnn_res101_coco_2x_800size(batch_size=1, **kwargs):
+def faster_rcnn_res101_coco_2x_800size(**kwargs):
     r"""
     Faster-RCNN FPN trained from COCO dataset.
     `"Faster-RCNN" <https://arxiv.org/abs/1506.01497>`_
@@ -35,7 +35,7 @@ def faster_rcnn_res101_coco_2x_800size(batch_size=1, **kwargs):
     """
     cfg = CustomFasterRCNNConfig()
     cfg.backbone_pretrained = False
-    return models.FasterRCNN(cfg, batch_size=batch_size, **kwargs)
+    return models.FasterRCNN(cfg, **kwargs)
 
 
 Net = models.FasterRCNN
