@@ -60,7 +60,7 @@ class BasicBlock(M.Module):
         dilation=1,
         norm=M.BatchNorm2d,
     ):
-        super().__init__()
+        super(BasicBlock, self).__init__()
         if groups != 1 or base_width != 64:
             raise ValueError("BasicBlock only supports groups=1 and base_width=64")
         if dilation > 1:
@@ -105,7 +105,7 @@ class Bottleneck(M.Module):
         dilation=1,
         norm=M.BatchNorm2d,
     ):
-        super().__init__()
+        super(Bottleneck, self).__init__()
         width = int(channels * (base_width / 64.0)) * groups
         self.conv1 = M.Conv2d(in_channels, width, 1, 1, bias=False)
         self.bn1 = norm(width)
@@ -165,7 +165,7 @@ class ResNet(M.Module):
         replace_stride_with_dilation=None,
         norm=M.BatchNorm2d,
     ):
-        super().__init__()
+        super(ResNet, self).__init__()
         self.in_channels = 64
         self.dilation = 1
         if replace_stride_with_dilation is None:

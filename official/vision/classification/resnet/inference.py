@@ -9,26 +9,32 @@
 import argparse
 import json
 
+import model as resnet_model
+
 import cv2
-import megengine as mge
+import numpy as np
+
+import megengine
 import megengine.data.transform as T
 import megengine.functional as F
 import megengine.jit as jit
-import numpy as np
 
-import model as M
+logging = megengine.logger.get_logger()
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--arch", default="resnet18", type=str)
+    parser.add_argument("-a", "--arch", default="resnet50", type=str)
     parser.add_argument("-m", "--model", default=None, type=str)
     parser.add_argument("-i", "--image", default=None, type=str)
     args = parser.parse_args()
 
-    model = getattr(M, args.arch)(pretrained=(args.model is None))
-    if args.model:
-        state_dict = mge.load(args.model)
+    model = resnet_model.__dict__[args.arch](pretrained=(args.model is None))
+    if args.model is not None:
+        logging.info("load from checkpoint %s", args.model)
+        checkpoint = megengine.load(args.model)
+        if "state_dict" in checkpoint:
+            state_dict = checkpoint["state_dict"]
         model.load_state_dict(state_dict)
 
     if args.image is None:
@@ -48,7 +54,6 @@ def main():
         ]
     )
 
-    @jit.trace(symbolic=True)
     def infer_func(processed_img):
         model.eval()
         logits = model(processed_img)
@@ -58,7 +63,7 @@ def main():
     processed_img = transform.apply(image)[np.newaxis, :]
     probs = infer_func(processed_img)
 
-    top_probs, classes = F.top_k(probs, k=5, descending=True)
+    top_probs, classes = F.topk(probs, k=5, descending=True)
 
     with open("../../../assets/imagenet_class_info.json") as fp:
         imagenet_class_index = json.load(fp)

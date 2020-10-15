@@ -33,14 +33,14 @@
 # This file has been modified by Megvii ("Megvii Modifications").
 # All Megvii Modifications are Copyright (C) 2014-2019 Megvii Inc. All rights reserved.
 # ------------------------------------------------------------------------------
-import megengine.functional as F
-import megengine.hub as hub
-import megengine.module as M
+from megengine import functional as F
+from megengine import hub as hub
+from megengine import module as M
 
 
 class ShuffleV2Block(M.Module):
     def __init__(self, inp, oup, mid_channels, *, ksize, stride):
-        super().__init__()
+        super(ShuffleV2Block, self).__init__()
         self.stride = stride
         assert stride in [1, 2]
 
@@ -58,15 +58,7 @@ class ShuffleV2Block(M.Module):
             M.BatchNorm2d(mid_channels),
             M.ReLU(),
             # dw
-            M.Conv2d(
-                mid_channels,
-                mid_channels,
-                ksize,
-                stride,
-                pad,
-                groups=mid_channels,
-                bias=False,
-            ),
+            M.Conv2d(mid_channels, mid_channels, ksize, stride, pad, groups=mid_channels, bias=False,),
             M.BatchNorm2d(mid_channels),
             # pw-linear
             M.Conv2d(mid_channels, outputs, 1, 1, 0, bias=False),
@@ -104,14 +96,14 @@ class ShuffleV2Block(M.Module):
         batchsize, num_channels, height, width = x.shape
         # assert (num_channels % 4 == 0)
         x = x.reshape(batchsize * num_channels // 2, 2, height * width)
-        x = x.dimshuffle(1, 0, 2)
+        x = F.transpose(x, (1, 0, 2))
         x = x.reshape(2, -1, num_channels // 2, height, width)
         return x[0], x[1]
 
 
 class ShuffleNetV2(M.Module):
     def __init__(self, num_classes=1000, model_size="1.5x"):
-        super().__init__()
+        super(ShuffleNetV2, self).__init__()
 
         self.stage_repeats = [4, 8, 4]
         self.model_size = model_size
@@ -129,9 +121,7 @@ class ShuffleNetV2(M.Module):
         # building first layer
         input_channel = self.stage_out_channels[1]
         self.first_conv = M.Sequential(
-            M.Conv2d(3, input_channel, 3, 2, 1, bias=False),
-            M.BatchNorm2d(input_channel),
-            M.ReLU(),
+            M.Conv2d(3, input_channel, 3, 2, 1, bias=False), M.BatchNorm2d(input_channel), M.ReLU(),
         )
 
         self.maxpool = M.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -145,21 +135,13 @@ class ShuffleNetV2(M.Module):
                 if i == 0:
                     self.features.append(
                         ShuffleV2Block(
-                            input_channel,
-                            output_channel,
-                            mid_channels=output_channel // 2,
-                            ksize=3,
-                            stride=2,
+                            input_channel, output_channel, mid_channels=output_channel // 2, ksize=3, stride=2,
                         )
                     )
                 else:
                     self.features.append(
                         ShuffleV2Block(
-                            input_channel // 2,
-                            output_channel,
-                            mid_channels=output_channel // 2,
-                            ksize=3,
-                            stride=1,
+                            input_channel // 2, output_channel, mid_channels=output_channel // 2, ksize=3, stride=1,
                         )
                     )
 
@@ -175,9 +157,7 @@ class ShuffleNetV2(M.Module):
         self.globalpool = M.AvgPool2d(7)
         if self.model_size == "2.0x":
             self.dropout = M.Dropout(0.2)
-        self.classifier = M.Sequential(
-            M.Linear(self.stage_out_channels[-1], num_classes, bias=False)
-        )
+        self.classifier = M.Sequential(M.Linear(self.stage_out_channels[-1], num_classes, bias=False))
         self._initialize_weights()
 
     def forward(self, x):
@@ -218,29 +198,21 @@ class ShuffleNetV2(M.Module):
                     M.init.fill_(m.bias, 0)
 
 
-@hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/snetv2_x2_0_75115_497d4601.pkl"
-)
+@hub.pretrained("https://data.megengine.org.cn/models/weights/snetv2_x2_0_75115_497d4601.pkl")
 def shufflenet_v2_x2_0(num_classes=1000):
     return ShuffleNetV2(num_classes=num_classes, model_size="2.0x")
 
 
-@hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/snetv2_x1_5_72775_38ac4273.pkl"
-)
+@hub.pretrained("https://data.megengine.org.cn/models/weights/snetv2_x1_5_72775_38ac4273.pkl")
 def shufflenet_v2_x1_5(num_classes=1000):
     return ShuffleNetV2(num_classes=num_classes, model_size="1.5x")
 
 
-@hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/snetv2_x1_0_69369_daf9dba0.pkl"
-)
+@hub.pretrained("https://data.megengine.org.cn/models/weights/snetv2_x1_0_69369_daf9dba0.pkl")
 def shufflenet_v2_x1_0(num_classes=1000):
     return ShuffleNetV2(num_classes=num_classes, model_size="1.0x")
 
 
-@hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/snetv2_x0_5_60750_c28db1a2.pkl"
-)
+@hub.pretrained("https://data.megengine.org.cn/models/weights/snetv2_x0_5_60750_c28db1a2.pkl")
 def shufflenet_v2_x0_5(num_classes=1000):
     return ShuffleNetV2(num_classes=num_classes, model_size="0.5x")
