@@ -320,7 +320,7 @@ def build_dataset(args):
     return train_dataloader, valid_dataloader
 
 
-class AverageMeter(object):
+class AverageMeter:
     """Computes and stores the average and current value"""
 
     def __init__(self, name, fmt=":.3f"):

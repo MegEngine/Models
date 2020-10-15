@@ -40,7 +40,7 @@ from megengine import module as M
 
 class ShuffleV2Block(M.Module):
     def __init__(self, inp, oup, mid_channels, *, ksize, stride):
-        super(ShuffleV2Block, self).__init__()
+        super().__init__()
         self.stride = stride
         assert stride in [1, 2]
 
@@ -103,7 +103,7 @@ class ShuffleV2Block(M.Module):
 
 class ShuffleNetV2(M.Module):
     def __init__(self, num_classes=1000, model_size="1.5x"):
-        super(ShuffleNetV2, self).__init__()
+        super().__init__()
 
         self.stage_repeats = [4, 8, 4]
         self.model_size = model_size
