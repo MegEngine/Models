@@ -158,7 +158,6 @@ def worker(
     current_network, weight_file, dataset_dir,
     master_ip, port, world_size, rank, result_list
 ):
-    append_to_list = True
     if world_size > 1:
         dist.init_process_group(
             master_ip=master_ip,
@@ -167,7 +166,6 @@ def worker(
             rank=rank,
             device=rank,
         )
-        append_to_list = False
 
     mge.device.set_default_device("gpu{}".format(rank))
 
@@ -184,7 +182,7 @@ def worker(
     evaluator = DetEvaluator(model)
 
     test_loader = build_dataloader(rank, world_size, dataset_dir, model.cfg)
-    if append_to_list:
+    if world_size == 1:
         test_loader = tqdm(test_loader)
 
     for data in test_loader:
@@ -201,10 +199,10 @@ def worker(
             "det_res": pred_res,
             "image_id": int(data[1][2][0].split(".")[0].split("_")[-1]),
         }
-        if append_to_list:
-            result_list.append(result)
-        else:
+        if world_size > 1:
             result_list.put_nowait(result)
+        else:
+            result_list.append(result)
 
 
 def build_dataloader(rank, world_size, dataset_dir, cfg):
