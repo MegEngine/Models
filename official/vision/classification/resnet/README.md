@@ -8,12 +8,12 @@
 
 | 模型 | top1 acc | top5 acc |
 | --- | --- | --- |
-| ResNet18 |  70.312  |  89.430  | 
-| ResNet34 |  73.960  |  91.630  | 
-| ResNet50 | 76.254 | 93.056 | 
-| ResNet101 | 77.944 | 93.844 | 
-| ResNet152 | 78.582 | 94.130 | 
-| ResNeXt50 32x4d | 77.592 | 93.644 | 
+| ResNet18 |  70.312  |  89.430  |
+| ResNet34 |  73.960  |  91.630  |
+| ResNet50 | 76.254 | 93.056 |
+| ResNet101 | 77.944 | 93.844 |
+| ResNet152 | 78.582 | 94.130 |
+| ResNeXt50 32x4d | 77.592 | 93.644 |
 | ResNeXt101 32x8d| 79.520 | 94.586 |
 
 用户可以通过`megengine.hub`直接加载本目录下定义好的模型，例如：
@@ -64,20 +64,20 @@ python3 train.py --dataset-dir=/path/to/imagenet
 `train.py`提供了灵活的命令行选项，包括：
 
 - `--data`, ImageNet数据集的根目录，默认`/data/datasets/imagenet`;
-- `--arch`, 需要训练的网络结构，默认`resnet18`；
-- `--batch-size`，训练时每张卡采用的batch size, 默认32；
-- `--ngpus`, 训练时采用的节点/gpu数量，默认1；当使用多张gpu时，将自动切换为分布式训练模式；
-- `--save`, 模型以及log存储的目录，默认`/data/models`;
-- `--learning-rate`, 训练时的初始学习率，默认0.0125，在分布式训练下，实际学习率等于初始学习率乘以节点/gpu数；
-- `--epochs`, 训练多少个epoch，默认100；
+- `--arch`, 需要训练的网络结构，默认`resnet50`；
+- `--batch-size`，训练时每张卡采用的batch size, 默认64；
+- `--ngpus`, 训练时每个节点采用的gpu数量，默认`None`，即使用全部gpu；当使用多张gpu时，将自动切换为分布式训练模式；
+- `--save`, 模型以及log存储的目录，默认`output`;
+- `--learning-rate`, 训练时的初始学习率，默认0.025，在分布式训练下，实际学习率等于初始学习率乘以总gpu数；
+- `--epochs`, 训练多少个epoch，默认90；
 
 例如，可以通过以下命令在2块GPU上以64的batch大小训练一个`resnet50`的模型：
 
 ```bash
 python3 train.py --data /path/to/imagenet \
                  --arch resnet50 \
-                 --batch-size 32 \
-                 --learning-rate 0.0125 \
+                 --batch-size 64 \
+                 --learning-rate 0.025 \
                  --ngpus 2 \
                  --save /path/to/save_dir
 ```
@@ -95,9 +95,9 @@ python3 test.py --data=/path/to/imagenet --arch resnet50 --model /path/to/model 
 `test.py`的命令行选项如下：
 
 - `--data`，ImageNet数据集的根目录，默认`/data/datasets/imagenet`；
-- `--arch`, 需要测试的网络结构，默认`resnet18`；
+- `--arch`, 需要测试的网络结构，默认`resnet50`；
 - `--model`, 需要测试的模型，默认使用官方预训练模型；
-- `--ngpus`, 用于测试的gpu数量，默认1；
+- `--ngpus`, 用于测试的gpu数量，默认`None`；
 
 更多详细介绍可以通过运行`python3 test.py --help`查看。
 
