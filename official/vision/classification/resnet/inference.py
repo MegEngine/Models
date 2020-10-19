@@ -24,7 +24,7 @@ logging = megengine.logger.get_logger()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--arch", default="resnet50", type=str)
+    parser.add_argument("-a", "--arch", default="resnet18", type=str)
     parser.add_argument("-m", "--model", default=None, type=str)
     parser.add_argument("-i", "--image", default=None, type=str)
     args = parser.parse_args()

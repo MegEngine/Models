@@ -35,6 +35,13 @@ def main():
         help="model architecture (default: resnet50)",
     )
     parser.add_argument(
+        "-n",
+        "--ngpus",
+        default=None,
+        type=int,
+        help="number of GPUs per node (default: None, use all available GPUs)",
+    )
+    parser.add_argument(
         "-m", "--model", metavar="PKL", default=None, help="path to model checkpoint"
     )
 
@@ -62,6 +69,8 @@ def main():
     # get device count
     with multiprocessing.Pool(1) as pool:
         ngpus_per_node, _ = pool.map(megengine.get_device_count, ["gpu", "cpu"])
+    if args.ngpus:
+        ngpus_per_node = args.ngpus
 
     # launch processes
     procs = []

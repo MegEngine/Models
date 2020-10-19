@@ -8,10 +8,10 @@
 
 | 模型 | top1 acc | top5 acc |
 | --- | --- | --- |
-| ShuffleNetV2 x0.5 |  60.696  |  82.190  | 
-| ShuffleNetV2 x1.0 |  69.372  |  88.764  | 
-| ShuffleNetV2 x1.5 |  72.806  |  90.792  | 
-| ShuffleNetV2 x2.0 |  75.074  |  92.278  | 
+| ShuffleNetV2 x0.5 |  60.696  |  82.190  |
+| ShuffleNetV2 x1.0 |  69.372  |  88.764  |
+| ShuffleNetV2 x1.5 |  72.806  |  90.792  |
+| ShuffleNetV2 x2.0 |  75.074  |  92.278  |
 
 用户可以通过`megengine.hub`直接加载本目录下定义好的模型，例如：
 
@@ -55,24 +55,24 @@ resnet18 = megengine.hub.load("megengine/models", "shufflenet_v2_x1_0", pretrain
 准备好数据集后，可以运行以下命令开始训练：
 
 ```bash
-python3 train.py --dataset-dir=/path/to/imagenet
+python3 train.py --data=/path/to/imagenet
 ```
 
 `train.py`提供了灵活的命令行选项，包括：
 
 - `--data`, ImageNet数据集的根目录，默认`/data/datasets/imagenet`;
-- `--arch`, 需要训练的网络结构，默认`resnet18`；
+- `--arch`, 需要训练的网络结构，默认`shufflenet_v2_x1_0`；
 - `--batch-size`，训练时每张卡采用的batch size, 默认128；
-- `--ngpus`, 训练时采用的节点/gpu数量，默认1；当使用多张gpu时，将自动切换为分布式训练模式；
-- `--save`, 模型以及log存储的目录，默认`/data/models`;
+- `--ngpus`, 训练时每个节点采用的gpu数量，默认`None`，即使用全部gpu；当使用多张gpu时，将自动切换为分布式训练模式；
+- `--save`, 模型以及log存储的目录，默认`outputs`;
 - `--learning-rate`, 训练时的初始学习率，默认0.0625，在分布式训练下，实际学习率等于初始学习率乘以节点/gpu数；
-- `--steps`, 训练多少个iteration，默认300,000；
+- `--epochs`, 训练多少个epoch，默认240；
 
 例如，可以通过以下命令在8块GPU上以128 x 8 = 1024的batch大小训练一个`shufflenet_v2_x1_5`的模型：
 
 ```bash
 python3 train.py --data /path/to/imagenet \
-                 --arch shufflenet_v2_x1_5 \
+                 --arch shufflenet_v2_x1_0 \
                  --batch-size 128 \
                  --learning-rate 0.0625 \
                  --ngpus 8 \
@@ -86,15 +86,15 @@ python3 train.py --data /path/to/imagenet \
 在训练的过程中，可以通过如下命令测试模型在ImageNet验证集的性能：
 
 ```bash
-python3 test.py --dataset-dir=/path/to/imagenet --arch shufflenet_v2_x1_5 --model /path/to/model -ngpus 1
+python3 test.py --data /path/to/imagenet --arch shufflenet_v2_x1_0 --model /path/to/model --ngpus 1
 ```
 
 `test.py`的命令行选项如下：
 
-- `--dataset-dir`，ImageNet数据集的根目录，默认`/data/datasets/imagenet`；
+- `--data`，ImageNet数据集的根目录，默认`/data/datasets/imagenet`；
 - `--arch`, 需要测试的网络结构，默认``；
 - `--model`, 需要测试的模型，默认使用官方预训练模型；
-- `--ngpus`, 用于测试的gpu数量，默认1；
+- `--ngpus`, 用于测试的gpu数量，默认`None`；
 
 更多详细介绍可以通过运行`python3 test.py --help`查看。
 
