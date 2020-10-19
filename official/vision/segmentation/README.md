@@ -1,26 +1,54 @@
-# Semantic Segmentation
+# Megengine Semantic Segmentation Models
 
-本目录包含了采用MegEngine实现的经典[Deeplabv3plus](https://arxiv.org/abs/1802.02611.pdf)网络结构，同时提供了在PASCAL VOC和Cityscapes数据集上的完整训练和测试代码。
+## 介绍
 
-网络在PASCAL VOC2012验证集的性能和结果如下:
+本目录包含了采用MegEngine实现的经典[Deeplabv3plus](https://arxiv.org/abs/1802.02611.pdf)网络结构，同时提供了在Pascal VOC2012和Cityscapes数据集上的完整训练和测试代码。
 
- Methods       | Backbone    | TrainSet  | EvalSet | mIoU_single   | mIoU_multi  |
- :--:          |:--:         |:--:       |:--:     |:--:           |:--:         |
- Deeplabv3plus | Resnet101   | train_aug | val     | 79.0          | 79.8        |
+网络在Pascal VOC2012验证集上的性能和结果如下：
 
+| 模型                             | mIoU |
+| ---                              | :--: |
+| deeplabv3plus-res101-voc-512size | 79.5 |
+
+网络在Cityscapes验证集上的性能和结果如下：
+
+| 模型                                    | mIoU |
+| ---                                     | :--: |
+| deeplabv3plus-res101-cityscapes-768size | 78.5 |
 
 ## 安装和环境配置
 
-在开始运行本目录下的代码之前，请确保按照[README](../../../../README.md)进行了正确的环境配置。
+本目录下代码基于MegEngine v1.0，在开始运行本目录下的代码之前，请确保按照[README](../../../README.md)进行了正确的环境配置。
 
+## 如何使用
+
+以DeepLabV3+为例，模型训练好之后，可以通过如下命令测试单张图片：
+
+```bash
+python3 tools/inference.py -f configs/deeplabv3plus_res101_voc_512size.py \
+                           -w /path/to/model_weights.pkl \
+                           -i ../../assets/cat.jpg
+```
+
+`tools/inference.py`的命令行选项如下:
+
+- `-f`, 测试的网络结构描述文件。
+- `-w`, 需要测试的模型权重。
+- `-i`, 需要测试的样例图片。
+
+使用默认图片和默认模型测试的结果见下图:
+
+![demo image](../../assets/cat_seg_out.jpg)
 
 ## 如何训练
 
-1、在开始训练前，请下载[VOC2012官方数据集](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#data)，并解压到合适的目录下。为保证一样的训练环境，还需要下载[SegmentationClassAug](https://www.dropbox.com/s/oeu149j8qtbs1x0/SegmentationClassAug.zip?dl=0&file_subpath=%2FSegmentationClassAug)。具体可以参照这个[流程](https://www.sun11.me/blog/2018/how-to-use-10582-trainaug-images-on-DeeplabV3-code/)。
+以DeepLabV3+在Pascal VOC2012数据集上训练为例。
+
+1. 在开始训练前，请下载[Pascal VOC2012数据集](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/#data)，并解压到合适的目录下。为保证一样的训练环境，还需要下载[SegmentationClassAug](https://www.dropbox.com/s/oeu149j8qtbs1x0/SegmentationClassAug.zip?dl=0&file_subpath=%2FSegmentationClassAug)。具体可以参照这个[流程](https://www.sun11.me/blog/2018/how-to-use-10582-trainaug-images-on-DeeplabV3-code/)。
 
 准备好的 VOC 数据目录结构如下：
 
-```bash
+```
 /path/to/
     |->VOC2012
     |    |Annotations
@@ -29,67 +57,48 @@
     |    |SegmentationClass
     |    |SegmentationClass_aug
 ```
+
 其中，ImageSets/Segmentation中包含了[trainaug.txt](https://gist.githubusercontent.com/sun11/2dbda6b31acc7c6292d14a872d0c90b7/raw/5f5a5270089239ef2f6b65b1cc55208355b5acca/trainaug.txt)。
 
 注意：SegmentationClass_aug和SegmentationClass中的数据格式不同。
 
-2、准备好预训练好的backbone权重，可以直接下载megengine官方提供的在ImageNet上预训练的resnet101模型。
+2. 准备预训练的`backbone`网络权重：可使用 megengine.hub 下载`megengine`官方提供的在ImageNet上训练的模型, 并存放在 `/path/to/pretrain.pkl`。
 
-3、开始训练:
-
-`train.py`的命令行参数如下：
-- `--config`，训练时采用的配置文件，VOC和Cityscapes各一份默认配置;
-- `--dataset_dir`，训练时采用的训练集存放的目录;
-- `--weight_file`，训练时采用的预训练权重;
-- `--ngpus`, 训练时采用的gpu数量，默认8; 当设置为1时，表示单卡训练
-- `--resume`, 是否从已训好的模型继续训练，默认`None`；
+3. 开始训练:
 
 ```bash
-python3 train.py --config cfg_voc.py \
-                 --dataset_dir /path/to/VOC2012 \
-                 --weight_file /path/to/weights.pkl \
-                 --ngpus 8
+python3 tools/train.py -f configs/deeplabv3plus_res101_voc_512size.py -n 8 \
+                       -d /path/to/VOC2012
 ```
 
-或在Cityscapes数据集上进行训练：
-```bash
-python3 train.py --config cfg_cityscapes.py \
-                 --dataset_dir /path/to/Cityscapes \
-                 --weight_file /path/to/weights.pkl \
-                 --ngpus 8
-```
+`tools/train.py`的命令行选项如下：
+
+- `-f`, 所需要训练的网络结构描述文件。
+- `-n`, 用于训练的devices(gpu)数量。
+- `-w`, 预训练的backbone网络权重。
+- `-d`, 数据集的上级目录，默认`/data/datasets`。
+- `-r`, 是否从已训好的模型继续训练，默认`None`。
+
+默认情况下模型会存在 `log-of-模型名`目录下。
 
 ## 如何测试
 
-模型训练好之后，可以通过如下命令测试模型在VOC2012验证集的性能：
+以DeepLabV3+在Pascal VOC2012数据集上测试为例。
+
+在得到训练完保存的模型之后，可以通过tools下的test.py文件测试模型在验证集上的性能。
 
 ```bash
-python3 test.py --config cfg_voc.py \
-                --dataset_dir /path/to/VOC2012 \
-                --model_path /path/to/model.pkl
+python3 tools/test.py -f configs/deeplabv3plus_res101_voc_512size.py -n 8 \
+                      -w /path/to/model_weights.pkl \
+                      -d /path/to/VOC2012
 ```
 
-`test.py`的命令行参数如下：
-- `--config`，训练时采用的配置文件，VOC和Cityscapes各一份默认配置;
-- `--dataset_dir`，验证时采用的验证集目录;
-- `--model_path`，载入训练好的模型；
+`tools/test.py`的命令行选项如下：
 
-## 如何使用
-
-模型训练好之后，可以通过如下命令测试单张图片，得到分割结果：
-
-```bash
-python3 inference.py --model_path /path/to/model \
-                     --image_path /path/to/image.jpg
-```
-
-`inference.py`的命令行参数如下：
-- `--model_path`，载入训练好的模型；
-- `--image_path`，载入待测试的图像
-
-<div align="left">
-<img src="../../assets/cat.jpg" height="500px" alt="input" ><img src="../../assets/cat_seg_out.jpg" height="500px" alt="output" >
-</div>
+- `-f`, 所需要测试的网络结构描述文件。
+- `-n`, 用于测试的devices(gpu)数量。
+- `-w`, 需要测试的模型权重。
+- `-d`，数据集的上级目录，默认`/data/datasets`。
 
 ## 参考文献
 

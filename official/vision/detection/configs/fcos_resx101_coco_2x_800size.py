@@ -24,7 +24,7 @@ class CustomFCOSConfig(models.FCOSConfig):
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "fcos_resx101_coco_2x_800size_39dot7_313ef718.pkl"
+    "fcos_resx101_coco_2x_800size_44dot9_37e7b921.pkl"
 )
 def fcos_resx101_coco_2x_800size(**kwargs):
     r"""
