@@ -151,16 +151,15 @@ def worker(rank, world_size, ngpus_per_node, args):
     # Autodiff gradient manager
     gm = autodiff.GradManager().attach(
         model.parameters(),
-        callbacks=dist.make_allreduce_cb("MEAN") if world_size > 1 else None,
+        callbacks=dist.make_allreduce_cb("SUM") if world_size > 1 else None,
     )
 
     # Optimizer
-    args.lr = args.lr * world_size  # linear scaling rule
     opt = optim.SGD(
         model.parameters(),
         lr=args.lr,
         momentum=args.momentum,
-        weight_decay=args.weight_decay,
+        weight_decay=args.weight_decay * world_size,  # scale weight decay in "SUM" mode
     )
 
     # train and valid func
@@ -190,7 +189,7 @@ def worker(rank, world_size, ngpus_per_node, args):
             [30 * steps_per_epoch, 60 * steps_per_epoch, 80 * steps_per_epoch], step
         )
         if step < 5 * steps_per_epoch:  # warmup
-            lr = 0.0125 + (args.lr - 0.0125) * (step / (5 * steps_per_epoch))
+            lr = args.lr * (step / (5 * steps_per_epoch))
         for param_group in opt.param_groups:
             param_group["lr"] = lr
         return lr

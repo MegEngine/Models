@@ -151,11 +151,10 @@ def worker(rank, world_size, ngpus_per_node, args):
     # Autodiff gradient manager
     gm = autodiff.GradManager().attach(
         model.parameters(),
-        callbacks=dist.make_allreduce_cb("MEAN") if world_size > 1 else None,
+        callbacks=dist.make_allreduce_cb("SUM") if world_size > 1 else None,
     )
 
     # Optimizer
-    args.lr = args.lr * world_size  # linear scaling rule
     params_wd = []
     params_nwd = []
     for n, p in model.named_parameters():
@@ -169,7 +168,7 @@ def worker(rank, world_size, ngpus_per_node, args):
         [{"params": params_wd}, {"params": params_nwd, "weight_decay": 0},],
         lr=args.lr,
         momentum=args.momentum,
-        weight_decay=args.weight_decay,
+        weight_decay=args.weight_decay * world_size,  # scale weight decay in "SUM" mode
     )
 
     # train and valid func
