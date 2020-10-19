@@ -123,17 +123,18 @@ def worker(rank, world_size, ngpus_per_node, args):
         os.makedirs(os.path.join(args.save, args.arch), exist_ok=True)
         megengine.logger.set_log_file(os.path.join(args.save, args.arch, "log.txt"))
     # init process group
-    dist.init_process_group(
-        master_ip=args.dist_addr,
-        port=args.dist_port,
-        world_size=world_size,
-        rank=rank,
-        device=rank % ngpus_per_node,
-        backend="nccl",
-    )
-    logging.info(
-        "init process group rank %d / %d", dist.get_rank(), dist.get_world_size()
-    )
+    if world_size > 1:
+        dist.init_process_group(
+            master_ip=args.dist_addr,
+            port=args.dist_port,
+            world_size=world_size,
+            rank=rank,
+            device=rank % ngpus_per_node,
+            backend="nccl",
+        )
+        logging.info(
+            "init process group rank %d / %d", dist.get_rank(), dist.get_world_size()
+        )
 
     # build dataset
     train_dataloader, valid_dataloader = build_dataset(args)
@@ -144,11 +145,13 @@ def worker(rank, world_size, ngpus_per_node, args):
     model = snet_model.__dict__[args.arch]()
 
     # Sync parameters
-    dist.bcast_list_(model.parameters(), dist.WORLD)
+    if world_size > 1:
+        dist.bcast_list_(model.parameters(), dist.WORLD)
 
     # Autodiff gradient manager
     gm = autodiff.GradManager().attach(
-        model.parameters(), callbacks=dist.make_allreduce_cb("MEAN")
+        model.parameters(),
+        callbacks=dist.make_allreduce_cb("MEAN") if world_size > 1 else None,
     )
 
     # Optimizer
@@ -184,9 +187,10 @@ def worker(rank, world_size, ngpus_per_node, args):
         loss = F.nn.cross_entropy(logits, label, label_smooth=0.1)
         acc1, acc5 = F.topk_accuracy(logits, label, topk=(1, 5))
         # calculate mean values
-        loss = F.distributed.all_reduce_sum(loss) / world_size
-        acc1 = F.distributed.all_reduce_sum(acc1) / world_size
-        acc5 = F.distributed.all_reduce_sum(acc5) / world_size
+        if world_size > 1:
+            loss = F.distributed.all_reduce_sum(loss) / world_size
+            acc1 = F.distributed.all_reduce_sum(acc1) / world_size
+            acc5 = F.distributed.all_reduce_sum(acc5) / world_size
         return loss, acc1, acc5
 
     # linear learning rate scheduler

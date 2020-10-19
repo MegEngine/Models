@@ -94,17 +94,18 @@ def main():
 
 def worker(rank, world_size, ngpus_per_node, args):
     # init process group
-    dist.init_process_group(
-        master_ip=args.dist_addr,
-        port=args.dist_port,
-        world_size=world_size,
-        rank=rank,
-        device=rank % ngpus_per_node,
-        backend="nccl",
-    )
-    logging.info(
-        "init process group rank %d / %d", dist.get_rank(), dist.get_world_size()
-    )
+    if world_size > 1:
+        dist.init_process_group(
+            master_ip=args.dist_addr,
+            port=args.dist_port,
+            world_size=world_size,
+            rank=rank,
+            device=rank % ngpus_per_node,
+            backend="nccl",
+        )
+        logging.info(
+            "init process group rank %d / %d", dist.get_rank(), dist.get_world_size()
+        )
 
     # build dataset
     _, valid_dataloader = build_dataset(args)
@@ -123,9 +124,10 @@ def worker(rank, world_size, ngpus_per_node, args):
         loss = F.nn.cross_entropy(logits, label)
         acc1, acc5 = F.topk_accuracy(logits, label, topk=(1, 5))
         # calculate mean values
-        loss = F.distributed.all_reduce_sum(loss) / world_size
-        acc1 = F.distributed.all_reduce_sum(acc1) / world_size
-        acc5 = F.distributed.all_reduce_sum(acc5) / world_size
+        if world_size > 1:
+            loss = F.distributed.all_reduce_sum(loss) / world_size
+            acc1 = F.distributed.all_reduce_sum(acc1) / world_size
+            acc5 = F.distributed.all_reduce_sum(acc5) / world_size
         return loss, acc1, acc5
 
     model.eval()
