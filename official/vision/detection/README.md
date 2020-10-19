@@ -2,7 +2,12 @@
 
 ## 介绍
 
-本目录包含了采用MegEngine实现的经典网络结构，包括[RetinaNet](https://arxiv.org/pdf/1708.02002>)、[Faster R-CNN](https://arxiv.org/pdf/1612.03144.pdf)等，同时提供了在COCO2017数据集上的完整训练和测试代码。
+本目录包含了采用MegEngine实现的如下经典网络结构，并提供了在COCO2017数据集上的完整训练和测试代码：
+
+- [RetinaNet](https://arxiv.org/abs/1708.02002)
+- [Faster R-CNN](https://arxiv.org/abs/1612.03144)
+- [FCOS](https://arxiv.org/abs/1904.01355)
+- [ATSS](https://arxiv.org/abs/1912.02424)
 
 网络在COCO2017验证集上的性能和结果如下：
 
@@ -13,10 +18,10 @@
 | retinanet-resx101-coco-2x-800size   | 42.7         | 2             |
 | faster-rcnn-res50-coco-1x-800size   | 38.0         | 2             |
 | faster-rcnn-res101-coco-2x-800size  | 42.5         | 2             |
-| faster-rcnn-resx101-coco-2x-800size | 44.7 *       | 2             |
+| faster-rcnn-resx101-coco-2x-800size | 43.6         | 2             |
 | fcos-res50-coco-1x-800size          | 39.7         | 2             |
 | fcos-res101-coco-2x-800size         | 44.1         | 2             |
-| fcos-resx101-coco-2x-800size        | 39.7 *       | 2             |
+| fcos-resx101-coco-2x-800size        | 44.9         | 2             |
 | atss-res50-coco-1x-800size          | 40.1         | 2             |
 | atss-res101-coco-2x-800size         | 44.5         | 2             |
 | atss-resx101-coco-2x-800size        | 45.9         | 2             |
@@ -119,7 +124,7 @@ python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
 
 ## 参考文献
 
-- [Focal Loss for Dense Object Detection](https://arxiv.org/pdf/1708.02002) Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, Piotr Dollár. Proceedings of the IEEE international conference on computer vision. 2017: 2980-2988.
-- [Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks](https://arxiv.org/pdf/1506.01497.pdf) S. Ren, K. He, R. Girshick, and J. Sun. In: Neural Information Processing Systems(NIPS)(2015).
-- [Feature Pyramid Networks for Object Detection](https://arxiv.org/pdf/1612.03144.pdf) T. Lin, P. Dollár, R. Girshick, K. He, B. Hariharan and S. Belongie. 2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Honolulu, HI, 2017, pp. 936-944, doi: 10.1109/CVPR.2017.106.
-- [Microsoft COCO: Common Objects in Context](https://arxiv.org/pdf/1405.0312.pdf)  Lin, Tsung-Yi and Maire, Michael and Belongie, Serge and Hays, James and Perona, Pietro and Ramanan, Deva and Dollár, Piotr and Zitnick, C Lawrence, Lin T Y, Maire M, Belongie S, et al. European conference on computer vision. Springer, Cham, 2014: 740-755.
+- [Microsoft COCO: Common Objects in Context](https://arxiv.org/abs/1405.0312) Lin, Tsung-Yi and Maire, Michael and Belongie, Serge and Hays, James and Perona, Pietro and Ramanan, Deva and Dollár, Piotr and Zitnick, C Lawrence, Lin T Y, Maire M, Belongie S, et al. European conference on computer vision. Springer, Cham, 2014: 740-755.
+- [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002) Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, Piotr Dollár. Proceedings of the IEEE international conference on computer vision. 2017: 2980-2988.
+- [Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks](https://arxiv.org/abs/1506.01497) S. Ren, K. He, R. Girshick, and J. Sun. In: Neural Information Processing Systems(NIPS)(2015).
+- [Feature Pyramid Networks for Object Detection](https://arxiv.org/abs/1612.03144) T. Lin, P. Dollár, R. Girshick, K. He, B. Hariharan and S. Belongie. 2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), Honolulu, HI, 2017, pp. 936-944, doi: 10.1109/CVPR.2017.106.

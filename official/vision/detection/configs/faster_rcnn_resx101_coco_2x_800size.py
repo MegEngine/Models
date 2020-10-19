@@ -24,7 +24,7 @@ class CustomFasterRCNNConfig(models.FasterRCNNConfig):
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "faster_rcnn_resx101_coco_2x_800size_44dot7_d03b05b2.pkl"
+    "faster_rcnn_resx101_coco_2x_800size_43dot6_79fb71a7.pkl"
 )
 def faster_rcnn_resx101_coco_2x_800size(**kwargs):
     r"""

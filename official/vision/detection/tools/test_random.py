@@ -66,10 +66,6 @@ def main():
             args.end_epoch = args.start_epoch
         assert 0 <= args.start_epoch <= args.end_epoch < cfg.max_epoch
 
-    master_ip = "localhost"
-    port = dist.get_free_ports(1)[0]
-    dist.Server(port)
-
     for epoch_num in range(args.start_epoch, args.end_epoch + 1):
         if args.weight_file:
             weight_file = args.weight_file
@@ -78,32 +74,44 @@ def main():
                 os.path.basename(args.file).split(".")[0], epoch_num
             )
 
-        result_list = []
-        result_queue = Queue(2000)
-        procs = []
-        for i in range(args.ngpus):
-            proc = Process(
-                target=worker,
-                args=(
-                    current_network,
-                    weight_file,
-                    args.dataset_dir,
-                    master_ip,
-                    port,
-                    args.ngpus,
-                    i,
-                    result_queue,
-                ),
+        if args.ngpus > 1:
+            master_ip = "localhost"
+            port = dist.get_free_ports(1)[0]
+            dist.Server(port)
+
+            result_list = []
+            result_queue = Queue(2000)
+            procs = []
+            for i in range(args.ngpus):
+                proc = Process(
+                    target=worker,
+                    args=(
+                        current_network,
+                        weight_file,
+                        args.dataset_dir,
+                        master_ip,
+                        port,
+                        args.ngpus,
+                        i,
+                        result_queue,
+                    ),
+                )
+                proc.start()
+                procs.append(proc)
+
+            num_imgs = dict(coco=5000, objects365=30000)
+
+            for _ in tqdm(range(num_imgs[cfg.test_dataset["name"]])):
+                result_list.append(result_queue.get())
+            for p in procs:
+                p.join()
+        else:
+            result_list = []
+
+            worker(
+                current_network, weight_file, args.dataset_dir,
+                None, None, 1, 0, result_list
             )
-            proc.start()
-            procs.append(proc)
-
-        num_imgs = dict(coco=5000, objects365=30000)
-
-        for _ in tqdm(range(num_imgs[cfg.test_dataset["name"]])):
-            result_list.append(result_queue.get())
-        for p in procs:
-            p.join()
 
         all_results = DetEvaluator.format(result_list, cfg)
         json_path = "log-of-{}/epoch_{}.json".format(
@@ -146,15 +154,18 @@ def main():
 
 
 def worker(
-    current_network, weight_file, dataset_dir, master_ip, port, world_size, rank, result_queue
+    current_network, weight_file, dataset_dir,
+    master_ip, port, world_size, rank, result_list
 ):
-    dist.init_process_group(
-        master_ip=master_ip,
-        port=port,
-        world_size=world_size,
-        rank=rank,
-        device=rank,
-    )
+    if world_size > 1:
+        dist.init_process_group(
+            master_ip=master_ip,
+            port=port,
+            world_size=world_size,
+            rank=rank,
+            device=rank,
+        )
+
     mge.device.set_default_device("gpu{}".format(rank))
 
     cfg = current_network.Cfg()
@@ -170,6 +181,9 @@ def worker(
     evaluator = DetEvaluator(model)
 
     test_loader = build_dataloader(rank, world_size, dataset_dir, model.cfg)
+    if world_size == 1:
+        test_loader = tqdm(test_loader)
+
     for data in test_loader:
         image, im_info = DetEvaluator.process_inputs(
             data[0][0],
@@ -180,10 +194,14 @@ def worker(
             image=mge.tensor(image),
             im_info=mge.tensor(im_info)
         )
-        result_queue.put_nowait({
+        result = {
             "det_res": pred_res,
             "image_id": int(data[1][2][0].split(".")[0].split("_")[-1]),
-        })
+        }
+        if world_size > 1:
+            result_list.put_nowait(result)
+        else:
+            result_list.append(result)
 
 
 def build_dataloader(rank, world_size, dataset_dir, cfg):
