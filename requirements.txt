@@ -1,3 +1,4 @@
+megengine
 numpy
 opencv-python
 tqdm

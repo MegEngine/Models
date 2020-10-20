@@ -54,7 +54,7 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 
 ### 图像分类
 
-图像分类是计算机视觉的基础任务。许多计算机视觉的其它任务（例如物体检测）都使用了基于图像分类的预训练模型。因此，我们提供了各种在ImageNet上预训练好的分类模型，包括[ResNet](./official/vision/classification/resnet)系列, [shufflenet](./official/vision/classification/shufflenet)系列等，这些模型在**ImageNet验证集**上的测试结果如下表：
+图像分类是计算机视觉的基础任务。许多计算机视觉的其它任务（例如物体检测）都使用了基于图像分类的预训练模型。因此，我们提供了各种在ImageNet上预训练好的分类模型，包括[ResNet](./official/vision/classification/resnet)系列, [Shufflenet](./official/vision/classification/shufflenet)系列等，这些模型在**ImageNet验证集**上的测试结果如下表：
 
 | 模型 | top1 acc | top5 acc |
 | --- | :---: | :---: |
@@ -91,7 +91,7 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 
 ### 图像分割
 
-我们也提供了经典的语义分割模型--[DeepLabV3+](./official/vision/segmentation/)，这个模型在Pascal VOC2012验证集上的测试结果如下：
+我们也提供了经典的语义分割模型[DeepLabV3+](./official/vision/segmentation/)，这个模型在Pascal VOC2012验证集上的测试结果如下：
 
 | 模型                             | mIoU |
 | ---                              | :--: |
