@@ -256,6 +256,7 @@ def compute_metric(result_list, cfg):
         k = (gt >= 0) & (gt < num_classes)
         labeled += np.sum(k)
         correct += np.sum((pred[k] == gt[k]))
+        # pylint: disable=no-member
         hist += np.bincount(
             num_classes * gt[k].astype(int) + pred[k].astype(int),
             minlength=num_classes ** 2

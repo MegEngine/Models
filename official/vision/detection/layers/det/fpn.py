@@ -40,6 +40,7 @@ class FPN(M.Module):
     are produced by the backbone networks like ResNet.
     """
 
+    # pylint: disable=dangerous-default-value
     def __init__(
         self,
         bottom_up: M.Module,

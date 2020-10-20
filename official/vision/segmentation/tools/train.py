@@ -70,6 +70,7 @@ def main():
         worker(None, None, 1, 0, args)
 
 
+# pylint: disable=too-many-branches
 def worker(master_ip, port, world_size, rank, args):
     if world_size > 1:
         dist.init_process_group(
