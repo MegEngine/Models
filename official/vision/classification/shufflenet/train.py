@@ -7,22 +7,19 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import bisect
 import multiprocessing
 import os
-import threading
 import time
 
-import model as snet_model
+import model as snet_model  # pylint-disable=import-error
 
 import megengine
-from megengine import autodiff as autodiff
-from megengine import data as data
-from megengine import distributed as dist
-from megengine import functional as F
-from megengine import jit as jit
-from megengine import optimizer as optim
-from megengine.data import transform as T
+import megengine.autodiff as autodiff
+import megengine.data as data
+import megengine.data.transform as T
+import megengine.distributed as dist
+import megengine.functional as F
+import megengine.optimizer as optim
 
 logging = megengine.logger.get_logger()
 
