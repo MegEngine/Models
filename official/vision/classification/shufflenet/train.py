@@ -162,7 +162,7 @@ def worker(rank, world_size, ngpus_per_node, args):
             print("NOT include ", n, p.shape)
             params_nwd.append(p)
     opt = optim.SGD(
-        [{"params": params_wd}, {"params": params_nwd, "weight_decay": 0},],
+        [{"params": params_wd}, {"params": params_nwd, "weight_decay": 0}, ],
         lr=args.lr,
         momentum=args.momentum,
         weight_decay=args.weight_decay * world_size,  # scale weight decay in "SUM" mode

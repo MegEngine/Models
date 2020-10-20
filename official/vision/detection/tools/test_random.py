@@ -17,9 +17,9 @@ import megengine.distributed as dist
 from megengine.data import DataLoader
 
 from official.vision.detection.tools.utils import (
+    DetEvaluator,
     InferenceSampler,
     PseudoDetectionDataset,
-    DetEvaluator,
     import_from_file
 )
 

@@ -47,7 +47,8 @@ class CityscapesConfig:
 )
 def deeplabv3plus_res101_cityscapes_768size(**kwargs):
     r"""DeepLab v3+ model from
-    `"Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation" <https://arxiv.org/abs/1802.02611>`_
+    `"Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation"
+    <https://arxiv.org/abs/1802.02611>`_
     """
     return models.DeepLabV3Plus(**kwargs)
 

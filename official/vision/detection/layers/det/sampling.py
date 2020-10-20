@@ -29,7 +29,7 @@ def sample_labels(labels, num_samples, label_value, ignore_label=-1):
 
     topk_tensor = F.zeros_like(labels).astype("float32")
     topk_tensor[mask] = uniform(size=num_class)
-    _, select_inds = F.topk(topk_tensor, k=num_samples-num_class)
+    _, select_inds = F.topk(topk_tensor, k=num_samples - num_class)
 
     labels[select_inds] = ignore_label
     return labels
@@ -54,7 +54,7 @@ def sample_mask_from_labels(labels, num_sample, sample_value):
         return sample_mask
 
     random_tensor = sample_mask * uniform(size=labels.shape)
-    _, sampled_idx = F.topk(random_tensor, k=num_sample-num_mask)
+    _, sampled_idx = F.topk(random_tensor, k=num_sample - num_mask)
     sample_mask[sampled_idx] = F.zeros(sampled_idx.shape)
 
     return sample_mask

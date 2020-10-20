@@ -18,10 +18,11 @@ import numpy as np
 
 from megengine.data import Collator, RandomSampler, Sampler
 from megengine.data.dataset import VisionDataset
-# from megengine.jit import trace
 
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.nms import py_cpu_nms
+
+# from megengine.jit import trace
 
 
 class AverageMeter:
@@ -116,7 +117,7 @@ class InferenceSampler(Sampler):
 
     def batch(self):
         step, length = self.batch_size, len(self.indices)
-        batch_index = [self.indices[i : i + step] for i in range(0, length, step)]
+        batch_index = [self.indices[i: i + step] for i in range(0, length, step)]
         return iter(batch_index)
 
     def __len__(self):
