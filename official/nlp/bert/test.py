@@ -20,17 +20,12 @@ args = config_args.get_args()
 logger = mge.get_logger(__name__)
 
 
-@trace(symbolic=True)
+# @trace(symbolic=True)
 def net_eval(input_ids, segment_ids, input_mask, label_ids, net=None):
     net.eval()
     results = net(input_ids, segment_ids, input_mask, label_ids)
     logits, loss = results
     return loss, logits, label_ids
-
-
-def accuracy(out, labels):
-    outputs = F.argmax(out, axis=1)
-    return F.sum(outputs == labels)
 
 
 def eval(dataloader, net):
@@ -48,7 +43,7 @@ def eval(dataloader, net):
             input_ids, segment_ids, input_mask, label_ids, net=net
         )
         sum_loss += loss.mean().item()
-        sum_accuracy += accuracy(logits, label_ids)
+        sum_accuracy += F.topk_accuracy(logits, label_ids) * batch_size
         total_examples += batch_size
         total_steps += 1
 
