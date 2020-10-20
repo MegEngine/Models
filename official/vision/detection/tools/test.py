@@ -47,7 +47,7 @@ def make_parser():
 
 
 def main():
-    # pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel,too-many-branches,too-many-statements
     from pycocotools.coco import COCO
     from pycocotools.cocoeval import COCOeval
 

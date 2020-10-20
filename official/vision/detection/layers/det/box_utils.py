@@ -31,6 +31,7 @@ class BoxCoderBase(metaclass=ABCMeta):
 
 
 class BoxCoder(BoxCoderBase, metaclass=ABCMeta):
+    # pylint: disable=dangerous-default-value
     def __init__(
         self,
         reg_mean=[0.0, 0.0, 0.0, 0.0],

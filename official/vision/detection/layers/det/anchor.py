@@ -67,6 +67,7 @@ class AnchorBoxGenerator(BaseAnchorGenerator):
         offset (float): center point offset. default is 0.5.
     """
 
+    # pylint: disable=dangerous-default-value
     def __init__(
         self,
         anchor_scales: list = [[32], [64], [128], [256], [512]],
@@ -135,6 +136,7 @@ class AnchorPointGenerator(BaseAnchorGenerator):
         offset (float): center point offset. default is 0.5.
     """
 
+    # pylint: disable=dangerous-default-value
     def __init__(
         self,
         num_anchors: int = 1,

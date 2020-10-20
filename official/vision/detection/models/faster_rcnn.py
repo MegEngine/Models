@@ -99,6 +99,7 @@ class FasterRCNN(M.Module):
 
 
 class FasterRCNNConfig:
+    # pylint: disable=too-many-statements
     def __init__(self):
         self.backbone = "resnet50"
         self.backbone_pretrained = True

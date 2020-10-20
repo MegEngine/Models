@@ -233,6 +233,7 @@ def build_dataset(dataset_dir, cfg):
     return data_mapper[data_name](**data_cfg)
 
 
+# pylint: disable=dangerous-default-value
 def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):
     def _compute_aspect_ratios(dataset):
         aspect_ratios = []
