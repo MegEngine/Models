@@ -19,7 +19,6 @@ import megengine.functional as F
 from megengine.autodiff import GradManager
 from megengine.data import DataLoader, Infinite, RandomSampler, dataset
 from megengine.data import transform as T
-# from megengine.jit import trace
 from megengine.optimizer import SGD
 
 from official.vision.segmentation.tools.utils import AverageMeter, get_config_info, import_from_file

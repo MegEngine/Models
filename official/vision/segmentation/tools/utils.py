@@ -69,7 +69,7 @@ class InferenceSampler(Sampler):
 
     def batch(self):
         step, length = self.batch_size, len(self.indices)
-        batch_index = [self.indices[i : i + step] for i in range(0, length, step)]
+        batch_index = [self.indices[i: i + step] for i in range(0, length, step)]
         return iter(batch_index)
 
     def __len__(self):

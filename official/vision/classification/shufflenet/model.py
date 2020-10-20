@@ -58,7 +58,10 @@ class ShuffleV2Block(M.Module):
             M.BatchNorm2d(mid_channels),
             M.ReLU(),
             # dw
-            M.Conv2d(mid_channels, mid_channels, ksize, stride, pad, groups=mid_channels, bias=False,),
+            M.Conv2d(
+                mid_channels, mid_channels, ksize, stride, pad,
+                groups=mid_channels, bias=False,
+            ),
             M.BatchNorm2d(mid_channels),
             # pw-linear
             M.Conv2d(mid_channels, outputs, 1, 1, 0, bias=False),
@@ -135,13 +138,15 @@ class ShuffleNetV2(M.Module):
                 if i == 0:
                     self.features.append(
                         ShuffleV2Block(
-                            input_channel, output_channel, mid_channels=output_channel // 2, ksize=3, stride=2,
+                            input_channel, output_channel,
+                            mid_channels=output_channel // 2, ksize=3, stride=2,
                         )
                     )
                 else:
                     self.features.append(
                         ShuffleV2Block(
-                            input_channel // 2, output_channel, mid_channels=output_channel // 2, ksize=3, stride=1,
+                            input_channel // 2, output_channel,
+                            mid_channels=output_channel // 2, ksize=3, stride=1,
                         )
                     )
 
@@ -157,7 +162,9 @@ class ShuffleNetV2(M.Module):
         self.globalpool = M.AvgPool2d(7)
         if self.model_size == "2.0x":
             self.dropout = M.Dropout(0.2)
-        self.classifier = M.Sequential(M.Linear(self.stage_out_channels[-1], num_classes, bias=False))
+        self.classifier = M.Sequential(
+            M.Linear(self.stage_out_channels[-1], num_classes, bias=False)
+        )
         self._initialize_weights()
 
     def forward(self, x):

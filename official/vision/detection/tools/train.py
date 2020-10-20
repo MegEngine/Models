@@ -18,7 +18,6 @@ import megengine.distributed as dist
 from megengine.autodiff import GradManager
 from megengine.data import DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-# from megengine.jit import trace
 from megengine.optimizer import SGD
 
 from official.vision.detection.tools.data_mapper import data_mapper

@@ -210,7 +210,8 @@ class FCOS(M.Module):
                 is_in_boxes = F.min(offsets, axis=2) > 0
 
             gt_area = (gt_boxes[:, 2] - gt_boxes[:, 0]) * (gt_boxes[:, 3] - gt_boxes[:, 1])
-            areas = F.broadcast_to(F.expand_dims(gt_area, axis=1), offsets.shape[:2])  # FIXME: repeat
+            # FIXME: use repeat instead of broadcast_to
+            areas = F.broadcast_to(F.expand_dims(gt_area, axis=1), offsets.shape[:2])
             areas[~is_cared_in_the_level] = float("inf")
             areas[~is_in_boxes] = float("inf")
 
