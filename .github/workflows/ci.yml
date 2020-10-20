@@ -6,9 +6,7 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -37,13 +35,23 @@ jobs:
         pip install megengine -f https://megengine.org.cn/whl/mge.html
 
     # Runs a set of commands using the runners shell
-    - name: Pylint check
+    - name: Format check
       run: |
         export PYTHONPATH=$PWD:$PYTHONPATH
+
+        CHECK_DIR=official/vision/detection
         pip install pylint==2.5.2
-        pylint official/vision --rcfile=.pylintrc || pylint_ret=$?
+        pylint $CHECK_DIR --rcfile=.pylintrc || pylint_ret=$?
         echo test, and deploy your project.
         if [ "$pylint_ret" ]; then
           exit $pylint_ret
         fi
         echo "All lint steps passed!"
+
+        pip3 install flake8==3.7.9
+        flake8 $CHECK_DIR
+        echo "All flake check passed!"
+
+        pip3 install isort==4.3.21
+        isort --check-only -rc $CHECK_DIR
+        echo "All isort check passed!"
