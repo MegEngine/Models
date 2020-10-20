@@ -8,7 +8,6 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
 import bisect
-import copy
 import multiprocessing as mp
 import os
 import time
@@ -21,7 +20,6 @@ from megengine.data import transform as T
 # from megengine.jit import trace
 from megengine.optimizer import SGD
 
-from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import (
     AverageMeter,
     DetectionPadCollator,
@@ -220,10 +218,12 @@ def adjust_learning_rate(optimizer, epoch, step, cfg, args):
         param_group["lr"] = base_lr * lr_factor
 
 
-def build_dataset(*args):
+# pylint: disable=unused-argument
+def build_dataset(dataset_dir, cfg):
     return PseudoDetectionDataset(order=["image", "boxes", "boxes_category", "info"])
 
 
+# pylint: disable=dangerous-default-value
 def build_sampler(train_dataset, batch_size, aspect_grouping=[1]):
     def _compute_aspect_ratios(dataset):
         aspect_ratios = []

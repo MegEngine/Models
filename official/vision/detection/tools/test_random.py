@@ -16,9 +16,9 @@ import megengine as mge
 import megengine.distributed as dist
 from megengine.data import DataLoader
 
-from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.utils import (
     InferenceSampler,
+    PseudoDetectionDataset,
     DetEvaluator,
     import_from_file
 )
@@ -47,7 +47,7 @@ def make_parser():
 
 
 def main():
-    # pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel,too-many-branches,too-many-statements
     from pycocotools.coco import COCO
     from pycocotools.cocoeval import COCOeval
 
@@ -204,6 +204,7 @@ def worker(
             result_list.append(result)
 
 
+# pylint: disable=unused-argument
 def build_dataloader(rank, world_size, dataset_dir, cfg):
     val_dataset = PseudoDetectionDataset(length=5000, order=["image", "info"])
     val_sampler = InferenceSampler(val_dataset, 1, world_size=world_size, rank=rank)

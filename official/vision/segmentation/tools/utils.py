@@ -64,6 +64,9 @@ class InferenceSampler(Sampler):
         end = min(self.num_samples * (self.rank + 1), len(self.dataset))
         self.indices = list(range(begin, end))
 
+    def sample(self):
+        pass
+
     def batch(self):
         step, length = self.batch_size, len(self.indices)
         batch_index = [self.indices[i : i + step] for i in range(0, length, step)]
