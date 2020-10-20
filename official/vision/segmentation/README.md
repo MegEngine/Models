@@ -2,7 +2,7 @@
 
 ## 介绍
 
-本目录包含了采用MegEngine实现的经典[Deeplabv3plus](https://arxiv.org/abs/1802.02611.pdf)网络结构，同时提供了在Pascal VOC2012和Cityscapes数据集上的完整训练和测试代码。
+本目录包含了采用MegEngine实现的经典[DeepLabV3+](https://arxiv.org/abs/1802.02611.pdf)网络结构，同时提供了在Pascal VOC2012和Cityscapes数据集上的完整训练和测试代码。
 
 网络在Pascal VOC2012验证集上的性能和结果如下：
 
@@ -102,5 +102,4 @@ python3 tools/test.py -f configs/deeplabv3plus_res101_voc_512size.py -n 8 \
 
 ## 参考文献
 
-- [Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation](https://arxiv.org/abs/1802.02611.pdf), Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, and
-Hartwig Adam; ECCV, 2018
+- [Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation](https://arxiv.org/abs/1802.02611) Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, and Hartwig Adam. European Conference on Computer Vision (ECCV), 2018.
