@@ -33,9 +33,9 @@
 # This file has been modified by Megvii ("Megvii Modifications").
 # All Megvii Modifications are Copyright (C) 2014-2019 Megvii Inc. All rights reserved.
 # ------------------------------------------------------------------------------
-from megengine import functional as F
-from megengine import hub as hub
-from megengine import module as M
+import megengine.functional as F
+import megengine.hub as hub
+import megengine.module as M
 
 
 class ShuffleV2Block(M.Module):
