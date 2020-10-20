@@ -9,7 +9,8 @@
 import argparse
 import json
 
-import model as snet_model  # pylint-disable=import-error
+# pylint: disable=import-error
+import model as snet_model
 
 import cv2
 import numpy as np

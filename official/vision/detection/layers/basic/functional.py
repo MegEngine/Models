@@ -52,9 +52,11 @@ def batched_nms(
     boxes: Tensor, scores: Tensor, idxs: Tensor, iou_thresh: float, max_output: Optional[int] = None
 ) -> Tensor:
     r"""
-    Performs non-maximum suppression (NMS) on the boxes according to their intersection-over-union (IoU).
+    Performs non-maximum suppression (NMS) on the boxes according to
+    their intersection-over-union (IoU).
 
-    :param boxes: tensor of shape `(N, 4)`; the boxes to perform nms on; each box is expected to be in `(x1, y1, x2, y2)` format.
+    :param boxes: tensor of shape `(N, 4)`; the boxes to perform nms on;
+        each box is expected to be in `(x1, y1, x2, y2)` format.
     :param iou_thresh: ``IoU`` threshold for overlapping.
     :param idxs: tensor of shape `(N,)`, the class indexs of boxes in the batch.
     :param scores: tensor of shape `(N,)`, the score of boxes.

@@ -196,8 +196,8 @@ class ATSS(M.Module):
             candidate_idxs = F.concat(candidate_idxs, axis=1)
 
             candidate_ious = F.gather(ious, 1, candidate_idxs)
-            ious_thr = F.mean(candidate_ious, axis=1, keepdims=True) + \
-                       F.std(candidate_ious, axis=1, keepdims=True)
+            ious_thr = (F.mean(candidate_ious, axis=1, keepdims=True)
+                        + F.std(candidate_ious, axis=1, keepdims=True))
             is_foreground = F.scatter(
                 F.zeros(ious.shape), 1, candidate_idxs, F.ones(candidate_idxs.shape)
             ).astype(bool) & (ious >= ious_thr)

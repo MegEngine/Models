@@ -229,8 +229,9 @@ class ResNet(M.Module):
                     M.init.uniform_(m.bias, -bound, bound)
 
         # Zero-initialize the last BN in each residual branch,
-        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
-        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        # so that the residual branch starts with zeros, and each residual block
+        # behaves like an identity. According to https://arxiv.org/abs/1706.02677
+        # This improves the model by 0.2~0.3%.
         if zero_init_residual:
             for m in self.modules():
                 if isinstance(m, Bottleneck):
@@ -356,7 +357,8 @@ def resnet152(**kwargs):
 )
 def resnext50_32x4d(**kwargs):
     r"""ResNeXt-50 32x4d model from
-    `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformation for Deep Neural Networks"
+    <https://arxiv.org/pdf/1611.05431.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -372,7 +374,8 @@ def resnext50_32x4d(**kwargs):
 )
 def resnext101_32x8d(**kwargs):
     r"""ResNeXt-101 32x8d model from
-    `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
+    `"Aggregated Residual Transformation for Deep Neural Networks"
+    <https://arxiv.org/pdf/1611.05431.pdf>`_
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet

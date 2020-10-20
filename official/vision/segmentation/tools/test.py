@@ -18,7 +18,6 @@ import megengine as mge
 import megengine.distributed as dist
 from megengine.data import DataLoader, dataset
 from megengine.data import transform as T
-# from megengine.jit import trace
 
 from official.vision.segmentation.tools.utils import (
     InferenceSampler,
@@ -88,7 +87,6 @@ def main():
             None, None, 1, 0, result_list
         )
 
-
     if cfg.val_save_path is not None:
         save_results(result_list, cfg.val_save_path, cfg)
     logger.info("Start evaluation!")
@@ -141,7 +139,7 @@ def worker(
             result_list.append(result)
 
 
-## inference one image
+# inference one image
 def pad_image_to_shape(img, shape, border_mode, value):
     margin = np.zeros(4, np.uint32)
     pad_height = shape[0] - img.shape[0] if shape[0] - img.shape[0] > 0 else 0
@@ -302,6 +300,7 @@ class EvalPascalVOC(dataset.PascalVOC):
                 (mask[:, :, 0] == b) & (mask[:, :, 1] == g) & (mask[:, :, 2] == r)
             ] = i
         return label.astype(np.uint8)
+
 
 def build_dataloader(rank, world_size, dataset_dir, cfg):
     if cfg.dataset == "VOC2012":

@@ -11,7 +11,8 @@ import multiprocessing
 import os
 import time
 
-import model as snet_model  # pylint-disable=import-error
+# pylint: disable=import-error
+import model as snet_model
 
 import megengine
 import megengine.autodiff as autodiff
@@ -116,6 +117,7 @@ def main():
 
 
 def worker(rank, world_size, ngpus_per_node, args):
+    # pylint: disable=too-many-statements
     if rank == 0:
         os.makedirs(os.path.join(args.save, args.arch), exist_ok=True)
         megengine.logger.set_log_file(os.path.join(args.save, args.arch, "log.txt"))
@@ -162,7 +164,7 @@ def worker(rank, world_size, ngpus_per_node, args):
             print("NOT include ", n, p.shape)
             params_nwd.append(p)
     opt = optim.SGD(
-        [{"params": params_wd}, {"params": params_nwd, "weight_decay": 0},],
+        [{"params": params_wd}, {"params": params_nwd, "weight_decay": 0}, ],
         lr=args.lr,
         momentum=args.momentum,
         weight_decay=args.weight_decay * world_size,  # scale weight decay in "SUM" mode
