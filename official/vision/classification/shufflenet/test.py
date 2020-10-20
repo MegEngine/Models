@@ -10,7 +10,8 @@ import argparse
 import multiprocessing
 import time
 
-import model as snet_model  # pylint-disable=import-error
+# pylint: disable=import-error
+import model as snet_model
 
 import megengine
 import megengine.data as data

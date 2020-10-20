@@ -32,14 +32,13 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install megengine -f https://megengine.org.cn/whl/mge.html
 
     # Runs a set of commands using the runners shell
     - name: Format check
       run: |
         export PYTHONPATH=$PWD:$PYTHONPATH
 
-        CHECK_DIR=official/vision/detection
+        CHECK_DIR=official/vision/
         pip install pylint==2.5.2
         pylint $CHECK_DIR --rcfile=.pylintrc || pylint_ret=$?
         echo test, and deploy your project.
@@ -49,9 +48,9 @@ jobs:
         echo "All lint steps passed!"
 
         pip3 install flake8==3.7.9
-        flake8 $CHECK_DIR
+        flake8 official
         echo "All flake check passed!"
 
         pip3 install isort==4.3.21
-        isort --check-only -rc $CHECK_DIR
+        isort --check-only -rc official
         echo "All isort check passed!"

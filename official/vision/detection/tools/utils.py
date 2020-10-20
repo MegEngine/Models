@@ -22,8 +22,6 @@ from megengine.data.dataset import VisionDataset
 from official.vision.detection.tools.data_mapper import data_mapper
 from official.vision.detection.tools.nms import py_cpu_nms
 
-# from megengine.jit import trace
-
 
 class AverageMeter:
     """Computes and stores the average and current value"""

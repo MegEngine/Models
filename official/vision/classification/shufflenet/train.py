@@ -11,7 +11,8 @@ import multiprocessing
 import os
 import time
 
-import model as snet_model  # pylint-disable=import-error
+# pylint: disable=import-error
+import model as snet_model
 
 import megengine
 import megengine.autodiff as autodiff
@@ -116,6 +117,7 @@ def main():
 
 
 def worker(rank, world_size, ngpus_per_node, args):
+    # pylint: disable=too-many-statements
     if rank == 0:
         os.makedirs(os.path.join(args.save, args.arch), exist_ok=True)
         megengine.logger.set_log_file(os.path.join(args.save, args.arch, "log.txt"))

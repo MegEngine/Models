@@ -25,9 +25,6 @@ from official.vision.segmentation.tools.utils import (
     import_from_file
 )
 
-# from megengine.jit import trace
-
-
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
 
