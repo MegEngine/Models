@@ -9,15 +9,14 @@
 import argparse
 import json
 
+import model as snet_model  # pylint-disable=import-error
+
 import cv2
 import numpy as np
 
 import megengine
 import megengine.data.transform as T
 import megengine.functional as F
-
-import model as snet_model  # pylint-disable=import-error
-
 
 logging = megengine.logger.get_logger()
 

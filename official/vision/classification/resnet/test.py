@@ -10,14 +10,13 @@ import argparse
 import multiprocessing
 import time
 
-import megengine
-import megengine.data as data
-import megengine.distributed as dist
-import megengine.functional as F
-import megengine.data.transform as T
-
 import model as resnet_model  # pylint-disable=import-error
 
+import megengine
+import megengine.data as data
+import megengine.data.transform as T
+import megengine.distributed as dist
+import megengine.functional as F
 
 logging = megengine.logger.get_logger()
 
