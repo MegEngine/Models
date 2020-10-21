@@ -14,8 +14,9 @@ import numbers
 import os
 import time
 
-import config
+# pylint: disable=import-error
 import models
+import param_config as config
 
 import megengine as mge
 import megengine.autodiff as autodiff
@@ -164,7 +165,7 @@ def worker(world_size, args):
         valid_dataset,
         sampler=valid_sampler,
         transform=T.Compose(
-            [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW"),]
+            [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW")]
         ),
         num_workers=args.workers,
     )

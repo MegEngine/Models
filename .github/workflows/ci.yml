@@ -35,23 +35,4 @@ jobs:
 
     # Runs a set of commands using the runners shell
     - name: Format check
-      run: |
-        export PYTHONPATH=$PWD:$PYTHONPATH
-
-        CHECK_VISION=official/vision/
-        CHECK_NLP=official/nlp/
-        pip install pylint==2.5.2
-        pylint $CHECK_VISION $CHECK_NLP --rcfile=.pylintrc || pylint_ret=$?
-        echo test, and deploy your project.
-        if [ "$pylint_ret" ]; then
-          exit $pylint_ret
-        fi
-        echo "All lint steps passed!"
-
-        pip3 install flake8==3.7.9
-        flake8 official
-        echo "All flake check passed!"
-
-        pip3 install isort==4.3.21
-        isort --check-only -rc official
-        echo "All isort check passed!"
+      run: ./run_format_check.sh

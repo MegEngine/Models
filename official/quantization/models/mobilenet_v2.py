@@ -118,9 +118,11 @@ class MobileNetV2(M.Module):
 
         Args:
             num_classes (int): Number of classes
-            width_mult (float): Width multiplier - adjusts number of channels in each layer by this amount
+            width_mult (float): Width multiplier - adjusts number of channels
+            in each layer by this amount
             inverted_residual_setting: Network structure
-            round_nearest (int): Round the number of channels in each layer to be a multiple of this number
+            round_nearest (int): Round the number of channels in each layer
+            to be a multiple of this number
             Set to 1 to turn off rounding
         """
         super(MobileNetV2, self).__init__()

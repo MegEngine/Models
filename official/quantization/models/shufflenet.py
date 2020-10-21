@@ -34,12 +34,8 @@
 # All Megvii Modifications are Copyright (C) 2014-2019 Megvii Inc. All rights reserved.
 # ------------------------------------------------------------------------------
 import megengine.functional as F
-import megengine.hub as hub
 import megengine.module as M
 from megengine.module import (
-    AvgPool2d,
-    BatchNorm2d,
-    Conv2d,
     ConvBn2d,
     ConvBnRelu2d,
     DequantStub,
@@ -48,9 +44,8 @@ from megengine.module import (
     MaxPool2d,
     Module,
     QuantStub,
-    Sequential,
+    Sequential
 )
-from megengine.quantization import *
 
 
 class ShuffleV1Block(Module):
@@ -110,6 +105,8 @@ class ShuffleV1Block(Module):
             return self.add(x, x_proj)
         elif self.stride == 2:
             return self.add(self.branch_proj(x_proj), x)
+        else:
+            raise NotImplementedError
 
     def channel_shuffle(self, x):
         batchsize, num_channels, height, width = x.shape
@@ -124,6 +121,7 @@ class ShuffleV1Block(Module):
 
 class ShuffleNetV1(Module):
     def __init__(self, num_classes=1000, model_size="2.0x", group=None):
+        # pylint: disable=too-many-branches
         super(ShuffleNetV1, self).__init__()
         print("model size is ", model_size)
 

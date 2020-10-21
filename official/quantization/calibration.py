@@ -13,6 +13,7 @@ import numbers
 import os
 import time
 
+# pylint: disable=import-error
 import models
 
 import megengine as mge
@@ -106,7 +107,7 @@ def worker(world_size, args):
         valid_dataset,
         sampler=valid_sampler,
         transform=T.Compose(
-            [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW"),]
+            [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW")]
         ),
         num_workers=args.workers,
     )

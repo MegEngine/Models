@@ -92,14 +92,7 @@ class Bottleneck(M.Module):
     expansion = 4
 
     def __init__(
-        self,
-        in_channels,
-        channels,
-        stride=1,
-        groups=1,
-        base_width=64,
-        dilation=1,
-        norm=M.BatchNorm2d,
+        self, in_channels, channels, stride=1, groups=1, base_width=64, dilation=1,
     ):
         super(Bottleneck, self).__init__()
         width = int(channels * (base_width / 64.0)) * groups
@@ -211,7 +204,8 @@ class ResNet(M.Module):
                     M.init.uniform_(m.bias, -bound, bound)
 
         # Zero-initialize the last BN in each residual branch,
-        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # so that the residual branch starts with zeros,
+        # and each residual block behaves like an identity.
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         if zero_init_residual:
             for m in self.modules():

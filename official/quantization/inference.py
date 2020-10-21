@@ -6,11 +6,12 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-"""Finetune a pretrained fp32 with int8 quantization aware training(QAT)"""
+"""Inference a pretrained model with given inputs"""
 import argparse
 import json
 import os
 
+# pylint: disable=import-error
 import models
 
 import cv2
@@ -68,7 +69,7 @@ def main():
     image = cv2.imread(path, cv2.IMREAD_COLOR)
 
     transform = T.Compose(
-        [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW"),]
+        [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW")]
     )
 
     @trace(symbolic=True, capture_as_const=True)
