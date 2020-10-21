@@ -14,9 +14,7 @@
 # ----------------------------------------------------------------------
 """Tokenization classes."""
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
+from __future__ import absolute_import, division, print_function, unicode_literals
 import collections
 import os
 import unicodedata
@@ -81,8 +79,9 @@ class BertTokenizer:
         """
         if not os.path.isfile(vocab_file):
             raise ValueError(
-                "Can't find a vocabulary file at path '{}'. To load the vocabulary from a Google pretrained "
-                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
+                "Can't find a vocabulary file at path '{}'. "
+                "To load the vocabulary from a Google pretrained model use "
+                "`tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
                     vocab_file
                 )
             )
@@ -363,12 +362,7 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if (
-        (33 <= cp <= 47)
-        or (58 <= cp <= 64)
-        or (91 <= cp <= 96)
-        or (123 <= cp <= 126)
-    ):
+    if (33 <= cp <= 47) or (58 <= cp <= 64) or (91 <= cp <= 96) or (123 <= cp <= 126):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):

@@ -14,13 +14,14 @@ import argparse
 def get_args():
     parser = argparse.ArgumentParser()
 
-    ## parameters
+    # parameters
     parser.add_argument(
         "--data_dir",
         default=None,
         type=str,
         required=True,
-        help="The input data dir. Should contain the .tsv files (or other data files) for the task.",
+        help="The input data dir. Should contain the .tsv files (or other data files)"
+        " for the task.",
     )
 
     parser.add_argument(
