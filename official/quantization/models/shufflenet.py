@@ -34,25 +34,18 @@
 # All Megvii Modifications are Copyright (C) 2014-2019 Megvii Inc. All rights reserved.
 # ------------------------------------------------------------------------------
 import megengine.functional as F
-import megengine.hub as hub
 import megengine.module as M
 from megengine.module import (
-    BatchNorm2d,
-    Conv2d,
     ConvBn2d,
     ConvBnRelu2d,
-    AvgPool2d,
-    MaxPool2d,
     DequantStub,
+    Elemwise,
     Linear,
+    MaxPool2d,
     Module,
     QuantStub,
-    Sequential,
-    MaxPool2d,
-    Sequential,
-    Elemwise,
+    Sequential
 )
-from megengine.quantization import *
 
 
 class ShuffleV1Block(Module):
@@ -70,9 +63,25 @@ class ShuffleV1Block(Module):
 
         branch_main_1 = [
             # pw
-            ConvBnRelu2d(inp, mid_channels, 1, 1, 0, groups=1 if first_group else group, bias=False),
+            ConvBnRelu2d(
+                inp,
+                mid_channels,
+                1,
+                1,
+                0,
+                groups=1 if first_group else group,
+                bias=False,
+            ),
             # dw
-            ConvBn2d(mid_channels, mid_channels, ksize, stride, pad, groups=mid_channels, bias=False)
+            ConvBn2d(
+                mid_channels,
+                mid_channels,
+                ksize,
+                stride,
+                pad,
+                groups=mid_channels,
+                bias=False,
+            ),
         ]
         branch_main_2 = [
             # pw-linear
@@ -80,7 +89,7 @@ class ShuffleV1Block(Module):
         ]
         self.branch_main_1 = Sequential(*branch_main_1)
         self.branch_main_2 = Sequential(*branch_main_2)
-        self.add = Elemwise('FUSE_ADD_RELU')
+        self.add = Elemwise("FUSE_ADD_RELU")
 
         if stride == 2:
             self.branch_proj = ConvBn2d(inp, oup, 1, 2, 0, bias=False)
@@ -96,6 +105,8 @@ class ShuffleV1Block(Module):
             return self.add(x, x_proj)
         elif self.stride == 2:
             return self.add(self.branch_proj(x_proj), x)
+        else:
+            raise NotImplementedError
 
     def channel_shuffle(self, x):
         batchsize, num_channels, height, width = x.shape
@@ -103,39 +114,40 @@ class ShuffleV1Block(Module):
         group_channels = num_channels // self.group
 
         x = x.reshape(batchsize, group_channels, self.group, height, width)
-        x = x.dimshuffle(0, 2, 1, 3, 4)
+        x = F.transpose(x, (0, 2, 1, 3, 4))
         x = x.reshape(batchsize, num_channels, height, width)
         return x
 
 
 class ShuffleNetV1(Module):
-    def __init__(self, num_classes=1000, model_size='2.0x', group=None):
+    def __init__(self, num_classes=1000, model_size="2.0x", group=None):
+        # pylint: disable=too-many-branches
         super(ShuffleNetV1, self).__init__()
-        print('model size is ', model_size)
+        print("model size is ", model_size)
 
         assert group is not None
 
         self.stage_repeats = [4, 8, 4]
         self.model_size = model_size
         if group == 3:
-            if model_size == '0.5x':
+            if model_size == "0.5x":
                 self.stage_out_channels = [-1, 12, 120, 240, 480]
-            elif model_size == '1.0x':
+            elif model_size == "1.0x":
                 self.stage_out_channels = [-1, 24, 240, 480, 960]
-            elif model_size == '1.5x':
+            elif model_size == "1.5x":
                 self.stage_out_channels = [-1, 24, 360, 720, 1440]
-            elif model_size == '2.0x':
+            elif model_size == "2.0x":
                 self.stage_out_channels = [-1, 48, 480, 960, 1920]
             else:
                 raise NotImplementedError
         elif group == 8:
-            if model_size == '0.5x':
+            if model_size == "0.5x":
                 self.stage_out_channels = [-1, 16, 192, 384, 768]
-            elif model_size == '1.0x':
+            elif model_size == "1.0x":
                 self.stage_out_channels = [-1, 24, 384, 768, 1536]
-            elif model_size == '1.5x':
+            elif model_size == "1.5x":
                 self.stage_out_channels = [-1, 24, 576, 1152, 2304]
-            elif model_size == '2.0x':
+            elif model_size == "2.0x":
                 self.stage_out_channels = [-1, 48, 768, 1536, 3072]
             else:
                 raise NotImplementedError
@@ -155,15 +167,26 @@ class ShuffleNetV1(Module):
             for i in range(numrepeat):
                 stride = 2 if i == 0 else 1
                 first_group = idxstage == 0 and i == 0
-                self.features.append(ShuffleV1Block(input_channel, output_channel,
-                                                    group=group, first_group=first_group,
-                                                    mid_channels=output_channel // 4, ksize=3, stride=stride))
+                self.features.append(
+                    ShuffleV1Block(
+                        input_channel,
+                        output_channel,
+                        group=group,
+                        first_group=first_group,
+                        mid_channels=output_channel // 4,
+                        ksize=3,
+                        stride=stride,
+                    )
+                )
                 input_channel = output_channel
 
         self.features = Sequential(*self.features)
         self.quant = QuantStub()
         self.dequant = DequantStub()
-        self.classifier = Sequential(Linear(self.stage_out_channels[-1], num_classes, bias=False))
+        self.classifier = Sequential(
+            Linear(self.stage_out_channels[-1], num_classes, bias=False)
+        )
+        self.classifier.disable_quantize()
         self._initialize_weights()
 
     def forward(self, x):
@@ -208,13 +231,16 @@ def shufflenet_v1_x0_5_g3(num_classes=1000):
     net = ShuffleNetV1(num_classes=num_classes, model_size="0.5x", group=3)
     return net
 
+
 def shufflenet_v1_x1_0_g3(num_classes=1000):
     net = ShuffleNetV1(num_classes=num_classes, model_size="1.0x", group=3)
     return net
 
+
 def shufflenet_v1_x1_5_g3(num_classes=1000):
     net = ShuffleNetV1(num_classes=num_classes, model_size="1.5x", group=3)
     return net
+
 
 def shufflenet_v1_x2_0_g3(num_classes=1000):
     net = ShuffleNetV1(num_classes=num_classes, model_size="2.0x", group=3)
