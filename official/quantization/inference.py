@@ -6,20 +6,23 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-"""Finetune a pretrained fp32 with int8 quantization aware training(QAT)"""
+"""Inference a pretrained model with given inputs"""
 import argparse
 import json
+import os
+
+# pylint: disable=import-error
+import models
 
 import cv2
+import numpy as np
+
 import megengine as mge
 import megengine.data.transform as T
 import megengine.functional as F
-import megengine.jit as jit
 import megengine.quantization as Q
-import numpy as np
+from megengine.jit import trace
 from megengine.quantization.quantize import quantize, quantize_qat
-
-import models
 
 logger = mge.get_logger(__name__)
 
@@ -30,23 +33,24 @@ def main():
     parser.add_argument("-c", "--checkpoint", default=None, type=str)
     parser.add_argument("-i", "--image", default=None, type=str)
 
-    parser.add_argument("-m", "--mode", default="quantized", type=str,
+    parser.add_argument(
+        "-m",
+        "--mode",
+        default="quantized",
+        type=str,
         choices=["normal", "qat", "quantized"],
         help="Quantization Mode\n"
-             "normal: no quantization, using float32\n"
-             "qat: quantization aware training, simulate int8\n"
-             "quantized: convert mode to int8 quantized, inference only")
-    parser.add_argument("--dump", action="store_true",
-        help="Dump quantized model")
+        "normal: no quantization, using float32\n"
+        "qat: quantization aware training, simulate int8\n"
+        "quantized: convert mode to int8 quantized, inference only",
+    )
+    parser.add_argument("--dump", action="store_true", help="Dump quantized model")
     args = parser.parse_args()
-
-    if args.mode == "quantized":
-        mge.set_default_device("cpux")
 
     model = models.__dict__[args.arch]()
 
     if args.mode != "normal":
-        quantize_qat(model, Q.ema_fakequant_qconfig)
+        quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
 
     if args.mode == "quantized":
         quantize(model)
@@ -57,22 +61,18 @@ def main():
         ckpt = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
         model.load_state_dict(ckpt, strict=False)
 
+    rpath = os.path.realpath(__file__ + "/../../")
     if args.image is None:
-        path = "../assets/cat.jpg"
+        path = rpath + "/assets/cat.jpg"
     else:
         path = args.image
     image = cv2.imread(path, cv2.IMREAD_COLOR)
 
     transform = T.Compose(
-        [
-            T.Resize(256),
-            T.CenterCrop(224),
-            T.Normalize(mean=128),
-            T.ToMode("CHW"),
-        ]
+        [T.Resize(256), T.CenterCrop(224), T.Normalize(mean=128), T.ToMode("CHW")]
     )
 
-    @jit.trace(symbolic=True)
+    @trace(symbolic=True, capture_as_const=True)
     def infer_func(processed_img):
         model.eval()
         logits = model(processed_img)
@@ -81,14 +81,11 @@ def main():
 
     processed_img = transform.apply(image)[np.newaxis, :]
 
-    if args.mode == "normal":
-        processed_img = processed_img.astype("float32")
-    elif args.mode == "quantized":
-        processed_img = processed_img.astype("int8")
+    processed_img = mge.tensor(processed_img, dtype="float32")
 
     probs = infer_func(processed_img)
 
-    top_probs, classes = F.top_k(probs, k=5, descending=True)
+    top_probs, classes = F.topk(probs, k=5, descending=True)
 
     if args.dump:
         output_file = ".".join([args.arch, args.mode, "megengine"])
@@ -96,7 +93,7 @@ def main():
         infer_func.dump(output_file, arg_names=["data"])
         mge.save(model.state_dict(), output_file.replace("megengine", "pkl"))
 
-    with open("../assets/imagenet_class_info.json") as fp:
+    with open(rpath + "/assets/imagenet_class_info.json") as fp:
         imagenet_class_index = json.load(fp)
 
     for rank, (prob, classid) in enumerate(
@@ -107,5 +104,7 @@ def main():
                 rank, imagenet_class_index[str(classid)][1], 100 * prob
             )
         )
+
+
 if __name__ == "__main__":
     main()
