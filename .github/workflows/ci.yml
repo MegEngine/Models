@@ -38,9 +38,10 @@ jobs:
       run: |
         export PYTHONPATH=$PWD:$PYTHONPATH
 
-        CHECK_DIR=official/vision/
+        CHECK_VISION=official/vision/
+        CHECK_NLP=official/nlp/
         pip install pylint==2.5.2
-        pylint $CHECK_DIR --rcfile=.pylintrc || pylint_ret=$?
+        pylint $CHECK_VISION $CHECK_NLP --rcfile=.pylintrc || pylint_ret=$?
         echo test, and deploy your project.
         if [ "$pylint_ret" ]; then
           exit $pylint_ret

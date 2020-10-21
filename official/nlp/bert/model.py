@@ -16,9 +16,6 @@
 
 """Megengine BERT model."""
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import copy
 import json
 import math
@@ -27,10 +24,11 @@ import urllib
 import urllib.request
 from io import open
 
+import numpy as np
+
 import megengine as mge
 import megengine.functional as F
 import megengine.hub as hub
-import numpy as np
 from megengine import Parameter
 from megengine.functional.loss import cross_entropy
 from megengine.module import Dropout, Embedding, Linear, Module, Sequential
@@ -45,7 +43,8 @@ def transpose(inp, a, b):
 
 def gelu(x):
     """Implementation of the gelu activation function.
-        For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
+        For information: OpenAI GPT's gelu is slightly different
+        (and gives slightly different results):
         x * 0.5 * (1.0 + F.tanh((F.sqrt(2 / math.pi) * (x + 0.044715 * (x **  3)))))
         Also see https://arxiv.org/abs/1606.08415
     """
@@ -98,7 +97,7 @@ class BertConfig:
                 initializing all weight matrices.
         """
         if isinstance(vocab_size_or_config_json_file, str):
-            with open(vocab_size_or_config_json_file, "r", encoding='utf-8') as reader:
+            with open(vocab_size_or_config_json_file, "r", encoding="utf-8") as reader:
                 json_config = json.loads(reader.read())
             for key, value in json_config.items():
                 self.__dict__[key] = value
@@ -158,7 +157,7 @@ class BertLayerNorm(Module):
     """
 
     def __init__(self, hidden_size, eps=1e-12):
-        super(BertLayerNorm, self).__init__()
+        super().__init__()
         self.weight = Parameter(np.ones(hidden_size).astype(np.float32))
         self.bias = Parameter(np.zeros(hidden_size).astype(np.float32))
         self.variance_epsilon = eps
@@ -175,7 +174,7 @@ class BertEmbeddings(Module):
     """
 
     def __init__(self, config):
-        super(BertEmbeddings, self).__init__()
+        super().__init__()
         self.word_embeddings = Embedding(config.vocab_size, config.hidden_size)
         self.position_embeddings = Embedding(
             config.max_position_embeddings, config.hidden_size
@@ -184,8 +183,8 @@ class BertEmbeddings(Module):
             config.type_vocab_size, config.hidden_size
         )
 
-        # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
-        # any TensorFlow checkpoint file
+        # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name
+        # and be able to load any TensorFlow checkpoint file
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = Dropout(config.hidden_dropout_prob)
 
@@ -210,7 +209,7 @@ class BertEmbeddings(Module):
 
 class BertSelfAttention(Module):
     def __init__(self, config):
-        super(BertSelfAttention, self).__init__()
+        super().__init__()
         if config.hidden_size % config.num_attention_heads != 0:
             raise ValueError(
                 "The hidden size (%d) is not a multiple of the number of attention "
@@ -229,7 +228,9 @@ class BertSelfAttention(Module):
     def transpose_for_scores(self, x):
         # using symbolic shapes to make trace happy
         x_shape = mge.tensor(x.shape)
-        new_x_shape = F.concat([x_shape[:-1], (self.num_attention_heads, self.attention_head_size)])
+        new_x_shape = F.concat(
+            [x_shape[:-1], (self.num_attention_heads, self.attention_head_size)]
+        )
         x = x.reshape(new_x_shape)
         return x.transpose(0, 2, 1, 3)
 
@@ -266,7 +267,7 @@ class BertSelfAttention(Module):
 
 class BertSelfOutput(Module):
     def __init__(self, config):
-        super(BertSelfOutput, self).__init__()
+        super().__init__()
         self.dense = Linear(config.hidden_size, config.hidden_size)
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = Dropout(config.hidden_dropout_prob)
@@ -280,7 +281,7 @@ class BertSelfOutput(Module):
 
 class BertAttention(Module):
     def __init__(self, config):
-        super(BertAttention, self).__init__()
+        super().__init__()
         self.self = BertSelfAttention(config)
         self.output = BertSelfOutput(config)
 
@@ -292,7 +293,7 @@ class BertAttention(Module):
 
 class BertIntermediate(Module):
     def __init__(self, config):
-        super(BertIntermediate, self).__init__()
+        super().__init__()
         self.dense = Linear(config.hidden_size, config.intermediate_size)
         if isinstance(config.hidden_act, str):
             self.intermediate_act_fn = ACT2FN[config.hidden_act]
@@ -307,7 +308,7 @@ class BertIntermediate(Module):
 
 class BertOutput(Module):
     def __init__(self, config):
-        super(BertOutput, self).__init__()
+        super().__init__()
         self.dense = Linear(config.intermediate_size, config.hidden_size)
         self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = Dropout(config.hidden_dropout_prob)
@@ -321,7 +322,7 @@ class BertOutput(Module):
 
 class BertLayer(Module):
     def __init__(self, config):
-        super(BertLayer, self).__init__()
+        super().__init__()
         self.attention = BertAttention(config)
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
@@ -335,7 +336,7 @@ class BertLayer(Module):
 
 class BertEncoder(Module):
     def __init__(self, config):
-        super(BertEncoder, self).__init__()
+        super().__init__()
         self.layer = Sequential(
             *[BertLayer(config) for _ in range(config.num_hidden_layers)]
         )
@@ -354,7 +355,7 @@ class BertEncoder(Module):
 
 class BertPooler(Module):
     def __init__(self, config):
-        super(BertPooler, self).__init__()
+        super().__init__()
         self.dense = Linear(config.hidden_size, config.hidden_size)
         self.activation = F.tanh
 
@@ -375,26 +376,34 @@ class BertModel(Module):
 
     Inputs:
         `input_ids`: a torch.LongTensor of shape [batch_size, sequence_length]
-            with the word token indices in the vocabulary(see the tokens preprocessing logic in the scripts
+            with the word token indices in the vocabulary
+            (see the tokens preprocessing logic in the scripts
             `extract_features.py`, `run_classifier.py` and `run_squad.py`)
-        `token_type_ids`: an optional torch.LongTensor of shape [batch_size, sequence_length] with the token
-            types indices selected in [0, 1]. Type 0 corresponds to a `sentence A` and type 1 corresponds to
+        `token_type_ids`: an optional torch.LongTensor of shape
+            [batch_size, sequence_length] with the token types indices selected in [0, 1].
+            Type 0 corresponds to a `sentence A` and type 1 corresponds to
             a `sentence B` token (see BERT paper for more details).
-        `attention_mask`: an optional torch.LongTensor of shape [batch_size, sequence_length] with indices
-            selected in [0, 1]. It's a mask to be used if the input sequence length is smaller than the max
-            input sequence length in the current batch. It's the mask that we typically use for attention when
+        `attention_mask`: an optional torch.LongTensor of shape [batch_size, sequence_length]
+            with indices selected in [0, 1]. It's a mask to be used if the input sequence length
+            is smaller than the max input sequence length in the current batch.
+            It's the mask that we typically use for attention when
             a batch has varying length sentences.
-        `output_all_encoded_layers`: boolean which controls the content of the `encoded_layers` output as described below. Default: `True`.
+        `output_all_encoded_layers`: boolean which controls the content of the `encoded_layers`
+            output as described below. Default: `True`.
 
     Outputs: Tuple of (encoded_layers, pooled_output)
         `encoded_layers`: controled by `output_all_encoded_layers` argument:
-            - `output_all_encoded_layers=True`: outputs a list of the full sequences of encoded-hidden-states at the end
-                of each attention block (i.e. 12 full sequences for BERT-base, 24 for BERT-large), each
-                encoded-hidden-state is a torch.FloatTensor of size [batch_size, sequence_length, hidden_size],
-            - `output_all_encoded_layers=False`: outputs only the full sequence of hidden-states corresponding
-                to the last attention block of shape [batch_size, sequence_length, hidden_size],
-        `pooled_output`: a torch.FloatTensor of size [batch_size, hidden_size] which is the output of a
-            classifier pretrained on top of the hidden state associated to the first character of the
+            - `output_all_encoded_layers=True`: outputs a list of the full sequences of
+                encoded-hidden-states at the end of each attention block
+                (i.e. 12 full sequences for BERT-base, 24 for BERT-large), each
+                encoded-hidden-state is a torch.FloatTensor of size
+                [batch_size, sequence_length, hidden_size],
+            - `output_all_encoded_layers=False`: outputs only the full sequence of
+                hidden-states corresponding to the last attention block of shape
+                [batch_size, sequence_length, hidden_size],
+        `pooled_output`: a torch.FloatTensor of size [batch_size, hidden_size]
+            which is the output of classifier pretrained on top of the hidden state
+            associated to the first character of the
             input (`CLS`) to train on the Next-Sentence task (see BERT's paper).
 
     Example usage:
@@ -474,15 +483,17 @@ class BertForSequenceClassification(Module):
 
     Inputs:
         `input_ids`: a torch.LongTensor of shape [batch_size, sequence_length]
-            with the word token indices in the vocabulary. Items in the batch should begin with the special "CLS" token. (see the tokens preprocessing logic in the scripts
+            with the word token indices in the vocabulary.
+            Items in the batch should begin with the special "CLS" token.
+            (see the tokens preprocessing logic in the scripts
             `extract_features.py`, `run_classifier.py` and `run_squad.py`)
-        `token_type_ids`: an optional torch.LongTensor of shape [batch_size, sequence_length] with the token
-            types indices selected in [0, 1]. Type 0 corresponds to a `sentence A` and type 1 corresponds to
-            a `sentence B` token (see BERT paper for more details).
-        `attention_mask`: an optional torch.LongTensor of shape [batch_size, sequence_length] with indices
-            selected in [0, 1]. It's a mask to be used if the input sequence length is smaller than the max
-            input sequence length in the current batch. It's the mask that we typically use for attention when
-            a batch has varying length sentences.
+        `token_type_ids`: an optional torch.LongTensor of shape [batch_size, sequence_length]
+            with the token types indices selected in [0, 1]. Type 0 corresponds to a `sentence A`
+            and type 1 corresponds to a `sentence B` token (see BERT paper for more details).
+        `attention_mask`: an optional torch.LongTensor of shape [batch_size, sequence_length]
+            with indices selected in [0, 1]. It's a mask to be used if the input sequence length
+            is smaller than the max input sequence length in the current batch. It's the mask
+            that we typically use for attention when a batch has varying length sentences.
         `labels`: labels for the classification output: torch.LongTensor of shape [batch_size]
             with indices selected in [0, ..., num_labels].
 
@@ -580,7 +591,8 @@ def create_hub_bert(model_name, pretrained):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/uncased_L-12_H-768_A-12/bert_4f2157f7_uncased_L-12_H-768_A-12.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "uncased_L-12_H-768_A-12/bert_4f2157f7_uncased_L-12_H-768_A-12.pkl"
 )
 def uncased_L_12_H_768_A_12():
     config_dict = {
@@ -601,7 +613,8 @@ def uncased_L_12_H_768_A_12():
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/cased_L-12_H-768_A-12/bert_b9727c2f_cased_L-12_H-768_A-12.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "cased_L-12_H-768_A-12/bert_b9727c2f_cased_L-12_H-768_A-12.pkl"
 )
 def cased_L_12_H_768_A_12():
     config_dict = {
@@ -622,7 +635,8 @@ def cased_L_12_H_768_A_12():
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/uncased_L-24_H-1024_A-16/bert_222f5012_uncased_L-24_H-1024_A-16.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "uncased_L-24_H-1024_A-16/bert_222f5012_uncased_L-24_H-1024_A-16.pkl"
 )
 def uncased_L_24_H_1024_A_16():
     config_dict = {
@@ -644,7 +658,8 @@ def uncased_L_24_H_1024_A_16():
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/cased_L-24_H-1024_A-16/bert_01f2a65f_cased_L-24_H-1024_A-16.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "cased_L-24_H-1024_A-16/bert_01f2a65f_cased_L-24_H-1024_A-16.pkl"
 )
 def cased_L_24_H_1024_A_16():
     config_dict = {
@@ -672,7 +687,8 @@ def cased_L_24_H_1024_A_16():
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/chinese_L-12_H-768_A-12/bert_ee91be1a_chinese_L-12_H-768_A-12.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "chinese_L-12_H-768_A-12/bert_ee91be1a_chinese_L-12_H-768_A-12.pkl"
 )
 def chinese_L_12_H_768_A_12():
     config_dict = {
@@ -699,7 +715,8 @@ def chinese_L_12_H_768_A_12():
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/multi_cased_L-12_H-768_A-12/bert_283ceec5_multi_cased_L-12_H-768_A-12.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "multi_cased_L-12_H-768_A-12/bert_283ceec5_multi_cased_L-12_H-768_A-12.pkl"
 )
 def multi_cased_L_12_H_768_A_12():
     config_dict = {
@@ -727,7 +744,8 @@ def multi_cased_L_12_H_768_A_12():
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/wwm_uncased_L-24_H-1024_A-16/bert_e2780a6a_wwm_uncased_L-24_H-1024_A-16.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "wwm_uncased_L-24_H-1024_A-16/bert_e2780a6a_wwm_uncased_L-24_H-1024_A-16.pkl"
 )
 def wwm_uncased_L_24_H_1024_A_16():
     config_dict = {
@@ -748,7 +766,8 @@ def wwm_uncased_L_24_H_1024_A_16():
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/bert/wwm_cased_L-24_H-1024_A-16/bert_0a8f1389_wwm_cased_L-24_H-1024_A-16.pkl"
+    "https://data.megengine.org.cn/models/weights/bert/"
+    "wwm_cased_L-24_H-1024_A-16/bert_0a8f1389_wwm_cased_L-24_H-1024_A-16.pkl"
 )
 def wwm_cased_L_24_H_1024_A_16():
     config_dict = {

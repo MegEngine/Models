@@ -7,22 +7,23 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
+from tqdm import tqdm
+
+# pylint: disable=import-outside-toplevel
+import config_args
+from mrpc_dataset import MRPCDataset
+
 import megengine as mge
 import megengine.functional as F
 import megengine.optimizer as optim
 from megengine.autodiff import GradManager
-from megengine.jit import trace
-from tqdm import tqdm
 
-from model import BertForSequenceClassification, create_hub_bert
-from mrpc_dataset import MRPCDataset
-# pylint: disable=import-outside-toplevel
-import config_args
+from official.nlp.bert.model import BertForSequenceClassification, create_hub_bert
+
 args = config_args.get_args()
 logger = mge.get_logger(__name__)
 
 
-# @trace(symbolic=True)
 def net_eval(input_ids, segment_ids, input_mask, label_ids, net=None):
     net.eval()
     results = net(input_ids, segment_ids, input_mask, label_ids)
@@ -30,7 +31,6 @@ def net_eval(input_ids, segment_ids, input_mask, label_ids, net=None):
     return loss, logits
 
 
-# @trace(symbolic=True)
 def net_train(input_ids, segment_ids, input_mask, label_ids, gm=None, net=None):
     net.train()
     with gm:
@@ -53,9 +53,7 @@ def eval(dataloader, net):
         batch_size = input_ids.shape[0]
         if batch_size != args.eval_batch_size:
             break
-        loss, logits = net_eval(
-            input_ids, segment_ids, input_mask, label_ids, net=net
-        )
+        loss, logits = net_eval(input_ids, segment_ids, input_mask, label_ids, net=net)
         sum_loss += loss.mean().item()
         sum_accuracy += F.topk_accuracy(logits, label_ids) * batch_size
         total_examples += batch_size

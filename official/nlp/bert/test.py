@@ -7,20 +7,21 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-import megengine as mge
-import megengine.functional as F
-from megengine.jit import trace
 from tqdm import tqdm
 
-from model import BertForSequenceClassification, create_hub_bert
-from mrpc_dataset import MRPCDataset
 # pylint: disable=import-outside-toplevel
 import config_args
+from mrpc_dataset import MRPCDataset
+
+import megengine as mge
+import megengine.functional as F
+
+from official.nlp.bert.model import BertForSequenceClassification, create_hub_bert
+
 args = config_args.get_args()
 logger = mge.get_logger(__name__)
 
 
-# @trace(symbolic=True)
 def net_eval(input_ids, segment_ids, input_mask, label_ids, net=None):
     net.eval()
     results = net(input_ids, segment_ids, input_mask, label_ids)

@@ -9,13 +9,14 @@
 import csv
 import os
 
-import megengine as mge
+from tokenization import BertTokenizer
+
 import numpy as np
+
+import megengine as mge
 from megengine.data import DataLoader
 from megengine.data.dataset import ArrayDataset
 from megengine.data.sampler import RandomSampler, SequentialSampler
-
-from tokenization import BertTokenizer
 
 logger = mge.get_logger(__name__)
 
@@ -199,7 +200,9 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
             logger.info("tokens: {}".format(" ".join([str(x) for x in tokens])))
             logger.info("input_ids: {}".format(" ".join([str(x) for x in input_ids])))
             logger.info("input_mask: {}".format(" ".join([str(x) for x in input_mask])))
-            logger.info("segment_ids: {}".format(" ".join([str(x) for x in segment_ids])))
+            logger.info(
+                "segment_ids: {}".format(" ".join([str(x) for x in segment_ids]))
+            )
             logger.info("label: {} (id = {})".format(example.label, label_id))
 
         features.append(
