@@ -118,7 +118,6 @@ def worker(
         state_dict = state_dict["state_dict"]
     model.load_state_dict(state_dict)
 
-    # @trace(symbolic=True)
     def pred_func(data):
         pred = model(data)
         return pred
