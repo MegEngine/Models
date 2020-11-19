@@ -116,6 +116,7 @@ class FreeAnchor(M.Module):
             return all_level_box_scores[0], clipped_box
 
     def get_losses(self, anchors, pred_logits, pred_offsets, gt_boxes, im_info):
+        # pylint: disable=too-many-statements
         def positive_bag_loss(logits, axis=1):
             weight = 1.0 / (1.0 - logits)
             weight /= weight.sum(axis=axis, keepdims=True)
