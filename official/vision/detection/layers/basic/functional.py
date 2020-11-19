@@ -7,6 +7,7 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from typing import Optional
+import numpy as np
 
 import megengine.distributed as dist
 import megengine.functional as F
@@ -46,6 +47,12 @@ def get_padded_tensor(
     else:
         raise Exception("Not supported tensor dim: %d" % ndim)
     return padded_array
+
+
+def safelog(x, eps=None):
+    if eps is None:
+        eps = np.finfo(x.dtype).tiny
+    return F.log(F.maximum(x, eps))
 
 
 def batched_nms(

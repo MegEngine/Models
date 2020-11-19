@@ -82,6 +82,7 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 | faster-rcnn-res50-coco-1x-800size   | 38.0         |
 | faster-rcnn-res101-coco-2x-800size  | 42.5         |
 | faster-rcnn-resx101-coco-2x-800size | 43.6         |
+| free-anchor-res50-coco-1x-800size   | 38.5         |
 | fcos-res50-coco-1x-800size          | 39.7         |
 | fcos-res101-coco-2x-800size         | 44.1         |
 | fcos-resx101-coco-2x-800size        | 44.9         |
