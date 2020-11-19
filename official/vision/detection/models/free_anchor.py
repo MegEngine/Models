@@ -116,7 +116,6 @@ class FreeAnchor(M.Module):
             return all_level_box_scores[0], clipped_box
 
     def get_losses(self, anchors, pred_logits, pred_offsets, gt_boxes, im_info):
-
         def positive_bag_loss(logits, axis=1):
             weight = 1.0 / (1.0 - logits)
             weight /= weight.sum(axis=axis, keepdims=True)
@@ -133,19 +132,16 @@ class FreeAnchor(M.Module):
         bucket_size = self.cfg.bucket_size
 
         for bid in range(im_info.shape[0]):
-            # cur_gt = gt_boxes[bid, : batched_valid_gt_box_number[bid]]
             boxes_info = gt_boxes[bid, : im_info[bid, 4].astype("int32")]
             # id 0 is used for background classes, so -1 first
             labels = boxes_info[:, 4].astype("int32") - 1
 
-            # nograd begins
             pred_box = self.box_coder.decode(anchors, pred_offsets[bid]).detach()
             overlaps = layers.get_iou(boxes_info[:, :4], pred_box).detach()
             thresh1 = self.cfg.box_iou_threshold
             thresh2 = F.clip(
                 overlaps.max(axis=1, keepdims=True),
-                lower=thresh1 + clamp_eps,
-                upper=1.0
+                lower=thresh1 + clamp_eps, upper=1.0
             )
             gt_pred_prob = F.clip(
                 (overlaps - thresh1) / (thresh2 - thresh1), lower=0, upper=1.0)
@@ -159,7 +155,6 @@ class FreeAnchor(M.Module):
             _, nonzero_idx = F.cond_take(gt_pred_prob != 0, gt_pred_prob)
             # since nonzeros is only 1 dim, use num_anchor to get real indices
             num_anchors = gt_pred_prob.shape[1]
-
             anchors_idx = nonzero_idx % num_anchors
             gt_idx = nonzero_idx // num_anchors
 
@@ -168,9 +163,7 @@ class FreeAnchor(M.Module):
             # remove effect of setting gt_pred_prob
             if fill_prob:
                 image_boxes_prob[0, 0] = 0.0
-
             box_prob_list.append(image_boxes_prob)
-            # nograd end
 
             # construct bags for objects
             match_quality_matrix = layers.get_iou(boxes_info[:, :4], anchors).detach()
@@ -181,9 +174,9 @@ class FreeAnchor(M.Module):
                 descending=True,
                 no_sort=True,
             )
+
             matched_idx = matched_idx.detach()
             matched_idx_flatten = matched_idx.reshape(-1)
-
             gather_idx = labels.reshape(-1, 1, 1)
             gather_idx = F.broadcast_to(gather_idx, (num_gt, bucket_size, 1))
 
@@ -197,10 +190,7 @@ class FreeAnchor(M.Module):
                 F.expand_dims(boxes_info[:, :4], axis=1), (num_gt, bucket_size, 4)
             ).reshape(-1, 4)
 
-            matched_offsets = self.box_coder.encode(
-                topk_anchors,
-                boxes_broad_cast
-            )
+            matched_offsets = self.box_coder.encode(topk_anchors, boxes_broad_cast)
 
             reg_loss = layers.smooth_l1_loss(
                 pred_offsets[bid, matched_idx_flatten],
@@ -211,8 +201,7 @@ class FreeAnchor(M.Module):
 
             positive_losses.append(
                 positive_bag_loss(
-                    matched_score * matched_reg_scores.reshape(-1, bucket_size),
-                    axis=1
+                    matched_score * matched_reg_scores.reshape(-1, bucket_size), axis=1
                 )
             )
 
