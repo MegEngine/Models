@@ -150,7 +150,6 @@ def worker(master_ip, port, world_size, rank, args):
 
 
 def train_one_epoch(model, data_queue, opt, gm, epoch):
-    # @trace(symbolic=True)
     def train_func(data, label):
         with gm:
             pred = model(data)

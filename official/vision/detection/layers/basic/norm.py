@@ -24,6 +24,8 @@
 # This file has been modified by Megvii ("Megvii Modifications").
 # All Megvii Modifications are Copyright (C) 2014-2020 Megvii Inc. All rights reserved.
 # ---------------------------------------------------------------------
+from functools import partial
+
 import numpy as np
 
 import megengine.functional as F
@@ -31,41 +33,16 @@ import megengine.module as M
 from megengine import Parameter
 
 
-class FrozenBatchNorm2d(M.Module):
-    """
-    BatchNorm2d, which the weight, bias, running_mean, running_var
-    are immutable.
-    """
-
-    def __init__(self, num_features, eps=1e-5):
-        super().__init__()
-        self.num_features = num_features
-        self.eps = eps
-
-        self.weight = Parameter(np.ones(num_features, dtype=np.float32))
-        self.bias = Parameter(np.zeros(num_features, dtype=np.float32))
-
-        self.running_mean = Parameter(np.zeros((1, num_features, 1, 1), dtype=np.float32))
-        self.running_var = Parameter(np.ones((1, num_features, 1, 1), dtype=np.float32))
-
-    def forward(self, x):
-        scale = self.weight.reshape(1, -1, 1, 1) * (
-            1.0 / F.sqrt(self.running_var + self.eps)
-        )
-        bias = self.bias.reshape(1, -1, 1, 1) - self.running_mean * scale
-        return x * scale.detach() + bias.detach()
-
-
 class GroupNorm(M.Module):
-    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True):
+    def __init__(self, num_groups, num_features, eps=1e-5, affine=True):
         super().__init__()
         self.num_groups = num_groups
-        self.num_channels = num_channels
+        self.num_features = num_features
         self.eps = eps
         self.affine = affine
         if self.affine:
-            self.weight = Parameter(np.ones(num_channels, dtype=np.float32))
-            self.bias = Parameter(np.zeros(num_channels, dtype=np.float32))
+            self.weight = Parameter(np.ones(num_features, dtype=np.float32))
+            self.bias = Parameter(np.zeros(num_features, dtype=np.float32))
         else:
             self.weight = None
             self.bias = None
@@ -79,8 +56,7 @@ class GroupNorm(M.Module):
     def forward(self, x):
         output = x.reshape(x.shape[0], self.num_groups, -1)
         mean = F.mean(output, axis=2, keepdims=True)
-        mean2 = F.mean(output ** 2, axis=2, keepdims=True)
-        var = mean2 - mean * mean
+        var = F.mean(output * output, axis=2, keepdims=True) - mean * mean
 
         output = (output - mean) / F.sqrt(var + self.eps)
         output = output.reshape(x.shape)
@@ -89,6 +65,10 @@ class GroupNorm(M.Module):
                 self.bias.reshape(1, -1, 1, 1)
 
         return output
+
+    def _module_info_string(self) -> str:
+        s = "{num_groups}, {num_features}, eps={eps}, affine={affine}"
+        return s.format(**self.__dict__)
 
 
 def get_norm(norm):
@@ -104,7 +84,7 @@ def get_norm(norm):
     norm = {
         "BN": M.BatchNorm2d,
         "SyncBN": M.SyncBatchNorm,
-        "FrozenBN": FrozenBatchNorm2d,
+        "FrozenBN": partial(M.BatchNorm2d, freeze=True),
         "GN": GroupNorm,
     }[norm]
     return norm

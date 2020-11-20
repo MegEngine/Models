@@ -17,7 +17,6 @@ import megengine.distributed as dist
 from megengine.autodiff import GradManager
 from megengine.data import DataLoader, Infinite, RandomSampler
 from megengine.data import transform as T
-# from megengine.jit import trace
 from megengine.optimizer import SGD
 
 from official.vision.detection.tools.utils import (
@@ -151,7 +150,6 @@ def worker(master_ip, port, world_size, rank, args):
 
 
 def train_one_epoch(model, data_queue, opt, gm, epoch, args):
-    # @trace(symbolic=True)
     def train_func(image, im_info, gt_boxes):
         with gm:
             loss_dict = model(image=image, im_info=im_info, gt_boxes=gt_boxes)
