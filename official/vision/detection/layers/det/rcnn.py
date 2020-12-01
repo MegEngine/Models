@@ -101,7 +101,7 @@ class RCNN(M.Module):
             # all_rois : [batch_id, x1, y1, x2, y2]
             all_rois = F.concat([rpn_rois[batch_roi_mask], gt_rois])
 
-            overlaps = layers.get_iou(all_rois[:, 1:5], gt_boxes_per_img)
+            overlaps = layers.get_iou(all_rois[:, 1:], gt_boxes_per_img)
 
             max_overlaps = overlaps.max(axis=1)
             gt_assignment = F.argmax(overlaps, axis=1).astype("int32")
@@ -115,21 +115,17 @@ class RCNN(M.Module):
             )
 
             num_fg_rois = int(self.cfg.num_rois * self.cfg.fg_ratio)
-            fg_inds_mask = layers.sample_mask_from_labels(fg_mask, num_fg_rois, 1)
+            fg_inds_mask = layers.sample_labels(fg_mask, num_fg_rois, True, False)
             num_bg_rois = int(self.cfg.num_rois - fg_inds_mask.sum())
-            bg_inds_mask = layers.sample_mask_from_labels(bg_mask, num_bg_rois, 1)
+            bg_inds_mask = layers.sample_labels(bg_mask, num_bg_rois, True, False)
 
-            labels = labels * fg_inds_mask
+            labels[bg_inds_mask] = 0
 
-            keep_mask = fg_inds_mask + bg_inds_mask
-            _, keep_inds = F.cond_take(keep_mask == 1, keep_mask)
-            # Add next line to avoid memory exceed
-            keep_inds = keep_inds[:min(self.cfg.num_rois, keep_inds.shape[0])]
-
-            labels = labels[keep_inds].astype("int32")
-            rois = all_rois[keep_inds]
-            target_boxes = gt_boxes_per_img[gt_assignment[keep_inds], :4]
-            bbox_targets = self.box_coder.encode(rois[:, 1:5], target_boxes)
+            keep_mask = fg_inds_mask | bg_inds_mask
+            labels = labels[keep_mask].astype("int32")
+            rois = all_rois[keep_mask]
+            target_boxes = gt_boxes_per_img[gt_assignment[keep_mask], :4]
+            bbox_targets = self.box_coder.encode(rois[:, 1:], target_boxes)
             bbox_targets = bbox_targets.reshape(-1, 4)
 
             return_rois.append(rois)

@@ -138,7 +138,7 @@ class FPN(M.Module):
             x[1:], self.lateral_convs[1:], self.output_convs[1:]
         ):
             top_down_features = F.nn.interpolate(
-                prev_features, scale_factor=2, mode="BILINEAR"
+                prev_features, features.shape[2:], mode="BILINEAR"
             )
             lateral_features = lateral_conv(features)
             prev_features = lateral_features + top_down_features

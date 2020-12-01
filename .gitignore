@@ -26,5 +26,8 @@ wheels/
 *.swp
 *~
 
-# Pycharm editor settings
+# pycharm editor settings
 .idea
+
+# vscode editor settings
+.vscode

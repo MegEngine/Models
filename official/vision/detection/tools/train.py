@@ -46,7 +46,7 @@ def make_parser():
         "-n", "--ngpus", default=1, type=int, help="total number of gpus for training",
     )
     parser.add_argument(
-        "-b", "--batch_size", default=2, type=int, help="batchsize for training",
+        "-b", "--batch_size", default=2, type=int, help="batch size for training",
     )
     parser.add_argument(
         "-d", "--dataset_dir", default="/data/datasets", type=str,

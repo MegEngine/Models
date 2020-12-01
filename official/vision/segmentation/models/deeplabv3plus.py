@@ -81,7 +81,7 @@ class ASPP(M.Module):
 
         gp = F.mean(x, [2, 3], True)
         gp = self.conv_gp(gp)
-        gp = F.nn.interpolate(gp, (x.shape[2], x.shape[3]))
+        gp = F.nn.interpolate(gp, x.shape[2:])
 
         out = F.concat([conv1, conv31, conv32, conv33, gp], axis=1)
         out = self.conv_out(out)
@@ -94,7 +94,6 @@ class DeepLabV3Plus(M.Module):
 
         self.cfg = cfg
         self.output_stride = 16
-        self.sub_output_stride = self.output_stride // 4
         self.num_classes = cfg.num_classes
 
         self.aspp = ASPP(
@@ -103,7 +102,7 @@ class DeepLabV3Plus(M.Module):
         self.dropout = M.Dropout(0.5)
 
         self.upstage1 = M.Sequential(
-            M.Conv2d(256, 48, 1, 1, padding=1 // 2, bias=False),
+            M.Conv2d(256, 48, 1, 1, padding=0, bias=False),
             M.BatchNorm2d(48),
             M.ReLU(),
         )
@@ -138,7 +137,7 @@ class DeepLabV3Plus(M.Module):
 
         up0 = self.aspp(layers["res5"])
         up0 = self.dropout(up0)
-        up0 = F.nn.interpolate(up0, scale_factor=self.sub_output_stride)
+        up0 = F.nn.interpolate(up0, layers["res2"].shape[2:])
 
         up1 = self.upstage1(layers["res2"])
         up1 = F.concat([up0, up1], 1)
@@ -146,5 +145,5 @@ class DeepLabV3Plus(M.Module):
         up2 = self.upstage2(up1)
 
         out = self.conv_out(up2)
-        out = F.nn.interpolate(out, scale_factor=4)
+        out = F.nn.interpolate(out, x.shape[2:])
         return out
