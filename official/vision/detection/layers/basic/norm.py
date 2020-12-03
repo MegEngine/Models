@@ -26,55 +26,14 @@
 # ---------------------------------------------------------------------
 from functools import partial
 
-import numpy as np
-
-import megengine.functional as F
 import megengine.module as M
-from megengine import Parameter
-
-
-class GroupNorm(M.Module):
-    def __init__(self, num_groups, num_features, eps=1e-5, affine=True):
-        super().__init__()
-        self.num_groups = num_groups
-        self.num_features = num_features
-        self.eps = eps
-        self.affine = affine
-        if self.affine:
-            self.weight = Parameter(np.ones(num_features, dtype=np.float32))
-            self.bias = Parameter(np.zeros(num_features, dtype=np.float32))
-        else:
-            self.weight = None
-            self.bias = None
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        if self.affine:
-            M.init.ones_(self.weight)
-            M.init.zeros_(self.bias)
-
-    def forward(self, x):
-        output = x.reshape(x.shape[0], self.num_groups, -1)
-        mean = F.mean(output, axis=2, keepdims=True)
-        var = F.mean(output * output, axis=2, keepdims=True) - mean * mean
-
-        output = (output - mean) / F.sqrt(var + self.eps)
-        output = output.reshape(x.shape)
-        if self.affine:
-            output = self.weight.reshape(1, -1, 1, 1) * output + \
-                self.bias.reshape(1, -1, 1, 1)
-
-        return output
-
-    def _module_info_string(self) -> str:
-        s = "{num_groups}, {num_features}, eps={eps}, affine={affine}"
-        return s.format(**self.__dict__)
+from megengine.module.normalization import GroupNorm, InstanceNorm, LayerNorm
 
 
 def get_norm(norm):
     """
     Args:
-        norm (str): currently support "BN", "SyncBN", "FrozenBN" and "GN"
+        norm (str): currently support "BN", "SyncBN", "FrozenBN", "GN", "LN" and "IN"
 
     Returns:
         M.Module or None: the normalization layer
@@ -86,5 +45,7 @@ def get_norm(norm):
         "SyncBN": M.SyncBatchNorm,
         "FrozenBN": partial(M.BatchNorm2d, freeze=True),
         "GN": GroupNorm,
+        "LN": LayerNorm,
+        "IN": InstanceNorm,
     }[norm]
     return norm

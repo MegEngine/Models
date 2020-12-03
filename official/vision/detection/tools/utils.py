@@ -16,7 +16,7 @@ from tabulate import tabulate
 import cv2
 import numpy as np
 
-from megengine.data import Collator, RandomSampler, Sampler
+from megengine.data import Collator, MapSampler, RandomSampler
 from megengine.data.dataset import VisionDataset
 
 from official.vision.detection.tools.data_mapper import data_mapper
@@ -103,7 +103,7 @@ class GroupedRandomSampler(RandomSampler):
         raise NotImplementedError("len() of GroupedRandomSampler is not well-defined.")
 
 
-class InferenceSampler(Sampler):
+class InferenceSampler(MapSampler):
     def __init__(self, dataset, batch_size=1, world_size=None, rank=None):
         super().__init__(dataset, batch_size, False, None, world_size, rank)
         begin = self.num_samples * self.rank

@@ -147,7 +147,7 @@ class RPN(M.Module):
                 scores.detach()
                 # prev nms top n
                 scores, order = F.topk(scores, descending=True, k=prev_nms_top_n)
-                proposals = proposals[order, :]
+                proposals = proposals[order]
 
                 batch_proposal_list.append(proposals)
                 batch_score_list.append(scores)
@@ -161,10 +161,9 @@ class RPN(M.Module):
             proposals = layers.get_clipped_boxes(proposals, im_info[bid])
             # filter invalid proposals and apply total level nms
             keep_mask = layers.filter_boxes(proposals)
-            _, keep_inds = F.cond_take(keep_mask == 1, keep_mask)
-            proposals = proposals[keep_inds, :]
-            scores = scores[keep_inds]
-            levels = levels[keep_inds]
+            proposals = proposals[keep_mask]
+            scores = scores[keep_mask]
+            levels = levels[keep_mask]
             nms_keep_inds = layers.batched_nms(
                 proposals, scores, levels, self.cfg.rpn_nms_threshold, post_nms_top_n
             )

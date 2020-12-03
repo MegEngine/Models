@@ -15,6 +15,7 @@ import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 from megengine import Tensor
+from megengine.module.normalization import GroupNorm
 
 from official.vision.detection import layers
 
@@ -45,12 +46,12 @@ class PointHead(M.Module):
             cls_subnet.append(
                 M.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
             )
-            cls_subnet.append(layers.GroupNorm(32, in_channels))
+            cls_subnet.append(GroupNorm(32, in_channels))
             cls_subnet.append(M.ReLU())
             bbox_subnet.append(
                 M.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
             )
-            bbox_subnet.append(layers.GroupNorm(32, in_channels))
+            bbox_subnet.append(GroupNorm(32, in_channels))
             bbox_subnet.append(M.ReLU())
 
         self.cls_subnet = M.Sequential(*cls_subnet)
