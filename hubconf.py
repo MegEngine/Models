@@ -34,6 +34,8 @@ from official.vision.detection.configs import (
     retinanet_res50_coco_1x_800size,
     retinanet_res101_coco_2x_800size,
     retinanet_resx101_coco_2x_800size,
+    freeanchor_res50_coco_1x_800size,
+    freeanchor_res101_coco_2x_800size,
     fcos_res50_coco_1x_800size,
     fcos_res101_coco_2x_800size,
     fcos_resx101_coco_2x_800size,
@@ -41,7 +43,7 @@ from official.vision.detection.configs import (
     atss_res101_coco_2x_800size,
     atss_resx101_coco_2x_800size,
 )
-from official.vision.detection.models import FasterRCNN, RetinaNet, FCOS, ATSS
+from official.vision.detection.models import FasterRCNN, RetinaNet, FreeAnchor, FCOS, ATSS
 from official.vision.detection.tools.utils import DetEvaluator
 from official.vision.keypoints.inference import KeypointEvaluator
 from official.vision.keypoints.models import (

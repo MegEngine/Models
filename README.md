@@ -54,88 +54,24 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 
 ### 图像分类
 
-图像分类是计算机视觉的基础任务。许多计算机视觉的其它任务（例如物体检测）都使用了基于图像分类的预训练模型。因此，我们提供了各种在ImageNet上预训练好的分类模型，包括[ResNet](./official/vision/classification/resnet)系列, [Shufflenet](./official/vision/classification/shufflenet)系列等，这些模型在**ImageNet验证集**上的测试结果如下表：
-
-| 模型 | top1 acc | top5 acc |
-| --- | :---: | :---: |
-| ResNet18 | 70.312 | 89.430 |
-| ResNet34 | 73.960 | 91.630 |
-| ResNet50 | 76.254 | 93.056 |
-| ResNet101 | 77.944 | 93.844 |
-| ResNet152 | 78.582 | 94.130 |
-| ResNeXt50 32x4d | 77.592 | 93.644 |
-| ResNeXt101 32x8d| 79.520 | 94.586 |
-| ShuffleNetV2 x0.5 | 60.696 | 82.190 |
-| ShuffleNetV2 x1.0 | 69.372 | 88.764 |
-| ShuffleNetV2 x1.5 | 72.806 | 90.792 |
-| ShuffleNetV2 x2.0 | 75.074 | 92.278 |
+图像分类是计算机视觉的基础任务。许多计算机视觉的其它任务（例如物体检测）都使用了基于图像分类的预训练模型。因此，我们提供了各种在ImageNet上预训练好的分类模型，
+具体实现模型参考[这里](./official/vision/classification).
 
 ### 目标检测
 
-目标检测同样是计算机视觉中的常见任务，我们提供了多个经典的目标检测模型，这些模型在COCO2017验证集上的测试结果如下：
-
-| 模型                                | mAP<br>@5-95 |
-| ---                                 | :---:        |
-| retinanet-res50-coco-1x-800size     | 37.0         |
-| retinanet-res101-coco-2x-800size    | 41.1         |
-| retinanet-resx101-coco-2x-800size   | 42.7         |
-| faster-rcnn-res50-coco-1x-800size   | 38.0         |
-| faster-rcnn-res101-coco-2x-800size  | 42.5         |
-| faster-rcnn-resx101-coco-2x-800size | 43.6         |
-| free-anchor-res50-coco-1x-800size   | 38.9         |
-| free-anchor-res101-coco-2x-800size  | 43.3         |
-| fcos-res50-coco-1x-800size          | 39.7         |
-| fcos-res101-coco-2x-800size         | 44.1         |
-| fcos-resx101-coco-2x-800size        | 44.9         |
-| atss-res50-coco-1x-800size          | 40.1         |
-| atss-res101-coco-2x-800size         | 44.5         |
-| atss-resx101-coco-2x-800size        | 45.9         |
+目标检测同样是计算机视觉中的常见任务，我们提供了多个经典的目标检测模型，具体模型的实现可以参考[这里](./official/vision/detection).
+这些模型在COCO2017验证集上的测试结果如下：
 
 ### 图像分割
 
-我们也提供了经典的语义分割模型[DeepLabV3+](./official/vision/segmentation/)，这个模型在Pascal VOC2012验证集上的测试结果如下：
-
-| 模型                             | mIoU |
-| ---                              | :--: |
-| deeplabv3plus-res101-voc-512size | 79.5 |
-
-在Cityscapes验证集上的测试结果如下：
-
-| 模型                                    | mIoU |
-| ---                                     | :--: |
-| deeplabv3plus-res101-cityscapes-768size | 78.5 |
+语意分割也是计算机视觉中的一项基础任务，为此我们也提供了经典的语义分割模型，具体可以参考[这里](./official/vision/segmentation/).
 
 ### 人体关节点检测
 
-我们提供了人体关节点检测的经典模型[SimpleBaseline](https://arxiv.org/pdf/1804.06208.pdf)和高精度模型[MSPN](https://arxiv.org/pdf/1901.00148.pdf)，使用在COCO val2017上人体检测AP为56的检测结果，提供的模型在COCO val2017上的关节点检测结果为:
-
-|Methods|Backbone|Input Size| AP | Ap .5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
-|---|:---:|---|---|---|---|---|---|---|---|---|---|---|
-| SimpleBaseline |Res50 |256x192| 0.712 | 0.887 | 0.779 | 0.673 | 0.785 | 0.782 | 0.932 | 0.839 | 0.730 | 0.854 |
-| SimpleBaseline |Res101|256x192| 0.722 | 0.891 | 0.795 | 0.687 | 0.795 | 0.794 | 0.936 | 0.855 | 0.745 | 0.863 |
-| SimpleBaseline |Res152|256x192| 0.724 | 0.888 | 0.794 | 0.688 | 0.795 | 0.795 | 0.934 | 0.856 | 0.746 | 0.863 |
-| MSPN_4stage |MSPN|256x192| 0.752 | 0.900 | 0.819 | 0.716 | 0.825 | 0.819 | 0.943 | 0.875 | 0.770 | 0.887 |
+我们提供了人体关节点检测的经典模型和高精度模型，具体的实现可以参考[这里](./official/vision/keypoints).
 
 ### 自然语言处理
 
 我们同样支持一些常见的自然语言处理模型，模型的权重来自Google的pre-trained models, 用户可以直接使用`megengine.hub`轻松的调用预训练的bert模型。
 
 另外，我们在[bert](./official/nlp/bert)中还提供了更加方便的脚本, 可以通过任务名直接获取到对应字典, 配置, 与预训练模型。
-
-| 模型                       | 字典 | 配置 |
-| ---                        |  --- |  --- |
-| wwm_cased_L-24_H-1024_A-16| [link](https://data.megengine.org.cn/models/weights/bert/wwm_cased_L-24_H-1024_A-16/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/wwm_cased_L-24_H-1024_A-16/bert_config.json)
-| wwm_uncased_L-24_H-1024_A-16| [link](https://data.megengine.org.cn/models/weights/bert/wwm_uncased_L-24_H-1024_A-16/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/wwm_uncased_L-24_H-1024_A-16/bert_config.json)
-| cased_L-12_H-768_A-12| [link](https://data.megengine.org.cn/models/weights/bert/cased_L-12_H-768_A-12/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/cased_L-12_H-768_A-12/bert_config.json)
-| cased_L-24_H-1024_A-16| [link](https://data.megengine.org.cn/models/weights/bert/cased_L-24_H-1024_A-16/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/cased_L-24_H-1024_A-16/bert_config.json)
-| uncased_L-12_H-768_A-12| [link](https://data.megengine.org.cn/models/weights/bert/uncased_L-12_H-768_A-12/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/uncased_L-12_H-768_A-12/bert_config.json)
-| uncased_L-24_H-1024_A-16| [link](https://data.megengine.org.cn/models/weights/bert/uncased_L-24_H-1024_A-16/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/uncased_L-24_H-1024_A-16/bert_config.json)
-| chinese_L-12_H-768_A-12| [link](https://data.megengine.org.cn/models/weights/bert/chinese_L-12_H-768_A-12/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/chinese_L-12_H-768_A-12/bert_config.json)
-| multi_cased_L-12_H-768_A-12| [link](https://data.megengine.org.cn/models/weights/bert/multi_cased_L-12_H-768_A-12/vocab.txt) | [link](https://data.megengine.org.cn/models/weights/bert/multi_cased_L-12_H-768_A-12/bert_config.json)
-
-在glue_data/MRPC数据集中使用默认的超参数进行微调和评估，评估结果介于84％和88％之间。
-
-| Dataset | pretrained_bert | acc |
-| --- |   --- |  --- |
-| glue_data/MRPC |   uncased_L-12_H-768_A-12 |  86.25% |
-
