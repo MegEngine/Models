@@ -9,16 +9,15 @@
 
 from tqdm import tqdm
 
-# pylint: disable=import-outside-toplevel
-import config_args
 from mrpc_dataset import MRPCDataset
 
 import megengine as mge
 import megengine.functional as F
 
+from official.nlp.bert.config_args import get_args
 from official.nlp.bert.model import BertForSequenceClassification, create_hub_bert
 
-args = config_args.get_args()
+args = get_args()
 logger = mge.get_logger(__name__)
 
 
