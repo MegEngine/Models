@@ -9,7 +9,7 @@
 from .atss import *
 from .faster_rcnn import *
 from .fcos import *
-from .free_anchor import *
+from .freeanchor import *
 from .retinanet import *
 
 _EXCLUDE = {}
