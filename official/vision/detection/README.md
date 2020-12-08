@@ -6,8 +6,10 @@
 
 - [RetinaNet](https://arxiv.org/abs/1708.02002)
 - [Faster R-CNN](https://arxiv.org/abs/1612.03144)
+- [FreeAnchor](https://arxiv.org/abs/1909.02466)
 - [FCOS](https://arxiv.org/abs/1904.01355)
 - [ATSS](https://arxiv.org/abs/1912.02424)
+
 
 网络在COCO2017验证集上的性能和结果如下：
 
@@ -19,7 +21,8 @@
 | faster-rcnn-res50-coco-1x-800size   | 38.0         | 2             |
 | faster-rcnn-res101-coco-2x-800size  | 42.5         | 2             |
 | faster-rcnn-resx101-coco-2x-800size | 43.6         | 2             |
-| free-anchor-res50-coco-1x-800size   | 38.5         | 2             |
+| free-anchor-res50-coco-1x-800size   | 38.9         | 2             |
+| free-anchor-res101-coco-2x-800size  | 43.3         | 2             |
 | fcos-res50-coco-1x-800size          | 39.7         | 2             |
 | fcos-res101-coco-2x-800size         | 44.1         | 2             |
 | fcos-resx101-coco-2x-800size        | 44.9         | 2             |
