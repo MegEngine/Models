@@ -33,7 +33,7 @@ class FreeAnchor(M.Module):
         self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
         self.stride_list = np.array(cfg.stride, dtype=np.float32)
-        self.in_features = ["p3", "p4", "p5", "p6", "p7"]
+        self.in_features = cfg.in_features
 
         # ----------------------- build backbone ------------------------ #
         bottom_up = getattr(resnet, cfg.backbone)(
@@ -147,23 +147,16 @@ class FreeAnchor(M.Module):
             gt_pred_prob = F.clip(
                 (overlaps - thresh1) / (thresh2 - thresh1), lower=0, upper=1.0)
 
-            # guarantee that nonzero_idx is not empty
-            fill_prob = False
-            if gt_pred_prob.max() <= clamp_eps:
-                fill_prob = True
-                gt_pred_prob[0, 0] = 0.001
-
-            _, nonzero_idx = F.cond_take(gt_pred_prob != 0, gt_pred_prob)
-            # since nonzeros is only 1 dim, use num_anchor to get real indices
-            num_anchors = gt_pred_prob.shape[1]
-            anchors_idx = nonzero_idx % num_anchors
-            gt_idx = nonzero_idx // num_anchors
-
             image_boxes_prob = F.zeros(pred_logits.shape[1:]).detach()
-            image_boxes_prob[anchors_idx, labels[gt_idx]] = gt_pred_prob[gt_idx, anchors_idx]
-            # remove effect of setting gt_pred_prob
-            if fill_prob:
-                image_boxes_prob[0, 0] = 0.0
+            # guarantee that nonzero_idx is not empty
+            if gt_pred_prob.max() > clamp_eps:
+                _, nonzero_idx = F.cond_take(gt_pred_prob != 0, gt_pred_prob)
+                # since nonzeros is only 1 dim, use num_anchor to get real indices
+                num_anchors = gt_pred_prob.shape[1]
+                anchors_idx = nonzero_idx % num_anchors
+                gt_idx = nonzero_idx // num_anchors
+                image_boxes_prob[anchors_idx, labels[gt_idx]] = gt_pred_prob[gt_idx, anchors_idx]
+
             box_prob_list.append(image_boxes_prob)
 
             # construct bags for objects
@@ -178,13 +171,12 @@ class FreeAnchor(M.Module):
 
             matched_idx = matched_idx.detach()
             matched_idx_flatten = matched_idx.reshape(-1)
-            gather_idx = labels.reshape(-1, 1, 1)
-            gather_idx = F.broadcast_to(gather_idx, (num_gt, bucket_size, 1))
+            gather_idx = labels.reshape(-1, 1)
+            gather_idx = F.broadcast_to(gather_idx, (num_gt, bucket_size))
 
             gather_src = pred_scores[bid, matched_idx_flatten]
             gather_src = gather_src.reshape(num_gt, bucket_size, -1)
-            matched_score = F.gather(gather_src, 2, gather_idx)
-            matched_score = F.squeeze(matched_score, axis=2)
+            matched_score = F.indexing_one_hot(gather_src, gather_idx, axis=2)
 
             topk_anchors = anchors[matched_idx_flatten]
             boxes_broad_cast = F.broadcast_to(
@@ -254,6 +246,7 @@ class FreeAnchorConfig:
         self.stride = [8, 16, 32, 64, 128]
         self.reg_mean = [0.0, 0.0, 0.0, 0.0]
         self.reg_std = [0.1, 0.1, 0.2, 0.2]
+        self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         self.anchor_scales = [
             [x, x * 2 ** (1.0 / 3), x * 2 ** (2.0 / 3)]
@@ -262,22 +255,18 @@ class FreeAnchorConfig:
         self.anchor_ratios = [[0.5, 1, 2]]
         self.anchor_offset = 0.5
 
-        # self.match_thresholds = [0.4, 0.5]
-        # self.match_labels = [0, -1, 1]
-        # self.match_allow_low_quality = True
         self.class_aware_box = False
         self.cls_prior_prob = 0.02
 
         # ------------------------ loss cfg -------------------------- #
         self.focal_loss_alpha = 0.5
         self.focal_loss_gamma = 2
-        self.smooth_l1_beta = 0.1  # use L1 loss when beta = 0
-        # self.reg_loss_weight = 1.0
+        self.smooth_l1_beta = 0  # use L1 loss
         self.reg_loss_weight = 0.75
         self.num_losses = 3
 
         # ------------------------ training cfg ---------------------- #
-        self.train_image_short_size = 800
+        self.train_image_short_size = (640, 672, 704, 736, 768, 800)
         self.train_image_max_size = 1333
 
         self.basic_lr = 0.01 / 16  # The basic learning rate for single-image

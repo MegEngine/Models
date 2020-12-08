@@ -52,7 +52,7 @@ def get_padded_tensor(
 
 def safelog(x, eps=None):
     if eps is None:
-        eps = np.finfo(x.dtype).tiny
+        eps = np.finfo(x.dtype).eps
     return F.log(F.maximum(x, eps))
 
 

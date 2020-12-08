@@ -12,11 +12,22 @@ from megengine import hub
 from official.vision.detection import models
 
 
+class CustomFreeAnchorConfig(models.FreeAnchorConfig):
+    def __init__(self):
+        super().__init__()
+
+        self.backbone = "resnet101"
+
+        # ------------------------ training cfg ---------------------- #
+        self.max_epoch = 36
+        self.lr_decay_stages = [24, 32]
+
+
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "freeanchor_coco_res50_1x_800size_38dot9_648246cf.pkl"
+    "freeanchor_coco_res101_2x_800size_43dot3_61b20bfa.pkl"
 )
-def freeanchor_res50_coco_1x_800size(**kwargs):
+def freeanchor_res101_coco_2x_800size(**kwargs):
     r"""
     RetinaNet trained from COCO dataset.
     `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
@@ -28,4 +39,4 @@ def freeanchor_res50_coco_1x_800size(**kwargs):
 
 
 Net = models.FreeAnchor
-Cfg = models.FreeAnchorConfig
+Cfg = CustomFreeAnchorConfig
