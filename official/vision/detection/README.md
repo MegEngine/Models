@@ -6,8 +6,10 @@
 
 - [RetinaNet](https://arxiv.org/abs/1708.02002)
 - [Faster R-CNN](https://arxiv.org/abs/1612.03144)
+- [FreeAnchor](https://arxiv.org/abs/1909.02466)
 - [FCOS](https://arxiv.org/abs/1904.01355)
 - [ATSS](https://arxiv.org/abs/1912.02424)
+
 
 网络在COCO2017验证集上的性能和结果如下：
 
@@ -19,6 +21,8 @@
 | faster-rcnn-res50-coco-1x-800size   | 38.0         | 2             |
 | faster-rcnn-res101-coco-2x-800size  | 42.5         | 2             |
 | faster-rcnn-resx101-coco-2x-800size | 43.6         | 2             |
+| freeanchor-res50-coco-1x-800size    | 38.9         | 2             |
+| freeanchor-res101-coco-2x-800size   | 43.3         | 2             |
 | fcos-res50-coco-1x-800size          | 39.7         | 2             |
 | fcos-res101-coco-2x-800size         | 44.1         | 2             |
 | fcos-resx101-coco-2x-800size        | 44.9         | 2             |
@@ -127,6 +131,7 @@ python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
 - [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002) Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He and Piotr Dollár. IEEE International Conference on Computer Vision (ICCV), 2017.
 - [Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks](https://arxiv.org/abs/1506.01497) Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun. Neural Information Processing Systems (NIPS), 2015.
 - [Feature Pyramid Networks for Object Detection](https://arxiv.org/abs/1612.03144) Tsung-Yi Lin, Piotr Dollár, Ross Girshick, Kaiming He, Bharath Hariharan and Serge Belongie. IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2017.
+- [FreeAnchor: Learning to Match Anchors for Visual Object Detection](https://arxiv.org/abs/1909.02466) Xiaosong Zhang, Fang Wan, Chang Liu, Rongrong Ji and Qixiang Ye. Neural Information Processing Systems (NeurIPS), 2019.
 - [FCOS: Fully Convolutional One-Stage Object Detection](https://arxiv.org/abs/1904.01355) Zhi Tian, Chunhua Shen, Hao Chen, and Tong He. IEEE International Conference on Computer Vision (ICCV), 2019.
 - [Bridging the Gap Between Anchor-based and Anchor-free Detection via Adaptive Training Sample Selection](https://arxiv.org/abs/1912.02424) Shifeng Zhang, Cheng Chi, Yongqiang Yao, Zhen Lei, and Stan Z. Li. IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2020.
 - [Microsoft COCO: Common Objects in Context](https://arxiv.org/abs/1405.0312) Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr Dollár, and C Lawrence Zitnick. European Conference on Computer Vision (ECCV), 2014.
