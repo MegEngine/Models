@@ -60,7 +60,6 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 ### 目标检测
 
 目标检测同样是计算机视觉中的常见任务，我们提供了多个经典的目标检测模型，具体模型的实现可以参考[这里](./official/vision/detection).
-这些模型在COCO2017验证集上的测试结果如下：
 
 ### 图像分割
 
