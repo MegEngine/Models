@@ -153,24 +153,6 @@ def find_keypoints(pred, bbox):
     return results
 
 
-def find_results(pred, bbox, info):
-
-    results = find_keypoints(pred, bbox)
-
-    final_score = float(results[:, -1].mean() * info[-1])
-    image_id = int(info[-2])
-    keypoints = results.copy()
-    keypoints[:, -1] = 1
-    keypoints = keypoints.reshape(-1,).tolist()
-    instance = {
-        "image_id": image_id,
-        "category_id": 1,
-        "score": final_score,
-        "keypoints": keypoints,
-    }
-    return instance
-
-
 def worker(
     arch,
     model_file,
@@ -238,7 +220,7 @@ def worker(
                 "keypoints": keypoints,
             }
 
-            result_queue.put_nowait(instance)
+            result_queue.put(instance)
 
 
 def make_parser():

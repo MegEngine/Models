@@ -6,8 +6,6 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import math
-
 import megengine.functional as F
 import megengine.hub as hub
 import megengine.module as M
@@ -42,23 +40,6 @@ class ResnetBody(M.Module):
         self.layer4 = self._make_layer(
             block, channels[3], layers[3], stride=2, norm=norm,
         )
-
-        for m in self.modules():
-            if isinstance(m, M.Conv2d):
-                M.init.msra_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-                if m.bias is not None:
-                    fan_in, _ = M.init.calculate_fan_in_and_fan_out(m.weight)
-                    bound = 1 / math.sqrt(fan_in)
-                    M.init.uniform_(m.bias, -bound, bound)
-            elif isinstance(m, M.BatchNorm2d):
-                M.init.ones_(m.weight)
-                M.init.zeros_(m.bias)
-            elif isinstance(m, M.Linear):
-                M.init.msra_uniform_(m.weight, a=math.sqrt(5))
-                if m.bias is not None:
-                    fan_in, _ = M.init.calculate_fan_in_and_fan_out(m.weight)
-                    bound = 1 / math.sqrt(fan_in)
-                    M.init.uniform_(m.bias, -bound, bound)
 
     def _make_layer(self, block, channels, blocks, stride=1, norm=M.BatchNorm2d):
         layers = []
@@ -187,9 +168,9 @@ class MSPN(M.Module):
                     M.Conv2d(mid_channel, 64, 1, 1, 0), norm(64), M.ReLU()
                 )
 
-        self._initialize_weights()
+        self.initialize_weights()
 
-    def _initialize_weights(self):
+    def initialize_weights(self):
 
         for m in self.modules():
             if isinstance(m, M.Conv2d):
@@ -212,8 +193,8 @@ class MSPN(M.Module):
         loss = 0
         for stage_out in outs:
             for ind, scale_out in enumerate(stage_out[:-1]):
-                thre = 0.1 if ind == 3 else 1.1
-                loss_weight = 1 if ind == 3 else 1 / 4 / len(outs)
+                thre = 1.1
+                loss_weight = 1 / 4 / len(outs)
                 label = heatmaps[:, ind] * F.expand_dims((heat_valid > thre), [2, 3])
                 scale_out = scale_out * F.expand_dims((heat_valid > thre), [2, 3])
                 tmp = F.loss.square_loss(scale_out, label)

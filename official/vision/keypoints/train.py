@@ -115,7 +115,7 @@ def worker(master_ip, port, rank, world_size, args):
         start_epoch = file["epoch"]
 
     optimizer = optim.Adam(
-        model.parameters(), lr=cfg.initial_lr  # , weight_decay=cfg.weight_decay
+        model.parameters(), lr=cfg.initial_lr,  # weight_decay=cfg.weight_decay
     )
 
     gm = GradManager()
@@ -182,7 +182,7 @@ def worker(master_ip, port, rank, world_size, args):
             cfg.output_shape,
             cfg.keypoint_num,
             cfg.heat_thr,
-            cfg.heat_kernel if args.multi_scale_supervision else cfg.heat_kernel[-1:],
+            cfg.heat_kernels if args.multi_scale_supervision else cfg.heat_kernels[-1:],
             cfg.heat_range,
         ),
     )

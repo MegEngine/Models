@@ -87,8 +87,6 @@ class COCOJoints(VisionDataset):
 
         selected_anns = []
         for ann in dataset["annotations"]:
-            # if "image_id" in ann.keys() and ann["image_id"] not in self.ids:
-            #     continue
 
             if "iscrowd" in ann.keys() and ann["iscrowd"]:
                 continue
@@ -215,10 +213,6 @@ class HeatmapCollator(Collator):
 
                 heatmap *= self.heat_range
 
-                # maxi = np.max(heatmap, (1, 2))
-                # heatmap[maxi > self.heat_thr] /= (
-                #     maxi[:, None, None][maxi > self.heat_thr] / self.heat_range
-                # )
                 heatmaps.append(heatmap)
 
             batch_data["heatmap"].append(np.array(heatmaps))

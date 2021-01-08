@@ -43,8 +43,8 @@ class Config:
     data_root = "/data/coco_data/"
 
     # normalize
-    img_mean = [255 * m for m in [0.406, 0.485, 0.456]]
-    img_std = [255 * m for m in [0.225, 0.229, 0.224]]
+    img_mean = [255 * m for m in [0.485, 0.456, 0.406]]
+    img_std = [255 * m for m in [0.229, 0.224, 0.225]]
 
     # shape
     input_shape = (256, 192)
@@ -52,9 +52,9 @@ class Config:
 
     # heat maps
     keypoint_num = 17
-    heat_kernel = [k * 4 for k in [2.6, 2.0, 1.7, 1.4]]
+    heat_kernels = [k * 4 for k in [2.6, 2.0, 1.7, 1.4]]
     heat_thr = 1e-2
-    heat_range = 1
+    heat_range = 255
 
     # augmentation
     half_body_transform = True

@@ -221,9 +221,9 @@ class HRNet(M.Module):
 
         self.last_layer = M.Conv2d(base_channels, self.keypoint_num, 1, 1, 0)
 
-        self._initialize_weights()
+        self.initialize_weights()
 
-    def _initialize_weights(self):
+    def initialize_weights(self):
 
         for m in self.modules():
             if isinstance(m, M.Conv2d):
