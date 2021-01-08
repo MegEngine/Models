@@ -238,13 +238,13 @@ class RandomBoxAffine(VisionTransform):
         scale = 1
         is_scale = np.random.random() < self.scale_prob
         if is_scale:
-            scale = (np.random.random() - 1) * 2 * self.scale_range + 1
+            scale = (np.random.random() - 0.5) * 2 * self.scale_range + 1
             scale = np.clip(scale, 1 - self.scale_range, 1 + self.scale_range)
 
         degree = 0
         is_rotate = np.random.random() < self.rotate_prob
         if is_rotate:
-            degree = (np.random.random() - 1) * 2 * self.degrees_range
+            degree = (np.random.random() - 0.5) * 2 * self.degrees_range
             degree = np.clip(degree, -2 * self.degrees_range, 2 * self.degrees_range)
 
         bbox = input[self.order.index("boxes")][0]
