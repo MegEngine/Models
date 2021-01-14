@@ -200,7 +200,7 @@ def worker(
 
         outs = model.predict(mge.tensor(data)).numpy()
         preds = outs[: img.shape[0]]
-        preds_fliped = outs[img.shape[0]:, cfg.keypoint_flip_order, :, ::-1]
+        preds_fliped = outs[img.shape[0] :, cfg.keypoint_flip_order, :, ::-1]
         preds = (preds + preds_fliped) / 2
 
         for i in range(preds.shape[0]):
@@ -227,7 +227,12 @@ def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--ngpus", default=None, type=int)
     parser.add_argument("-b", "--batch_size", default=None, type=int)
-    parser.add_argument("-s", "--save_dir", default='/data/models/simplebaseline_res50/results/', type=str)
+    parser.add_argument(
+        "-s",
+        "--save_dir",
+        default="/data/models/simplebaseline_res50/results/",
+        type=str,
+    )
     parser.add_argument(
         "-dt",
         "--dt_file",
