@@ -200,7 +200,7 @@ def worker(
 
         outs = model.predict(mge.tensor(data)).numpy()
         preds = outs[: img.shape[0]]
-        preds_fliped = outs[img.shape[0] :, cfg.keypoint_flip_order, :, ::-1]
+        preds_fliped = outs[img.shape[0]:, cfg.keypoint_flip_order, :, ::-1]
         preds = (preds + preds_fliped) / 2
 
         for i in range(preds.shape[0]):
