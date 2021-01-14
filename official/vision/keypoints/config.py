@@ -14,16 +14,6 @@ class Config:
         "simplebaseline_res50",
         "simplebaseline_res101",
         "simplebaseline_res152",
-        "hrnet_w32",
-        "hrnet_w48",
-        "mspn_4stage",
-        "rsn18",
-        "rsn50",
-        "rsn50_stage",
-        "danet72",
-        "danet88",
-        "danet98",
-        "danet102",
     ]
 
     # train
@@ -33,7 +23,7 @@ class Config:
     batch_size = 32
     epochs = 200
     warm_epochs = 0
-    weight_decay = 1e-5
+    weight_decay = 0
 
     report_freq = 10
     save_freq = 1
@@ -43,8 +33,8 @@ class Config:
     data_root = "/data/coco_data/"
 
     # normalize
-    img_mean = [255 * m for m in [0.485, 0.456, 0.406]]
-    img_std = [255 * m for m in [0.229, 0.224, 0.225]]
+    img_mean = [103.530, 116.280, 123.675]
+    img_std = [57.375, 57.120, 58.395]
 
     # shape
     input_shape = (256, 192)

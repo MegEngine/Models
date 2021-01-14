@@ -227,6 +227,7 @@ def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--ngpus", default=None, type=int)
     parser.add_argument("-b", "--batch_size", default=None, type=int)
+    parser.add_argument("-s", "--save_dir", default='/data/models/simplebaseline_res50/results/', type=str)
     parser.add_argument(
         "-dt",
         "--dt_file",
@@ -265,6 +266,11 @@ def main():
 
     parser = make_parser()
     args = parser.parse_args()
+    model_name = "{}_{}x{}".format(args.arch, cfg.input_shape[0], cfg.input_shape[1])
+    save_dir = os.path.join(args.save_dir, model_name)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    mge.set_log_file(os.path.join(save_dir, "log.txt"))
 
     args.ngpus = (
         dist.helper.get_device_count_by_fork("gpu")
@@ -329,7 +335,8 @@ def main():
         for p in procs:
             p.join()
 
-        json_path = "log-of-{}_epoch_{}.json".format(args.arch, epoch_num)
+        json_name = "log-of-{}_epoch_{}.json".format(args.arch, epoch_num)
+        json_path = os.path.join(save_dir, json_name)
         all_results = json.dumps(all_results)
         with open(json_path, "w") as fo:
             fo.write(all_results)

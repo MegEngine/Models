@@ -47,7 +47,6 @@ from official.vision.detection.models import FasterRCNN, RetinaNet, FreeAnchor, 
 from official.vision.detection.tools.utils import DetEvaluator
 from official.vision.keypoints.inference import KeypointEvaluator
 from official.vision.keypoints.models import (
-    mspn_4stage,
     simplebaseline_res50,
     simplebaseline_res101,
     simplebaseline_res152,

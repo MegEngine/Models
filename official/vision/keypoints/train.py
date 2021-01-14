@@ -115,7 +115,7 @@ def worker(master_ip, port, rank, world_size, args):
         start_epoch = file["epoch"]
 
     optimizer = optim.Adam(
-        model.parameters(), lr=cfg.initial_lr,  # weight_decay=cfg.weight_decay
+        model.parameters(), lr=cfg.initial_lr, weight_decay=cfg.weight_decay
     )
 
     gm = GradManager()
@@ -147,7 +147,7 @@ def worker(master_ip, port, rank, world_size, args):
 
     transforms = [
         T.Normalize(mean=cfg.img_mean, std=cfg.img_std),
-        RandomHorizontalFlip(0, keypoint_flip_order=cfg.keypoint_flip_order),
+        RandomHorizontalFlip(0.5, keypoint_flip_order=cfg.keypoint_flip_order)
     ]
 
     if cfg.half_body_transform:

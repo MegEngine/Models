@@ -55,7 +55,7 @@ class SimpleBaseline(M.Module):
         )
         self.last_layer = M.Conv2d(cfg.deconv_channels[-1], cfg.keypoint_num, 3, 1, 1)
 
-        self._initialize_weights()
+        self.initialize_weights()
 
     def calc_loss(self, images, heatmaps, heat_valid):
         out = self(images)
@@ -67,21 +67,20 @@ class SimpleBaseline(M.Module):
     def predict(self, images):
         return self(images)
 
-    def _initialize_weights(self):
+    def initialize_weights(self):
 
         for k, m in self.named_modules():
+            if self.cfg.backbone_pretrained and ("backbone" in k):
+                continue
             if isinstance(m, M.Conv2d):
-                if self.cfg.backbone_pretrained and ("backbone" in k):
-                    continue
                 M.init.normal_(m.weight, std=0.001)
                 for name, _ in m.named_parameters():
                     if name in ["bias"]:
                         M.init.zeros_(m.bias)
             if isinstance(m, M.ConvTranspose2d):
                 M.init.normal_(m.weight, std=0.001)
-                for name, _ in m.named_parameters():
-                    if name in ["bias"]:
-                        M.init.zeros_(m.bias)
+                if self.cfg.deconv_with_bias:
+                    M.init.zeros_(m.bias)
             if isinstance(m, M.BatchNorm2d):
                 M.init.ones_(m.weight)
                 M.init.zeros_(m.bias)
@@ -108,7 +107,7 @@ cfg = SimpleBaseline_Config()
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/keypoint_models/\
-        simplebaseline50_256x192_0_255_71_2.pkl"
+       simplebaseline_res101_256x192_0to255_71dot8_df6304.pkl"
 )
 def simplebaseline_res50(**kwargs):
 
