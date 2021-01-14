@@ -66,14 +66,6 @@ python3 train.py --arch simplebaseline_res50 \
                  --ngpus 8 \
                  
 ```
-训练MSPN:
-```bash
-python3 train.py --arch mspn_4stage \
-                 --resume /path/to/model \
-                 --ngpus 8 \
-                 --multi_scale_supervision
-
-```
 
 ## 如何测试
 
