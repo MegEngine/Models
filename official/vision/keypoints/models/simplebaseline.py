@@ -106,8 +106,8 @@ cfg = SimpleBaseline_Config()
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/keypoint_models/\
-       simplebaseline_res101_256x192_0to255_71dot8_df6304.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/"
+    "simplebaseline_res50_256x192_0to255_71dot1_2c0de7.pkl"
 )
 def simplebaseline_res50(**kwargs):
 
@@ -116,8 +116,8 @@ def simplebaseline_res50(**kwargs):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/keypoint_models/\
-        simplebaseline101_256x192_0_255_72_2.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/"
+    "simplebaseline_res101_256x192_0to255_71dot8_df6304.pkl"
 )
 def simplebaseline_res101(**kwargs):
 
@@ -126,8 +126,8 @@ def simplebaseline_res101(**kwargs):
 
 
 @hub.pretrained(
-    "https://data.megengine.org.cn/models/weights/keypoint_models/\
-        simplebaseline152_256x192_0_255_72_4.pkl"
+    "https://data.megengine.org.cn/models/weights/keypoint_models/"
+    "simplebaseline_res152_256x192_0to255_72dot3_18ba8e.pkl"
 )
 def simplebaseline_res152(**kwargs):
 
