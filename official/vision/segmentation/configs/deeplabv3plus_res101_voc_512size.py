@@ -51,7 +51,9 @@ def deeplabv3plus_res101_voc_512size(**kwargs):
     `"Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation"
     <https://arxiv.org/abs/1802.02611>`_
     """
-    return models.DeepLabV3Plus(**kwargs)
+    cfg = VOCConfig()
+    cfg.backbone_pretrained = False
+    return models.DeepLabV3Plus(cfg, **kwargs)
 
 
 Net = models.DeepLabV3Plus
