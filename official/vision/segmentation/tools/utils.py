@@ -13,7 +13,7 @@ from tabulate import tabulate
 
 import numpy as np
 
-from megengine.data import Sampler
+from megengine.data import MapSampler
 
 
 class AverageMeter:
@@ -57,7 +57,7 @@ def get_config_info(config):
     return config_table
 
 
-class InferenceSampler(Sampler):
+class InferenceSampler(MapSampler):
     def __init__(self, dataset, batch_size=1, world_size=None, rank=None):
         super().__init__(dataset, batch_size, False, None, world_size, rank)
         begin = self.num_samples * self.rank
