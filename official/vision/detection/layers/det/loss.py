@@ -7,7 +7,7 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import megengine.functional as F
-from megengine.core import Tensor
+from megengine import Tensor
 
 
 def binary_cross_entropy(logits: Tensor, targets: Tensor) -> Tensor:

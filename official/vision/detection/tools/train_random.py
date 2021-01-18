@@ -30,7 +30,6 @@ from official.vision.detection.tools.utils import (
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
-mge.device.set_prealloc_config(1024, 1024, 512 * 1024 * 1024, 2.0)
 
 
 def make_parser():
