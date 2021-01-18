@@ -31,6 +31,7 @@ from official.vision.keypoints.transforms import (
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
