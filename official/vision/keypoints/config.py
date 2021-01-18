@@ -6,23 +6,35 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+
 class Config:
-    ##############3## train ##############################################
+    # model
+    model_choices = [
+        "simplebaseline_res50",
+        "simplebaseline_res101",
+        "simplebaseline_res152",
+    ]
+
+    # train
     initial_lr = 3e-4
     lr_ratio = 0.1
 
     batch_size = 32
     epochs = 200
-    warm_epochs = 1
-    weight_decay = 1e-5
+    warm_epochs = 0
+    weight_decay = 0
 
-    ################## data ###############################################
+    report_freq = 10
+    save_freq = 1
+
+    # data
     # path
     data_root = "/data/coco_data/"
 
     # normalize
-    img_mean = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-    img_std = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+    img_mean = [103.530, 116.280, 123.675]
+    img_std = [57.375, 57.120, 58.395]
 
     # shape
     input_shape = (256, 192)
@@ -30,12 +42,11 @@ class Config:
 
     # heat maps
     keypoint_num = 17
-    heat_kernel = [2.6, 2.0, 1.7, 1.4]
+    heat_kernels = [k * 4 for k in [2.6, 2.0, 1.7, 1.4]]
     heat_thr = 1e-2
     heat_range = 255
 
-    ##################### augumentation #####################################
-
+    # augmentation
     half_body_transform = True
     extend_boxes = True
 
@@ -53,19 +64,21 @@ class Config:
 
     # scale
     scale_prob = 1
-    scale_range = [0.7, 1.3]
+    scale_range = 0.3
 
     # rorate
     rotation_prob = 0.6
-    rotate_range = [-45, 45]
+    rotate_range = 40
 
-    ############## testing settings ##########################################
+    # test settings
     test_aug_border = 10
     test_x_ext = 0.10
     test_y_ext = 0.10
     test_gaussian_kernel = 17
     second_value_aug = True
 
+    # inference settings
+    nms_thr = 0.7
     vis_colors = [
         [255, 0, 0],
         [255, 85, 0],
@@ -95,6 +108,8 @@ class Config:
         [0, 2],
         [1, 3],
         [2, 4],
+        [3, 5],
+        [4, 6],
         [5, 6],
         [5, 7],
         [7, 9],

@@ -6,21 +6,21 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import megengine as mge
-from megengine.data.dataset.vision.meta_vision import VisionDataset
-from megengine.data import Collator
-
-import numpy as np
-import cv2
-import os.path as osp
 import json
-from collections import defaultdict, OrderedDict
+import os.path as osp
+from collections import OrderedDict, defaultdict
+
+import cv2
+import numpy as np
+
+from megengine.data import Collator
+from megengine.data.dataset.vision.meta_vision import VisionDataset
 
 
 class COCOJoints(VisionDataset):
     """
     we cannot use the official implementation of COCO dataset here.
-    The output of __getitem__ function here should be a single person instead of a single image. 
+    The output of __getitem__ function here should be a single person instead of a single image.
     """
 
     supported_order = ("image", "keypoints", "boxes", "info")
@@ -47,7 +47,7 @@ class COCOJoints(VisionDataset):
 
     min_bbox_h = 0
     min_bbox_w = 0
-    min_box_area = 1500
+    min_bbox_area = 1500
     min_bbox_score = 1e-10
 
     def __init__(
@@ -87,8 +87,6 @@ class COCOJoints(VisionDataset):
 
         selected_anns = []
         for ann in dataset["annotations"]:
-            if "image_id" in ann.keys() and ann["image_id"] not in self.ids:
-                continue
 
             if "iscrowd" in ann.keys() and ann["iscrowd"]:
                 continue
@@ -129,8 +127,8 @@ class COCOJoints(VisionDataset):
         img_id = ann["image_id"]
         target = []
         for k in self.order:
-            if k == "image":
 
+            if k == "image":
                 file_name = self.imgs[img_id]["file_name"]
                 img_path = osp.join(self.root, self.image_set, file_name)
                 image = cv2.imread(img_path, cv2.IMREAD_COLOR)
@@ -186,13 +184,9 @@ class HeatmapCollator(Collator):
 
         self.stride = image_shape[1] // heatmap_shape[1]
 
-        x = np.arange(0, heatmap_shape[1], 1)
-        y = np.arange(0, heatmap_shape[0], 1)
-
-        grid_x, grid_y = np.meshgrid(x, y)
-
-        self.grid_x = grid_x[None].repeat(keypoint_num, 0)
-        self.grid_y = grid_y[None].repeat(keypoint_num, 0)
+        ax = (np.arange(0, heatmap_shape[1]) + 0.5) * self.stride - 0.5
+        ay = (np.arange(0, heatmap_shape[0]) + 0.5) * self.stride - 0.5
+        self.grid_x, self.grid_y = np.meshgrid(ax, ay)
 
     def apply(self, inputs):
         """
@@ -204,27 +198,21 @@ class HeatmapCollator(Collator):
 
             batch_data["data"].append(image)
 
-            joints = (keypoints[0, :, :2] + 0.5) / self.stride - 0.5
-            heat_valid = np.array(keypoints[0, :, -1]).astype(np.float32)
-            dis = (self.grid_x - joints[:, 0, np.newaxis, np.newaxis]) ** 2 + (
-                self.grid_y - joints[:, 1, np.newaxis, np.newaxis]
+            joint = keypoints[0, :, :2]
+            dis = (self.grid_x[None] - joint[:, 0, None, None]) ** 2 + (
+                self.grid_y[None] - joint[:, 1, None, None]
             ) ** 2
+            heat_valid = np.array(keypoints[0, :, -1]).astype(np.float32)
+
             heatmaps = []
             for k in self.heat_kernel:
+
                 heatmap = np.exp(-dis / 2 / k ** 2)
+                heatmap[heat_valid < 0.1] = 0
                 heatmap[heatmap < self.heat_thr] = 0
-                heatmap[heat_valid == 0] = 0
-                sum_for_norm = heatmap.sum((1, 2))
-                heatmap[sum_for_norm > 0] = (
-                    heatmap[sum_for_norm > 0]
-                    / sum_for_norm[sum_for_norm > 0][:, None, None]
-                )
-                maxi = np.max(heatmap, (1, 2))
-                heatmap[maxi > 1e-5] = (
-                    heatmap[maxi > 1e-5]
-                    / maxi[:, None, None][maxi > 1e-5]
-                    * self.heat_range
-                )
+
+                heatmap *= self.heat_range
+
                 heatmaps.append(heatmap)
 
             batch_data["heatmap"].append(np.array(heatmaps))
