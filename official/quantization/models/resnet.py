@@ -92,8 +92,16 @@ class Bottleneck(M.Module):
     expansion = 4
 
     def __init__(
-        self, in_channels, channels, stride=1, groups=1, base_width=64, dilation=1,
+        self,
+        in_channels,
+        channels,
+        stride=1,
+        groups=1,
+        base_width=64,
+        dilation=1,
+        norm=M.BatchNorm2d,
     ):
+        assert norm is M.BatchNorm2d, "Quant mode only support BatchNorm2d currently."
         super(Bottleneck, self).__init__()
         width = int(channels * (base_width / 64.0)) * groups
         self.conv_bn_relu1 = M.ConvBnRelu2d(in_channels, width, 1, 1, bias=False)
