@@ -32,7 +32,7 @@ def make_parser():
         "-w", "--weight_file", default=None, type=str, help="weights file",
     )
     parser.add_argument(
-        "-n", "--ngpus", default=1, type=int, help="total number of gpus for testing",
+        "-n", "--devices", default=1, type=int, help="total number of gpus for testing",
     )
     parser.add_argument(
         "-d", "--dataset_dir", default="/data/datasets", type=str,
@@ -70,26 +70,26 @@ def main():
                 os.path.basename(args.file).split(".")[0], epoch_num
             )
 
-        if args.ngpus > 1:
-            master_ip = "localhost"
-            port = dist.get_free_ports(1)[0]
-            dist.Server(port)
-
-            result_list = []
+        result_list = []
+        if args.devices > 1:
             result_queue = Queue(2000)
+
+            master_ip = "localhost"
+            server = dist.Server()
+            port = server.py_server_port
             procs = []
-            for i in range(args.ngpus):
+            for i in range(args.devices):
                 proc = Process(
                     target=worker,
                     args=(
                         current_network,
                         weight_file,
                         args.dataset_dir,
+                        result_queue,
                         master_ip,
                         port,
-                        args.ngpus,
+                        args.devices,
                         i,
-                        result_queue,
                     ),
                 )
                 proc.start()
@@ -99,15 +99,11 @@ def main():
 
             for _ in tqdm(range(num_imgs[cfg.test_dataset["name"]])):
                 result_list.append(result_queue.get())
+
             for p in procs:
                 p.join()
         else:
-            result_list = []
-
-            worker(
-                current_network, weight_file, args.dataset_dir,
-                None, None, 1, 0, result_list
-            )
+            worker(current_network, weight_file, args.dataset_dir, result_list)
 
         all_results = DetEvaluator.format(result_list, cfg)
         json_path = "log-of-{}/epoch_{}.json".format(
@@ -150,8 +146,8 @@ def main():
 
 
 def worker(
-    current_network, weight_file, dataset_dir,
-    master_ip, port, world_size, rank, result_list
+    current_network, weight_file, dataset_dir, result_list,
+    master_ip=None, port=None, world_size=1, rank=0
 ):
     if world_size > 1:
         dist.init_process_group(
@@ -161,8 +157,6 @@ def worker(
             rank=rank,
             device=rank,
         )
-
-    mge.device.set_default_device("gpu{}".format(rank))
 
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
@@ -176,8 +170,8 @@ def worker(
 
     evaluator = DetEvaluator(model)
 
-    test_loader = build_dataloader(rank, world_size, dataset_dir, model.cfg)
-    if world_size == 1:
+    test_loader = build_dataloader(dataset_dir, model.cfg)
+    if dist.get_world_size() == 1:
         test_loader = tqdm(test_loader)
 
     for data in test_loader:
@@ -194,19 +188,19 @@ def worker(
             "det_res": pred_res,
             "image_id": int(data[1][2][0].split(".")[0].split("_")[-1]),
         }
-        if world_size > 1:
+        if dist.get_world_size() > 1:
             result_list.put_nowait(result)
         else:
             result_list.append(result)
 
 
-def build_dataloader(rank, world_size, dataset_dir, cfg):
+def build_dataloader(dataset_dir, cfg):
     val_dataset = data_mapper[cfg.test_dataset["name"]](
         os.path.join(dataset_dir, cfg.test_dataset["name"], cfg.test_dataset["root"]),
         os.path.join(dataset_dir, cfg.test_dataset["name"], cfg.test_dataset["ann_file"]),
         order=["image", "info"],
     )
-    val_sampler = InferenceSampler(val_dataset, 1, world_size=world_size, rank=rank)
+    val_sampler = InferenceSampler(val_dataset, 1)
     val_dataloader = DataLoader(val_dataset, sampler=val_sampler, num_workers=2)
     return val_dataloader
 

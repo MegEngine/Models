@@ -7,7 +7,6 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import multiprocessing as mp
 import os
 import time
 
@@ -33,7 +32,7 @@ def main():
         "-f", "--file", default="net.py", type=str, help="net description file"
     )
     parser.add_argument(
-        "-n", "--ngpus", type=int, default=8, help="batch size for training"
+        "-n", "--devices", type=int, default=8, help="batch size for training"
     )
     parser.add_argument(
         "-d", "--dataset_dir", type=str, default="/data/datasets",
@@ -44,42 +43,21 @@ def main():
     args = parser.parse_args()
 
     # ------------------------ begin training -------------------------- #
-    logger.info("Device Count = %d", args.ngpus)
+    logger.info("Device Count = %d", args.devices)
 
     log_dir = "log-of-{}".format(os.path.basename(args.file).split(".")[0])
     if not os.path.isdir(log_dir):
         os.makedirs(log_dir)
 
-    if args.ngpus > 1:
-        master_ip = "localhost"
-        port = dist.get_free_ports(1)[0]
-        dist.Server(port)
-        processes = list()
-        for rank in range(args.ngpus):
-            process = mp.Process(
-                target=worker, args=(master_ip, port, args.ngpus, rank, args)
-            )
-            process.start()
-            processes.append(process)
-
-        for p in processes:
-            p.join()
+    if args.devices > 1:
+        trainer = dist.launcher(worker, n_gpus=args.devices)
+        trainer(args)
     else:
-        worker(None, None, 1, 0, args)
+        worker(args)
 
 
 # pylint: disable=too-many-branches
-def worker(master_ip, port, world_size, rank, args):
-    if world_size > 1:
-        dist.init_process_group(
-            master_ip=master_ip,
-            port=port,
-            world_size=world_size,
-            rank=rank,
-            device=rank,
-        )
-        logger.info("Init process group for gpu{} done".format(rank))
-
+def worker(args):
     current_network = import_from_file(args.file)
 
     model = current_network.Net(current_network.Cfg())
