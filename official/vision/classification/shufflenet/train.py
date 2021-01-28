@@ -48,13 +48,17 @@ def main():
         help="path to save checkpoint and log",
     )
     parser.add_argument(
-        "--epochs", default=240, help="number of total epochs to run (default: 240)"
+        "--epochs",
+        default=240,
+        type=int,
+        help="number of total epochs to run (default: 240)",
     )
     parser.add_argument(
         "-b",
         "--batch-size",
         metavar="SIZE",
         default=128,
+        type=int,
         help="batch size for single GPU (default: 128)",
     )
     parser.add_argument(
@@ -62,11 +66,14 @@ def main():
         "--learning-rate",
         metavar="LR",
         default=0.0625,
+        type=float,
         help="learning rate for single GPU (default: 0.0625)",
     )
-    parser.add_argument("--momentum", default=0.9, help="momentum (default: 0.9)")
     parser.add_argument(
-        "--weight-decay", default=4e-5, help="weight decay (default: 4e-5)"
+        "--momentum", default=0.9, type=float, help="momentum (default: 0.9)"
+    )
+    parser.add_argument(
+        "--weight-decay", default=4e-5, type=float, help="weight decay (default: 4e-5)"
     )
 
     parser.add_argument("-j", "--workers", default=4, type=int)
@@ -80,15 +87,15 @@ def main():
     )
 
     parser.add_argument("--dist-addr", default="localhost")
-    parser.add_argument("--dist-port", default=23456)
-    parser.add_argument("--world-size", default=1)
-    parser.add_argument("--rank", default=0)
+    parser.add_argument("--dist-port", default=23456, type=int)
+    parser.add_argument("--world-size", default=1, type=int)
+    parser.add_argument("--rank", default=0, type=int)
 
     args = parser.parse_args()
 
     # create server if is master
     if args.rank <= 0:
-        dist.Server(port=args.dist_port)
+        server = dist.Server(port=args.dist_port)  # pylint: disable=unused-variable
 
     # get device count
     with multiprocessing.Pool(1) as pool:
@@ -164,7 +171,10 @@ def worker(rank, world_size, ngpus_per_node, args):
             print("NOT include ", n, p.shape)
             params_nwd.append(p)
     opt = optim.SGD(
-        [{"params": params_wd}, {"params": params_nwd, "weight_decay": 0}, ],
+        [
+            {"params": params_wd},
+            {"params": params_nwd, "weight_decay": 0},
+        ],
         lr=args.lr,
         momentum=args.momentum,
         weight_decay=args.weight_decay * world_size,  # scale weight decay in "SUM" mode

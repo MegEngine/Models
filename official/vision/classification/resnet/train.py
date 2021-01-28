@@ -49,13 +49,17 @@ def main():
         help="path to save checkpoint and log",
     )
     parser.add_argument(
-        "--epochs", default=90, help="number of total epochs to run (default: 90)"
+        "--epochs",
+        default=90,
+        type=int,
+        help="number of total epochs to run (default: 90)",
     )
     parser.add_argument(
         "-b",
         "--batch-size",
         metavar="SIZE",
         default=64,
+        type=int,
         help="batch size for single GPU (default: 64)",
     )
     parser.add_argument(
@@ -63,11 +67,14 @@ def main():
         "--learning-rate",
         metavar="LR",
         default=0.025,
+        type=float,
         help="learning rate for single GPU (default: 0.025)",
     )
-    parser.add_argument("--momentum", default=0.9, help="momentum (default: 0.9)")
     parser.add_argument(
-        "--weight-decay", default=1e-4, help="weight decay (default: 0.9)"
+        "--momentum", default=0.9, type=float, help="momentum (default: 0.9)"
+    )
+    parser.add_argument(
+        "--weight-decay", default=1e-4, type=float, help="weight decay (default: 0.9)"
     )
 
     parser.add_argument("-j", "--workers", default=2, type=int)
@@ -81,15 +88,15 @@ def main():
     )
 
     parser.add_argument("--dist-addr", default="localhost")
-    parser.add_argument("--dist-port", default=23456)
-    parser.add_argument("--world-size", default=1)
-    parser.add_argument("--rank", default=0)
+    parser.add_argument("--dist-port", default=23456, type=int)
+    parser.add_argument("--world-size", default=1, type=int)
+    parser.add_argument("--rank", default=0, type=int)
 
     args = parser.parse_args()
 
     # create server if is master
     if args.rank <= 0:
-        dist.Server(port=args.dist_port)
+        server = dist.Server(port=args.dist_port)  # pylint: disable=unused-variable
 
     # get device count
     with multiprocessing.Pool(1) as pool:
