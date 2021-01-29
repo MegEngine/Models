@@ -53,15 +53,15 @@ def main():
     )
 
     parser.add_argument("--dist-addr", default="localhost")
-    parser.add_argument("--dist-port", default=23456)
-    parser.add_argument("--world-size", default=1)
-    parser.add_argument("--rank", default=0)
+    parser.add_argument("--dist-port", default=23456, type=int)
+    parser.add_argument("--world-size", default=1, type=int)
+    parser.add_argument("--rank", default=0, type=int)
 
     args = parser.parse_args()
 
     # create server if is master
     if args.rank <= 0:
-        dist.Server(port=args.dist_port)
+        server = dist.Server(port=args.dist_port)  # pylint: disable=unused-variable  # noqa: F841
 
     # get device count
     with multiprocessing.Pool(1) as pool:
@@ -130,7 +130,9 @@ def worker(rank, world_size, ngpus_per_node, args):
     model.eval()
     _, valid_acc1, valid_acc5 = valid(valid_step, valid_dataloader, args)
     logging.info(
-        "Test Acc@1 %.3f, Acc@5 %.3f", valid_acc1, valid_acc5,
+        "Test Acc@1 %.3f, Acc@5 %.3f",
+        valid_acc1,
+        valid_acc5,
     )
 
 
