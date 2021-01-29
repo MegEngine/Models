@@ -9,7 +9,7 @@
 import csv
 import os
 
-from tokenization import BertTokenizer
+from tokenization import BertTokenizer  # pylint: disable=import-error
 
 import numpy as np
 

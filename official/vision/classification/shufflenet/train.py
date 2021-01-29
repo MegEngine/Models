@@ -95,7 +95,7 @@ def main():
 
     # create server if is master
     if args.rank <= 0:
-        server = dist.Server(port=args.dist_port)  # pylint: disable=unused-variable
+        server = dist.Server(port=args.dist_port)  # pylint: disable=unused-variable  # noqa: F841
 
     # get device count
     with multiprocessing.Pool(1) as pool:
