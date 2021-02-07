@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -16,15 +16,13 @@ class CustomFasterRCNNConfig(models.FasterRCNNConfig):
         super().__init__()
 
         self.backbone = "resnext101_32x8d"
-
-        # ------------------------ training cfg ---------------------- #
         self.max_epoch = 36
         self.lr_decay_stages = [24, 32]
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "faster_rcnn_resx101_coco_2x_800size_43dot6_79fb71a7.pkl"
+    "faster_rcnn_resx101_coco_2x_800size_44dot1_e5e0060b.pkl"
 )
 def faster_rcnn_resx101_coco_2x_800size(**kwargs):
     r"""

@@ -11,30 +11,29 @@ from megengine import hub
 from official.vision.detection import models
 
 
-class CustomATSSConfig(models.ATSSConfig):
+class CustomFreeAnchorConfig(models.FreeAnchorConfig):
     def __init__(self):
         super().__init__()
 
-        self.backbone = "resnext101_32x8d"
-        self.max_epoch = 36
-        self.lr_decay_stages = [24, 32]
+        self.backbone = "resnet34"
+        self.fpn_in_channels = [128, 256, 512]
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "atss_resx101_coco_2x_800size_45dot6_b3a91b36.pkl"
+    "freeanchor_res34_coco_3x_800size_41dot1_3b03734e.pkl"
 )
-def atss_resx101_coco_2x_800size(**kwargs):
+def freeanchor_res34_coco_3x_800size(**kwargs):
     r"""
-    ATSS trained from COCO dataset.
-    `"ATSS" <https://arxiv.org/abs/1912.02424>`_
+    FreeAnchor trained from COCO dataset.
+    `"FreeAnchor" <https://arxiv.org/abs/1909.02466>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    cfg = CustomATSSConfig()
+    cfg = models.FreeAnchorConfig()
     cfg.backbone_pretrained = False
-    return models.ATSS(cfg, **kwargs)
+    return models.FreeAnchor(cfg, **kwargs)
 
 
-Net = models.ATSS
-Cfg = CustomATSSConfig
+Net = models.FreeAnchor
+Cfg = CustomFreeAnchorConfig

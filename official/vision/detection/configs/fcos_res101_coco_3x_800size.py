@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -11,21 +11,28 @@ from megengine import hub
 from official.vision.detection import models
 
 
+class CustomFCOSConfig(models.FCOSConfig):
+    def __init__(self):
+        super().__init__()
+
+        self.backbone = "resnet101"
+
+
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "atss_res50_coco_1x_800size_40dot1_7b30f6cf.pkl"
+    "fcos_res101_coco_3x_800size_44dot3_f38e8df1.pkl"
 )
-def atss_res50_coco_1x_800size(**kwargs):
+def fcos_res101_coco_3x_800size(**kwargs):
     r"""
-    ATSS trained from COCO dataset.
-    `"ATSS" <https://arxiv.org/abs/1912.02424>`_
+    FCOS trained from COCO dataset.
+    `"FCOS" <https://arxiv.org/abs/1904.01355>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    cfg = models.ATSSConfig()
+    cfg = CustomFCOSConfig()
     cfg.backbone_pretrained = False
-    return models.ATSS(cfg, **kwargs)
+    return models.FCOS(cfg, **kwargs)
 
 
-Net = models.ATSS
-Cfg = models.ATSSConfig
+Net = models.FCOS
+Cfg = CustomFCOSConfig

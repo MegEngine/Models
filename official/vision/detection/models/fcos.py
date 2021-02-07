@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -36,19 +36,21 @@ class FCOS(M.Module):
 
         # ----------------------- build backbone ------------------------ #
         bottom_up = getattr(resnet, cfg.backbone)(
-            norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
+            norm=layers.get_norm(cfg.backbone_norm), pretrained=cfg.backbone_pretrained
         )
         del bottom_up.fc
 
         # ----------------------- build FPN ----------------------------- #
-        in_channels_p6p7 = 2048
-        out_channels = 256
         self.backbone = layers.FPN(
             bottom_up=bottom_up,
-            in_features=["res3", "res4", "res5"],
-            out_channels=out_channels,
+            in_features=cfg.fpn_in_features,
+            out_channels=cfg.fpn_out_channels,
             norm=cfg.fpn_norm,
-            top_block=layers.LastLevelP6P7(in_channels_p6p7, out_channels),
+            top_block=layers.LastLevelP6P7(
+                cfg.fpn_top_in_channel, cfg.fpn_out_channels, cfg.fpn_top_in_feature
+            ),
+            strides=cfg.fpn_in_strides,
+            channels=cfg.fpn_in_channels,
         )
 
         backbone_shape = self.backbone.output_shape()
@@ -242,12 +244,19 @@ class FCOS(M.Module):
 
 
 class FCOSConfig:
+    # pylint: disable=too-many-statements
     def __init__(self):
         self.backbone = "resnet50"
         self.backbone_pretrained = True
-        self.resnet_norm = "FrozenBN"
-        self.fpn_norm = None
+        self.backbone_norm = "FrozenBN"
         self.backbone_freeze_at = 2
+        self.fpn_norm = None
+        self.fpn_in_features = ["res3", "res4", "res5"]
+        self.fpn_in_strides = [8, 16, 32]
+        self.fpn_in_channels = [512, 1024, 2048]
+        self.fpn_out_channels = 256
+        self.fpn_top_in_feature = "p5"
+        self.fpn_top_in_channel = 256
 
         # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(
@@ -296,10 +305,10 @@ class FCOSConfig:
         self.weight_decay = 1e-4
         self.log_interval = 20
         self.nr_images_epoch = 80000
-        self.max_epoch = 18
+        self.max_epoch = 54
         self.warm_iters = 500
         self.lr_decay_rate = 0.1
-        self.lr_decay_stages = [12, 16]
+        self.lr_decay_stages = [42, 50]
 
         # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800

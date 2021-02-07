@@ -15,20 +15,31 @@
 
 | 模型                                | mAP<br>@5-95 | batch<br>/gpu |
 | ---                                 | :---:        | :---:         |
-| retinanet-res50-coco-1x-800size     | 37.0         | 2             |
-| retinanet-res101-coco-2x-800size    | 41.1         | 2             |
-| retinanet-resx101-coco-2x-800size   | 42.7         | 2             |
-| faster-rcnn-res50-coco-1x-800size   | 38.0         | 2             |
-| faster-rcnn-res101-coco-2x-800size  | 42.5         | 2             |
-| faster-rcnn-resx101-coco-2x-800size | 43.6         | 2             |
-| freeanchor-res50-coco-1x-800size    | 38.9         | 2             |
-| freeanchor-res101-coco-2x-800size   | 43.3         | 2             |
-| fcos-res50-coco-1x-800size          | 39.7         | 2             |
-| fcos-res101-coco-2x-800size         | 44.1         | 2             |
-| fcos-resx101-coco-2x-800size        | 44.9         | 2             |
-| atss-res50-coco-1x-800size          | 40.1         | 2             |
-| atss-res101-coco-2x-800size         | 44.5         | 2             |
-| atss-resx101-coco-2x-800size        | 45.9         | 2             |
+| retinanet-res18-coco-3x-800size     | 35.3         | 2             |
+| retinanet-res34-coco-3x-800size     | 38.4         | 2             |
+| retinanet-res50-coco-3x-800size     | 39.3         | 2             |
+| retinanet-res101-coco-3x-800size    | 41.4         | 2             |
+| retinanet-resx101-coco-2x-800size   | 42.3         | 2             |
+| faster-rcnn-res18-coco-3x-800size   | 35.7         | 2             |
+| faster-rcnn-res34-coco-3x-800size   | 39.6         | 2             |
+| faster-rcnn-res50-coco-3x-800size   | 40.1         | 2             |
+| faster-rcnn-res101-coco-3x-800size  | 42.6         | 2             |
+| faster-rcnn-resx101-coco-2x-800size | 44.1         | 2             |
+| freeanchor-res18-coco-3x-800size    | 38.1         | 2             |
+| freeanchor-res34-coco-3x-800size    | 41.1         | 2             |
+| freeanchor-res50-coco-3x-800size    | 42.1         | 2             |
+| freeanchor-res101-coco-3x-800size   | 43.9         | 2             |
+| freeanchor-resx101-coco-2x-800size  | 44.9         | 2             |
+| fcos-res18-coco-3x-800size          | 37.6         | 2             |
+| fcos-res34-coco-3x-800size          | 41.0         | 2             |
+| fcos-res50-coco-3x-800size          | 42.2         | 2             |
+| fcos-res101-coco-3x-800size         | 44.3         | 2             |
+| fcos-resx101-coco-2x-800size        | 44.8         | 2             |
+| atss-res18-coco-3x-800size          | 38.3         | 2             |
+| atss-res34-coco-3x-800size          | 41.5         | 2             |
+| atss-res50-coco-3x-800size          | 42.6         | 2             |
+| atss-res101-coco-3x-800size         | 44.7         | 2             |
+| atss-resx101-coco-2x-800size        | 45.6         | 2             |
 
 ## 安装和环境配置
 
@@ -39,7 +50,7 @@
 以RetinaNet为例，模型训练好之后，可以通过如下命令测试单张图片：
 
 ```bash
-python3 tools/inference.py -f configs/retinanet_res50_coco_1x_800size.py \
+python3 tools/inference.py -f configs/retinanet_res50_coco_3x_800size.py \
                            -w /path/to/model_weights.pkl \
                            -i ../../assets/cat.jpg
 ```
@@ -74,7 +85,7 @@ python3 tools/inference.py -f configs/retinanet_res50_coco_1x_800size.py \
 3. 开始训练:
 
 ```bash
-python3 tools/train.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
+python3 tools/train.py -f configs/retinanet_res50_coco_3x_800size.py -n 8 \
                        -d /path/to/COCO2017
 ```
 
@@ -97,22 +108,22 @@ python3 tools/train.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
 验证某个epoch的性能：
 
 ```bash
-python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
-                      -se 15 \
+python3 tools/test.py -f configs/retinanet_res50_coco_3x_800size.py -n 8 \
+                      -se 51 \
                       -d /path/to/COCO2017
 ```
 
 验证连续若干个epoch性能：
 ```bash
-python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
-                      -se 15 -ee 17 \
+python3 tools/test.py -f configs/retinanet_res50_coco_3x_800size.py -n 8 \
+                      -se 51 -ee 53 \
                       -d /path/to/COCO2017
 ```
 
 验证某个指定weights的性能：
 
 ```bash
-python3 tools/test.py -f configs/retinanet_res50_coco_1x_800size.py -n 8 \
+python3 tools/test.py -f configs/retinanet_res50_coco_3x_800size.py -n 8 \
                       -w /path/to/model_weights.pkl \
                       -d /path/to/COCO2017
 ```

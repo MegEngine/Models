@@ -11,30 +11,21 @@ from megengine import hub
 from official.vision.detection import models
 
 
-class CustomATSSConfig(models.ATSSConfig):
-    def __init__(self):
-        super().__init__()
-
-        self.backbone = "resnext101_32x8d"
-        self.max_epoch = 36
-        self.lr_decay_stages = [24, 32]
-
-
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "atss_resx101_coco_2x_800size_45dot6_b3a91b36.pkl"
+    "fcos_res50_coco_3x_800size_42dot2_b16f9c8b.pkl"
 )
-def atss_resx101_coco_2x_800size(**kwargs):
+def fcos_res50_coco_3x_800size(**kwargs):
     r"""
-    ATSS trained from COCO dataset.
-    `"ATSS" <https://arxiv.org/abs/1912.02424>`_
+    FCOS trained from COCO dataset.
+    `"FCOS" <https://arxiv.org/abs/1904.01355>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    cfg = CustomATSSConfig()
+    cfg = models.FCOSConfig()
     cfg.backbone_pretrained = False
-    return models.ATSS(cfg, **kwargs)
+    return models.FCOS(cfg, **kwargs)
 
 
-Net = models.ATSS
-Cfg = CustomATSSConfig
+Net = models.FCOS
+Cfg = models.FCOSConfig

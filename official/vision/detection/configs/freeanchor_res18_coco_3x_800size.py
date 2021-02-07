@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -11,32 +11,29 @@ from megengine import hub
 from official.vision.detection import models
 
 
-class CustomRetinaNetConfig(models.RetinaNetConfig):
+class CustomFreeAnchorConfig(models.FreeAnchorConfig):
     def __init__(self):
         super().__init__()
 
-        self.backbone = "resnet101"
-
-        # ------------------------ training cfg ---------------------- #
-        self.max_epoch = 36
-        self.lr_decay_stages = [24, 32]
+        self.backbone = "resnet18"
+        self.fpn_in_channels = [128, 256, 512]
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "retinanet_res101_coco_2x_800size_41dot1_a5c79055.pkl"
+    "freeanchor_res18_coco_3x_800size_38dot1_3d0559a8.pkl"
 )
-def retinanet_res101_coco_2x_800size(**kwargs):
+def freeanchor_res18_coco_3x_800size(**kwargs):
     r"""
-    RetinaNet trained from COCO dataset.
-    `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
+    FreeAnchor trained from COCO dataset.
+    `"FreeAnchor" <https://arxiv.org/abs/1909.02466>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    cfg = CustomRetinaNetConfig()
+    cfg = models.FreeAnchorConfig()
     cfg.backbone_pretrained = False
-    return models.RetinaNet(cfg, **kwargs)
+    return models.FreeAnchor(cfg, **kwargs)
 
 
-Net = models.RetinaNet
-Cfg = CustomRetinaNetConfig
+Net = models.FreeAnchor
+Cfg = CustomFreeAnchorConfig

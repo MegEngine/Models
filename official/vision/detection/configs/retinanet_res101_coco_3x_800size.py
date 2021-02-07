@@ -11,30 +11,28 @@ from megengine import hub
 from official.vision.detection import models
 
 
-class CustomATSSConfig(models.ATSSConfig):
+class CustomRetinaNetConfig(models.RetinaNetConfig):
     def __init__(self):
         super().__init__()
 
-        self.backbone = "resnext101_32x8d"
-        self.max_epoch = 36
-        self.lr_decay_stages = [24, 32]
+        self.backbone = "resnet101"
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "atss_resx101_coco_2x_800size_45dot6_b3a91b36.pkl"
+    "retinanet_res101_coco_3x_800size_41dot4_73b01887.pkl"
 )
-def atss_resx101_coco_2x_800size(**kwargs):
+def retinanet_res101_coco_3x_800size(**kwargs):
     r"""
-    ATSS trained from COCO dataset.
-    `"ATSS" <https://arxiv.org/abs/1912.02424>`_
+    RetinaNet trained from COCO dataset.
+    `"RetinaNet" <https://arxiv.org/abs/1708.02002>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    cfg = CustomATSSConfig()
+    cfg = CustomRetinaNetConfig()
     cfg.backbone_pretrained = False
-    return models.ATSS(cfg, **kwargs)
+    return models.RetinaNet(cfg, **kwargs)
 
 
-Net = models.ATSS
-Cfg = CustomATSSConfig
+Net = models.RetinaNet
+Cfg = CustomRetinaNetConfig

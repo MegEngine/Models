@@ -11,30 +11,29 @@ from megengine import hub
 from official.vision.detection import models
 
 
-class CustomATSSConfig(models.ATSSConfig):
+class CustomFasterRCNNConfig(models.FasterRCNNConfig):
     def __init__(self):
         super().__init__()
 
-        self.backbone = "resnext101_32x8d"
-        self.max_epoch = 36
-        self.lr_decay_stages = [24, 32]
+        self.backbone = "resnet18"
+        self.fpn_in_channels = [64, 128, 256, 512]
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "atss_resx101_coco_2x_800size_45dot6_b3a91b36.pkl"
+    "faster_rcnn_res18_coco_3x_800size_35dot7_a33835ca.pkl"
 )
-def atss_resx101_coco_2x_800size(**kwargs):
+def faster_rcnn_res18_coco_3x_800size(**kwargs):
     r"""
-    ATSS trained from COCO dataset.
-    `"ATSS" <https://arxiv.org/abs/1912.02424>`_
+    Faster-RCNN FPN trained from COCO dataset.
+    `"Faster-RCNN" <https://arxiv.org/abs/1506.01497>`_
     `"FPN" <https://arxiv.org/abs/1612.03144>`_
     `"COCO" <https://arxiv.org/abs/1405.0312>`_
     """
-    cfg = CustomATSSConfig()
+    cfg = CustomFasterRCNNConfig()
     cfg.backbone_pretrained = False
-    return models.ATSS(cfg, **kwargs)
+    return models.FasterRCNN(cfg, **kwargs)
 
 
-Net = models.ATSS
-Cfg = CustomATSSConfig
+Net = models.FasterRCNN
+Cfg = CustomFasterRCNNConfig

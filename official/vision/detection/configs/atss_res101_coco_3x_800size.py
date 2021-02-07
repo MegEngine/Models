@@ -15,16 +15,14 @@ class CustomATSSConfig(models.ATSSConfig):
     def __init__(self):
         super().__init__()
 
-        self.backbone = "resnext101_32x8d"
-        self.max_epoch = 36
-        self.lr_decay_stages = [24, 32]
+        self.backbone = "resnet101"
 
 
 @hub.pretrained(
     "https://data.megengine.org.cn/models/weights/"
-    "atss_resx101_coco_2x_800size_45dot6_b3a91b36.pkl"
+    "atss_res101_coco_3x_800size_44dot7_9181687e.pkl"
 )
-def atss_resx101_coco_2x_800size(**kwargs):
+def atss_res101_coco_3x_800size(**kwargs):
     r"""
     ATSS trained from COCO dataset.
     `"ATSS" <https://arxiv.org/abs/1912.02424>`_

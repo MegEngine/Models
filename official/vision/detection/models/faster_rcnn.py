@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -25,20 +25,19 @@ class FasterRCNN(M.Module):
         self.cfg = cfg
         # ----------------------- build backbone ------------------------ #
         bottom_up = getattr(resnet, cfg.backbone)(
-            norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
+            norm=layers.get_norm(cfg.backbone_norm), pretrained=cfg.backbone_pretrained
         )
         del bottom_up.fc
 
         # ----------------------- build FPN ----------------------------- #
-        out_channels = 256
         self.backbone = layers.FPN(
             bottom_up=bottom_up,
-            in_features=["res2", "res3", "res4", "res5"],
-            out_channels=out_channels,
+            in_features=cfg.fpn_in_features,
+            out_channels=cfg.fpn_out_channels,
             norm=cfg.fpn_norm,
             top_block=layers.FPNP6(),
-            strides=[4, 8, 16, 32],
-            channels=[256, 512, 1024, 2048],
+            strides=cfg.fpn_in_strides,
+            channels=cfg.fpn_in_channels,
         )
 
         # ----------------------- build RPN ----------------------------- #
@@ -103,9 +102,13 @@ class FasterRCNNConfig:
     def __init__(self):
         self.backbone = "resnet50"
         self.backbone_pretrained = True
-        self.resnet_norm = "FrozenBN"
-        self.fpn_norm = None
+        self.backbone_norm = "FrozenBN"
         self.backbone_freeze_at = 2
+        self.fpn_norm = None
+        self.fpn_in_features = ["res2", "res3", "res4", "res5"]
+        self.fpn_in_strides = [4, 8, 16, 32]
+        self.fpn_in_channels = [256, 512, 1024, 2048]
+        self.fpn_out_channels = 256
 
         # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(
@@ -126,10 +129,10 @@ class FasterRCNNConfig:
 
         # ----------------------- rpn cfg ------------------------- #
         self.rpn_stride = [4, 8, 16, 32, 64]
-        self.rpn_reg_mean = [0.0, 0.0, 0.0, 0.0]
-        self.rpn_reg_std = [1.0, 1.0, 1.0, 1.0]
         self.rpn_in_features = ["p2", "p3", "p4", "p5", "p6"]
         self.rpn_channel = 256
+        self.rpn_reg_mean = [0.0, 0.0, 0.0, 0.0]
+        self.rpn_reg_std = [1.0, 1.0, 1.0, 1.0]
 
         self.anchor_scales = [[x] for x in [32, 64, 128, 256, 512]]
         self.anchor_ratios = [[0.5, 1, 2]]
@@ -144,9 +147,9 @@ class FasterRCNNConfig:
 
         # ----------------------- rcnn cfg ------------------------- #
         self.rcnn_stride = [4, 8, 16, 32]
+        self.rcnn_in_features = ["p2", "p3", "p4", "p5"]
         self.rcnn_reg_mean = [0.0, 0.0, 0.0, 0.0]
         self.rcnn_reg_std = [0.1, 0.1, 0.2, 0.2]
-        self.rcnn_in_features = ["p2", "p3", "p4", "p5"]
 
         self.pooling_method = "roi_align"
         self.pooling_size = (7, 7)
@@ -174,10 +177,10 @@ class FasterRCNNConfig:
         self.weight_decay = 1e-4
         self.log_interval = 20
         self.nr_images_epoch = 80000
-        self.max_epoch = 18
+        self.max_epoch = 54
         self.warm_iters = 500
         self.lr_decay_rate = 0.1
-        self.lr_decay_stages = [12, 16]
+        self.lr_decay_stages = [42, 50]
 
         # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800
