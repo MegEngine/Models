@@ -9,14 +9,14 @@
 import csv
 import os
 
-from tokenization import BertTokenizer  # pylint: disable=import-error
-
 import numpy as np
 
 import megengine as mge
 from megengine.data import DataLoader
 from megengine.data.dataset import ArrayDataset
 from megengine.data.sampler import RandomSampler, SequentialSampler
+
+from official.nlp.bert.tokenization import BertTokenizer
 
 logger = mge.get_logger(__name__)
 
