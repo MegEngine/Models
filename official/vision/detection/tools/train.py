@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -9,7 +9,6 @@
 import argparse
 import bisect
 import copy
-import multiprocessing as mp
 import os
 import time
 
@@ -42,7 +41,7 @@ def make_parser():
         "-w", "--weight_file", default=None, type=str, help="weights file",
     )
     parser.add_argument(
-        "-n", "--ngpus", default=1, type=int, help="total number of gpus for training",
+        "-n", "--devices", default=1, type=int, help="total number of gpus for training",
     )
     parser.add_argument(
         "-b", "--batch_size", default=2, type=int, help="batch size for training",
@@ -59,41 +58,20 @@ def main():
     args = parser.parse_args()
 
     # ------------------------ begin training -------------------------- #
-    logger.info("Device Count = %d", args.ngpus)
+    logger.info("Device Count = %d", args.devices)
 
     log_dir = "log-of-{}".format(os.path.basename(args.file).split(".")[0])
     if not os.path.isdir(log_dir):
         os.makedirs(log_dir)
 
-    if args.ngpus > 1:
-        master_ip = "localhost"
-        port = dist.get_free_ports(1)[0]
-        dist.Server(port)
-        processes = list()
-        for rank in range(args.ngpus):
-            process = mp.Process(
-                target=worker, args=(master_ip, port, args.ngpus, rank, args)
-            )
-            process.start()
-            processes.append(process)
-
-        for p in processes:
-            p.join()
+    if args.devices > 1:
+        trainer = dist.launcher(worker, n_gpus=args.devices)
+        trainer(args)
     else:
-        worker(None, None, 1, 0, args)
+        worker(args)
 
 
-def worker(master_ip, port, world_size, rank, args):
-    if world_size > 1:
-        dist.init_process_group(
-            master_ip=master_ip,
-            port=port,
-            world_size=world_size,
-            rank=rank,
-            device=rank,
-        )
-        logger.info("Init process group for gpu{} done".format(rank))
-
+def worker(args):
     current_network = import_from_file(args.file)
 
     model = current_network.Net(current_network.Cfg())

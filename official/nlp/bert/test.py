@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 from tqdm import tqdm
-
-from mrpc_dataset import MRPCDataset
 
 import megengine as mge
 import megengine.functional as F
 
 from official.nlp.bert.config_args import get_args
 from official.nlp.bert.model import BertForSequenceClassification, create_hub_bert
+from official.nlp.bert.mrpc_dataset import MRPCDataset
 
 args = get_args()
 logger = mge.get_logger(__name__)

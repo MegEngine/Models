@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -32,30 +32,31 @@ class FreeAnchor(M.Module):
         )
         self.box_coder = layers.BoxCoder(cfg.reg_mean, cfg.reg_std)
 
-        self.stride_list = np.array(cfg.stride, dtype=np.float32)
         self.in_features = cfg.in_features
 
         # ----------------------- build backbone ------------------------ #
         bottom_up = getattr(resnet, cfg.backbone)(
-            norm=layers.get_norm(cfg.resnet_norm), pretrained=cfg.backbone_pretrained
+            norm=layers.get_norm(cfg.backbone_norm), pretrained=cfg.backbone_pretrained
         )
         del bottom_up.fc
 
         # ----------------------- build FPN ----------------------------- #
-        in_channels_p6p7 = 2048
-        out_channels = 256
         self.backbone = layers.FPN(
             bottom_up=bottom_up,
-            in_features=["res3", "res4", "res5"],
-            out_channels=out_channels,
+            in_features=cfg.fpn_in_features,
+            out_channels=cfg.fpn_out_channels,
             norm=cfg.fpn_norm,
-            top_block=layers.LastLevelP6P7(in_channels_p6p7, out_channels),
+            top_block=layers.LastLevelP6P7(
+                cfg.fpn_top_in_channel, cfg.fpn_out_channels, cfg.fpn_top_in_feature
+            ),
+            strides=cfg.fpn_in_strides,
+            channels=cfg.fpn_in_channels,
         )
 
         backbone_shape = self.backbone.output_shape()
         feature_shapes = [backbone_shape[f] for f in self.in_features]
 
-        # ----------------------- build head ------------------ #
+        # ----------------------- build FreeAnchor Head ----------------- #
         self.head = layers.BoxHead(cfg, feature_shapes)
 
     def preprocess_image(self, image):
@@ -99,21 +100,21 @@ class FreeAnchor(M.Module):
             # currently not support multi-batch testing
             assert image.shape[0] == 1
 
-            transformed_box = self.box_coder.decode(
+            pred_boxes = self.box_coder.decode(
                 all_level_anchors, all_level_box_offsets[0]
             )
-            transformed_box = transformed_box.reshape(-1, 4)
+            pred_boxes = pred_boxes.reshape(-1, 4)
 
             scale_w = im_info[0, 1] / im_info[0, 3]
             scale_h = im_info[0, 0] / im_info[0, 2]
-            transformed_box = transformed_box / F.concat(
+            pred_boxes = pred_boxes / F.concat(
                 [scale_w, scale_h, scale_w, scale_h], axis=0
             )
-            clipped_box = layers.get_clipped_boxes(
-                transformed_box, im_info[0, 2:4]
+            clipped_boxes = layers.get_clipped_boxes(
+                pred_boxes, im_info[0, 2:4]
             ).reshape(-1, 4)
-            all_level_box_scores = F.sigmoid(all_level_box_logits)
-            return all_level_box_scores[0], clipped_box
+            pred_score = F.sigmoid(all_level_box_logits)[0]
+            return pred_score, clipped_boxes
 
     def get_losses(self, anchors, pred_logits, pred_offsets, gt_boxes, im_info):
         # pylint: disable=too-many-statements
@@ -218,14 +219,19 @@ class FreeAnchor(M.Module):
 
 
 class FreeAnchorConfig:
+    # pylint: disable=too-many-statements
     def __init__(self):
         self.backbone = "resnet50"
         self.backbone_pretrained = True
-        self.resnet_norm = "FrozenBN"
-        self.fpn_norm = None
+        self.backbone_norm = "FrozenBN"
         self.backbone_freeze_at = 2
-        self.box_iou_threshold = 0.6
-        self.bucket_size = 50
+        self.fpn_norm = None
+        self.fpn_in_features = ["res3", "res4", "res5"]
+        self.fpn_in_strides = [8, 16, 32]
+        self.fpn_in_channels = [512, 1024, 2048]
+        self.fpn_out_channels = 256
+        self.fpn_top_in_feature = "p5"
+        self.fpn_top_in_channel = 256
 
         # ------------------------ data cfg -------------------------- #
         self.train_dataset = dict(
@@ -243,18 +249,21 @@ class FreeAnchorConfig:
         self.num_classes = 80
         self.img_mean = [103.530, 116.280, 123.675]  # BGR
         self.img_std = [57.375, 57.120, 58.395]
+
+        # ----------------------- net cfg ------------------------- #
         self.stride = [8, 16, 32, 64, 128]
+        self.in_features = ["p3", "p4", "p5", "p6", "p7"]
         self.reg_mean = [0.0, 0.0, 0.0, 0.0]
         self.reg_std = [0.1, 0.1, 0.2, 0.2]
-        self.in_features = ["p3", "p4", "p5", "p6", "p7"]
 
         self.anchor_scales = [
-            [x, x * 2 ** (1.0 / 3), x * 2 ** (2.0 / 3)]
-            for x in [32, 64, 128, 256, 512]
+            [x, x * 2 ** (1.0 / 3), x * 2 ** (2.0 / 3)] for x in [32, 64, 128, 256, 512]
         ]
         self.anchor_ratios = [[0.5, 1, 2]]
         self.anchor_offset = 0.5
 
+        self.box_iou_threshold = 0.6
+        self.bucket_size = 50
         self.class_aware_box = False
         self.cls_prior_prob = 0.02
 
@@ -274,10 +283,10 @@ class FreeAnchorConfig:
         self.weight_decay = 1e-4
         self.log_interval = 20
         self.nr_images_epoch = 80000
-        self.max_epoch = 18
+        self.max_epoch = 54
         self.warm_iters = 500
         self.lr_decay_rate = 0.1
-        self.lr_decay_stages = [12, 16]
+        self.lr_decay_stages = [42, 50]
 
         # ------------------------ testing cfg ----------------------- #
         self.test_image_short_size = 800

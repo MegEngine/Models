@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -38,36 +38,37 @@ def main():
         "-w", "--weight_file", default=None, type=str, help="weights file",
     )
     parser.add_argument(
-        "-n", "--ngpus", default=1, type=int, help="total number of gpus for testing",
+        "-n", "--devices", default=1, type=int, help="total number of gpus for testing",
     )
     parser.add_argument(
-        "-d", "--dataset_dir", type=str, default="/data/datasets",
+        "-d", "--dataset_dir", default="/data/datasets", type=str,
     )
     args = parser.parse_args()
 
     current_network = import_from_file(args.file)
     cfg = current_network.Cfg()
 
-    if args.ngpus > 1:
-        master_ip = "localhost"
-        port = dist.get_free_ports(1)[0]
-        dist.Server(port)
-
-        result_list = []
+    result_list = []
+    if args.devices > 1:
         result_queue = Queue(500)
+
+        master_ip = "localhost"
+        server = dist.Server()
+        port = server.py_server_port
+
         procs = []
-        for i in range(args.ngpus):
+        for i in range(args.devices):
             proc = Process(
                 target=worker,
                 args=(
                     current_network,
                     args.weight_file,
                     args.dataset_dir,
+                    result_queue,
                     master_ip,
                     port,
-                    args.ngpus,
+                    args.devices,
                     i,
-                    result_queue,
                 ),
             )
             proc.start()
@@ -77,15 +78,11 @@ def main():
 
         for _ in tqdm(range(num_imgs[cfg.dataset])):
             result_list.append(result_queue.get())
+
         for p in procs:
             p.join()
     else:
-        result_list = []
-
-        worker(
-            current_network, args.weight_file, args.dataset_dir,
-            None, None, 1, 0, result_list
-        )
+        worker(current_network, args.weight_file, args.dataset_dir, result_list)
 
     if cfg.val_save_path is not None:
         save_results(result_list, cfg.val_save_path, cfg)
@@ -94,8 +91,8 @@ def main():
 
 
 def worker(
-    current_network, weight_file, dataset_dir,
-    master_ip, port, world_size, rank, result_list
+    current_network, weight_file, dataset_dir, result_list,
+    master_ip=None, port=None, world_size=None, rank=None
 ):
     if world_size > 1:
         dist.init_process_group(
@@ -105,8 +102,6 @@ def worker(
             rank=rank,
             device=rank,
         )
-
-    mge.device.set_default_device("gpu{}".format(rank))
 
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
@@ -122,8 +117,8 @@ def worker(
         pred = model(data)
         return pred
 
-    test_loader = build_dataloader(rank, world_size, dataset_dir, model.cfg)
-    if world_size == 1:
+    test_loader = build_dataloader(dataset_dir, model.cfg)
+    if dist.get_world_size() == 1:
         test_loader = tqdm(test_loader)
 
     for data in test_loader:
@@ -132,7 +127,7 @@ def worker(
         im_info = data[2]
         pred = evaluate(pred_func, img, model.cfg)
         result = {"pred": pred, "gt": label, "name": im_info[2]}
-        if world_size > 1:
+        if dist.get_world_size() > 1:
             result_list.put_nowait(result)
         else:
             result_list.append(result)
@@ -301,7 +296,7 @@ class EvalPascalVOC(dataset.PascalVOC):
         return label.astype(np.uint8)
 
 
-def build_dataloader(rank, world_size, dataset_dir, cfg):
+def build_dataloader(dataset_dir, cfg):
     if cfg.dataset == "VOC2012":
         val_dataset = EvalPascalVOC(
             dataset_dir,
@@ -318,7 +313,7 @@ def build_dataloader(rank, world_size, dataset_dir, cfg):
     else:
         raise ValueError("Unsupported dataset {}".format(cfg.dataset))
 
-    val_sampler = InferenceSampler(val_dataset, 1, world_size=world_size, rank=rank)
+    val_sampler = InferenceSampler(val_dataset, 1)
     val_dataloader = DataLoader(
         val_dataset,
         sampler=val_sampler,

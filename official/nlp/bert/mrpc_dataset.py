@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -9,14 +9,14 @@
 import csv
 import os
 
-from tokenization import BertTokenizer  # pylint: disable=import-error
-
 import numpy as np
 
 import megengine as mge
 from megengine.data import DataLoader
 from megengine.data.dataset import ArrayDataset
 from megengine.data.sampler import RandomSampler, SequentialSampler
+
+from official.nlp.bert.tokenization import BertTokenizer
 
 logger = mge.get_logger(__name__)
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # MegEngine is Licensed under the Apache License, Version 2.0 (the "License")
 #
-# Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -256,9 +256,13 @@ class DetEvaluator:
             dtboxes = np.hstack((bboxes, scores[:, np.newaxis])).astype(np.float32)
 
             if dtboxes.size > 0:
-                keep = py_cpu_nms(dtboxes, self.model.cfg.test_nms)
+                if self.model.cfg.test_nms == -1:
+                    keep = dtboxes[:, 4].argsort()[::-1]
+                else:
+                    assert 0 < self.model.cfg.test_nms <= 1.0
+                    keep = py_cpu_nms(dtboxes, self.model.cfg.test_nms)
                 dtboxes = np.hstack(
-                    (dtboxes[keep], np.ones((len(keep), 1), np.float32) * c)
+                    (dtboxes[keep], np.full((len(keep), 1), c, dtype=np.float32))
                 ).astype(np.float32)
                 dtboxes_all.extend(dtboxes)
 
