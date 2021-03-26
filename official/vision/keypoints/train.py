@@ -95,13 +95,14 @@ def worker(args):
     gm = GradManager()
     if dist.get_world_size() > 1:
         gm.attach(
-            model.parameters(), callbacks=[dist.make_allreduce_cb("SUM", dist.WORLD)],
+            model.parameters(), callbacks=[dist.make_allreduce_cb("mean", dist.WORLD)],
         )
     else:
         gm.attach(model.parameters())
 
     if dist.get_world_size() > 1:
-        dist.bcast_list_(model.parameters(), dist.WORLD)  # sync parameters
+        dist.bcast_list_(model.parameters())  # sync parameters
+        dist.bcast_list_(model.buffers())  # sync buffers
 
     # Build train datasets
     logger.info("preparing dataset..")

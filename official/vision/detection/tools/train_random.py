@@ -29,6 +29,7 @@ from official.vision.detection.tools.utils import (
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
+mge.device.set_prealloc_config(1024, 1024, 256 * 1024 * 1024, 4.0)
 
 
 def make_parser():
@@ -90,16 +91,16 @@ def worker(args):
 
     opt = SGD(
         params_with_grad,
-        lr=model.cfg.basic_lr * args.batch_size,
+        lr=model.cfg.basic_lr * args.batch_size * dist.get_world_size(),
         momentum=model.cfg.momentum,
-        weight_decay=model.cfg.weight_decay * dist.get_world_size(),
+        weight_decay=model.cfg.weight_decay,
     )
 
     gm = GradManager()
     if dist.get_world_size() > 1:
         gm.attach(
             params_with_grad,
-            callbacks=[dist.make_allreduce_cb("SUM", dist.WORLD)]
+            callbacks=[dist.make_allreduce_cb("mean", dist.WORLD)]
         )
     else:
         gm.attach(params_with_grad)
@@ -108,7 +109,8 @@ def worker(args):
         weights = mge.load(args.weight_file)
         model.backbone.bottom_up.load_state_dict(weights, strict=False)
     if dist.get_world_size() > 1:
-        dist.bcast_list_(model.parameters(), dist.WORLD)  # sync parameters
+        dist.bcast_list_(model.parameters())  # sync parameters
+        dist.bcast_list_(model.buffers())  # sync buffers
 
     if dist.get_rank() == 0:
         logger.info("Prepare dataset")

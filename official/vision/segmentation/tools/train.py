@@ -24,6 +24,7 @@ from official.vision.segmentation.tools.utils import AverageMeter, get_config_in
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
+mge.device.set_prealloc_config(1024, 1024, 256 * 1024 * 1024, 4.0)
 
 
 def main():
@@ -77,19 +78,22 @@ def worker(args):
 
     opt = SGD(
         [
-            {"params": backbone_params, "lr": model.cfg.learning_rate * 0.1},
+            {
+                "params": backbone_params,
+                "lr": model.cfg.learning_rate * dist.get_world_size() * 0.1,
+            },
             {"params": head_params},
         ],
-        lr=model.cfg.learning_rate,
+        lr=model.cfg.learning_rate * dist.get_world_size(),
         momentum=model.cfg.momentum,
-        weight_decay=model.cfg.weight_decay * dist.get_world_size(),
+        weight_decay=model.cfg.weight_decay,
     )
 
     gm = GradManager()
     if dist.get_world_size() > 1:
         gm.attach(
             model.parameters(),
-            callbacks=[dist.make_allreduce_cb("SUM", dist.WORLD)]
+            callbacks=[dist.make_allreduce_cb("mean", dist.WORLD)]
         )
     else:
         gm.attach(model.parameters())
@@ -104,7 +108,8 @@ def worker(args):
             logger.info("load success: epoch %d", cur_epoch)
 
     if dist.get_world_size() > 1:
-        dist.bcast_list_(model.parameters(), dist.WORLD)  # sync parameters
+        dist.bcast_list_(model.parameters())  # sync parameters
+        dist.bcast_list_(model.buffers())  # sync buffers
 
     if dist.get_rank() == 0:
         logger.info("Prepare dataset")

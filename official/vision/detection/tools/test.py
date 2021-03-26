@@ -21,6 +21,7 @@ from official.vision.detection.tools.utils import DetEvaluator, InferenceSampler
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
+mge.device.set_prealloc_config(1024, 1024, 256 * 1024 * 1024, 4.0)
 
 
 def make_parser():
@@ -91,14 +92,20 @@ def main():
             worker(current_network, weight_file, args.dataset_dir, result_list)
 
         all_results = DetEvaluator.format(result_list, cfg)
-        json_path = "log-of-{}/epoch_{}.json".format(
-            os.path.basename(args.file).split(".")[0], epoch_num
-        )
+        if args.weight_file:
+            json_path = "{}_{}.json".format(
+                os.path.basename(args.file).split(".")[0],
+                os.path.basename(args.weight_file).split(".")[0],
+            )
+        else:
+            json_path = "log-of-{}/epoch_{}.json".format(
+                os.path.basename(args.file).split(".")[0], epoch_num
+            )
         all_results = json.dumps(all_results)
 
         with open(json_path, "w") as fo:
             fo.write(all_results)
-        logger.info("Save to %s finished, start evaluation!", json_path)
+        logger.info("Save results to %s, start evaluation!", json_path)
 
         eval_gt = COCO(
             os.path.join(
@@ -135,6 +142,7 @@ def worker(
 ):
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
+
     model = current_network.Net(cfg)
     model.eval()
 
@@ -160,7 +168,7 @@ def worker(
             im_info=mge.tensor(im_info)
         )
         result = {
-            "det_res": pred_res,
+            "pred_boxes": pred_res,
             "image_id": int(data[1][2][0].split(".")[0].split("_")[-1]),
         }
         if dist.get_world_size() > 1:
