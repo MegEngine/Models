@@ -7,7 +7,6 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import multiprocessing as mp
 import os
 import time
 
@@ -65,43 +64,19 @@ def main():
     if args.initial_lr != cfg.initial_lr:
         cfg.initial_lr = args.initial_lr
 
-    world_size = mge.get_device_count("gpu") if args.ngpus is None else args.ngpus
+    if args.ngpus is None:
+        args.ngpus = dist.helper.get_device_count_by_fork("gpu")
 
-    if world_size > 1:
+    if args.ngpus > 1:
         # scale learning rate by number of gpus
-        master_ip = "localhost"
-
-        port = dist.get_free_ports(1)[0]
-        dist.Server(port)
-
-        cfg.weight_decay *= world_size
-        # start distributed training, dispatch sub-processes
-        processes = []
-        for rank in range(world_size):
-            p = mp.Process(
-                target=worker, args=(master_ip, port, rank, world_size, args)
-            )
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
+        cfg.weight_decay *= args.ngpus
+        dist_worker = dist.launcher(n_gpus=args.ngpus)(worker)
+        dist_worker(args)
     else:
-        worker(None, None, 0, 1, args)
+        worker(args)
 
 
-def worker(master_ip, port, rank, world_size, args):
-    if world_size > 1:
-        # Initialize distributed process group
-        logger.info("init distributed process group {} / {}".format(rank, world_size))
-        dist.init_process_group(
-            master_ip=master_ip,
-            port=port,
-            world_size=world_size,
-            rank=rank,
-            device=rank,
-        )
-
+def worker(args):
     model_name = "{}_{}x{}".format(args.arch, cfg.input_shape[0], cfg.input_shape[1])
     save_dir = os.path.join(args.save, model_name)
 
@@ -191,7 +166,7 @@ def worker(master_ip, port, rank, world_size, args):
         loss = train(model, train_queue, optimizer, gm, epoch=epoch)
         logger.info("Epoch %d Train %.6f ", epoch, loss)
 
-        if rank == 0 and epoch % cfg.save_freq == 0:  # save checkpoint
+        if dist.get_rank() == 0 and epoch % cfg.save_freq == 0:  # save checkpoint
             mge.save(
                 {"epoch": epoch + 1, "state_dict": model.state_dict()},
                 os.path.join(save_dir, "epoch_{}.pkl".format(epoch)),

@@ -7,7 +7,6 @@
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
-import multiprocessing
 import time
 
 # pylint: disable=import-error
@@ -59,51 +58,23 @@ def main():
 
     args = parser.parse_args()
 
-    # create server if is master
-    if args.rank <= 0:
-        server = dist.Server(port=args.dist_port)  # pylint: disable=unused-variable  # noqa: F841
+    if args.ngpus is None:
+        args.ngpus = dist.helper.get_device_count_by_fork("gpu")
 
-    # get device count
-    with multiprocessing.Pool(1) as pool:
-        ngpus_per_node, _ = pool.map(megengine.get_device_count, ["gpu", "cpu"])
-    if args.ngpus:
-        ngpus_per_node = args.ngpus
-
-    # launch processes
-    procs = []
-    for local_rank in range(ngpus_per_node):
-        p = multiprocessing.Process(
-            target=worker,
-            kwargs=dict(
-                rank=args.rank * ngpus_per_node + local_rank,
-                world_size=args.world_size * ngpus_per_node,
-                ngpus_per_node=ngpus_per_node,
-                args=args,
-            ),
-        )
-        p.start()
-        procs.append(p)
-
-    # join processes
-    for p in procs:
-        p.join()
-
-
-def worker(rank, world_size, ngpus_per_node, args):
-    if world_size > 1:
-        # init process group
-        dist.init_process_group(
+    if args.world_size > 1:
+        dist_worker = dist.launcher(
             master_ip=args.dist_addr,
             port=args.dist_port,
-            world_size=world_size,
-            rank=rank,
-            device=rank % ngpus_per_node,
-            backend="nccl",
-        )
-        logging.info(
-            "init process group rank %d / %d", dist.get_rank(), dist.get_world_size()
-        )
+            world_size=args.world_size,
+            rank_start=args.rank * args.ngpus,
+            n_gpus=args.ngpus
+        )(worker)
+        dist_worker(args)
+    else:
+        worker(args)
 
+
+def worker(args):
     # build dataset
     _, valid_dataloader = build_dataset(args)
 
@@ -121,10 +92,10 @@ def worker(rank, world_size, ngpus_per_node, args):
         loss = F.nn.cross_entropy(logits, label)
         acc1, acc5 = F.topk_accuracy(logits, label, topk=(1, 5))
         # calculate mean values
-        if world_size > 1:
-            loss = F.distributed.all_reduce_sum(loss) / world_size
-            acc1 = F.distributed.all_reduce_sum(acc1) / world_size
-            acc5 = F.distributed.all_reduce_sum(acc5) / world_size
+        if args.world_size > 1:
+            loss = F.distributed.all_reduce_sum(loss) / args.world_size
+            acc1 = F.distributed.all_reduce_sum(acc1) / args.world_size
+            acc5 = F.distributed.all_reduce_sum(acc5) / args.world_size
         return loss, acc1, acc5
 
     model.eval()
