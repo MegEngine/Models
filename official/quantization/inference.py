@@ -52,14 +52,14 @@ def main():
     if args.mode != "normal":
         quantize_qat(model, qconfig=Q.ema_fakequant_qconfig)
 
-    if args.mode == "quantized":
-        quantize(model)
-
     if args.checkpoint:
         logger.info("Load pretrained weights from %s", args.checkpoint)
         ckpt = mge.load(args.checkpoint)
         ckpt = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
         model.load_state_dict(ckpt, strict=False)
+
+    if args.mode == "quantized":
+        quantize(model)
 
     rpath = os.path.realpath(__file__ + "/../../")
     if args.image is None:
