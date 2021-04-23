@@ -131,6 +131,15 @@ def worker(world_size, args):
 
     infer(calculate_scale, valid_queue, args)
 
+    # save calibration checkpoint
+    mge.save(
+        {"step": -1, "state_dict": model.state_dict()},
+        os.path.join(save_dir, "checkpoint-calibration.pkl"),
+    )
+    logger.info(
+        "save in {}".format(os.path.join(save_dir, "checkpoint-calibration.pkl"))
+    )
+
     # quantized
     model = quantize(model)
 
@@ -148,15 +157,6 @@ def worker(world_size, args):
 
     _, valid_acc, valid_acc5 = infer(eval_func, valid_queue, args)
     logger.info("TEST %f, %f", valid_acc, valid_acc5)
-
-    # save quantized model
-    mge.save(
-        {"step": -1, "state_dict": model.state_dict()},
-        os.path.join(save_dir, "checkpoint-calibration.pkl"),
-    )
-    logger.info(
-        "save in {}".format(os.path.join(save_dir, "checkpoint-calibration.pkl"))
-    )
 
 
 def infer(model, data_queue, args):
