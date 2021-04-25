@@ -84,7 +84,7 @@ def main():
         default=20,
         type=int,
         metavar="N",
-        help="print frequency (default: 10)",
+        help="print frequency (default: 20)",
     )
 
     parser.add_argument("--dist-addr", default="localhost")
