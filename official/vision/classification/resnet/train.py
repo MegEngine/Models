@@ -74,7 +74,7 @@ def main():
         "--momentum", default=0.9, type=float, help="momentum (default: 0.9)"
     )
     parser.add_argument(
-        "--weight-decay", default=1e-4, type=float, help="weight decay (default: 0.9)"
+        "--weight-decay", default=1e-4, type=float, help="weight decay (default: 1e-4)"
     )
 
     parser.add_argument("-j", "--workers", default=2, type=int)
