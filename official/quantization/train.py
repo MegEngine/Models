@@ -203,10 +203,9 @@ def worker(world_size, args):
         n = image.shape[0]
 
         loss, acc1, acc5 = train_func(image, label)
-
-        top1.update(100 * acc1.numpy()[0], n)
-        top5.update(100 * acc5.numpy()[0], n)
-        objs.update(loss.numpy()[0], n)
+        top1.update(100 * acc1.item(), n)
+        top5.update(100 * acc5.item(), n)
+        objs.update(loss.item(), n)
         total_time.update(time.time() - t)
         t = time.time()
         if step % args.report_freq == 0 and rank == 0:
@@ -256,9 +255,9 @@ def infer(model, data_queue, args):
 
         loss, acc1, acc5 = model(image, label)
 
-        objs.update(loss.numpy()[0], n)
-        top1.update(100 * acc1.numpy()[0], n)
-        top5.update(100 * acc5.numpy()[0], n)
+        objs.update(loss.item(), n)
+        top1.update(100 * acc1.item(), n)
+        top5.update(100 * acc5.item(), n)
         total_time.update(time.time() - t)
         t = time.time()
 
