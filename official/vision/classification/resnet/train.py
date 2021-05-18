@@ -249,13 +249,14 @@ def worker(rank, world_size, ngpus_per_node, args):
                 valid_acc1,
                 valid_acc5,
             )
-            megengine.save(
-                {
-                    "epoch": (step + 1) // steps_per_epoch,
-                    "state_dict": model.state_dict(),
-                },
-                os.path.join(args.save, args.arch, "checkpoint.pkl"),
-            )
+            if dist.get_rank() == 0:
+                megengine.save(
+                    {
+                        "epoch": (step + 1) // steps_per_epoch,
+                        "state_dict": model.state_dict(),
+                    },
+                    os.path.join(args.save, args.arch, "checkpoint.pkl"),
+                )
 
 
 def valid(func, data_queue, args):
