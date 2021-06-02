@@ -61,11 +61,11 @@ def main():
     if args.ngpus is None:
         args.ngpus = dist.helper.get_device_count_by_fork("gpu")
 
-    if args.world_size > 1:
+    if args.world_size * args.ngpus > 1:
         dist_worker = dist.launcher(
             master_ip=args.dist_addr,
             port=args.dist_port,
-            world_size=args.world_size,
+            world_size=args.world_size * args.ngpus,
             rank_start=args.rank * args.ngpus,
             n_gpus=args.ngpus
         )(worker)
@@ -92,10 +92,10 @@ def worker(args):
         loss = F.nn.cross_entropy(logits, label)
         acc1, acc5 = F.topk_accuracy(logits, label, topk=(1, 5))
         # calculate mean values
-        if args.world_size > 1:
-            loss = F.distributed.all_reduce_sum(loss) / args.world_size
-            acc1 = F.distributed.all_reduce_sum(acc1) / args.world_size
-            acc5 = F.distributed.all_reduce_sum(acc5) / args.world_size
+        if dist.get_world_size() > 1:
+            loss = F.distributed.all_reduce_sum(loss) / dist.get_world_size()
+            acc1 = F.distributed.all_reduce_sum(acc1) / dist.get_world_size()
+            acc5 = F.distributed.all_reduce_sum(acc5) / dist.get_world_size()
         return loss, acc1, acc5
 
     model.eval()

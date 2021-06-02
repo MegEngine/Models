@@ -96,11 +96,11 @@ def main():
     if args.ngpus is None:
         args.ngpus = dist.helper.get_device_count_by_fork("gpu")
 
-    if args.world_size > 1:
+    if args.world_size * args.ngpus > 1:
         dist_worker = dist.launcher(
             master_ip=args.dist_addr,
             port=args.dist_port,
-            world_size=args.world_size,
+            world_size=args.world_size * args.ngpus,
             rank_start=args.rank * args.ngpus,
             n_gpus=args.ngpus
         )(worker)
@@ -118,19 +118,19 @@ def worker(args):
     # build dataset
     train_dataloader, valid_dataloader = build_dataset(args)
     train_queue = iter(train_dataloader)  # infinite
-    steps_per_epoch = 1280000 // (args.world_size * args.batch_size)
+    steps_per_epoch = 1280000 // (dist.get_world_size() * args.batch_size)
 
     # build model
     model = resnet_model.__dict__[args.arch]()
 
     # Sync parameters
-    if args.world_size > 1:
+    if dist.get_world_size() > 1:
         dist.bcast_list_(model.parameters(), dist.WORLD)
 
     # Autodiff gradient manager
     gm = autodiff.GradManager().attach(
         model.parameters(),
-        callbacks=dist.make_allreduce_cb("SUM") if args.world_size > 1 else None,
+        callbacks=dist.make_allreduce_cb("SUM") if dist.get_world_size() > 1 else None,
     )
 
     # Optimizer
@@ -138,7 +138,7 @@ def worker(args):
         model.parameters(),
         lr=args.lr,
         momentum=args.momentum,
-        weight_decay=args.weight_decay * args.world_size,  # scale weight decay in "SUM" mode
+        weight_decay=args.weight_decay * dist.get_world_size(),  # scale weight decay in "SUM" mode
     )
 
     # train and valid func
@@ -156,10 +156,10 @@ def worker(args):
         loss = F.nn.cross_entropy(logits, label)
         acc1, acc5 = F.topk_accuracy(logits, label, topk=(1, 5))
         # calculate mean values
-        if args.world_size > 1:
-            loss = F.distributed.all_reduce_sum(loss) / args.world_size
-            acc1 = F.distributed.all_reduce_sum(acc1) / args.world_size
-            acc5 = F.distributed.all_reduce_sum(acc5) / args.world_size
+        if dist.get_world_size() > 1:
+            loss = F.distributed.all_reduce_sum(loss) / dist.get_world_size()
+            acc1 = F.distributed.all_reduce_sum(acc1) / dist.get_world_size()
+            acc5 = F.distributed.all_reduce_sum(acc5) / dist.get_world_size()
         return loss, acc1, acc5
 
     # multi-step learning rate scheduler with warmup
