@@ -9,7 +9,7 @@
 import argparse
 import json
 import os
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
 from tqdm import tqdm
 
 import megengine as mge
@@ -77,35 +77,18 @@ def main():
         result_list = []
         if args.devices > 1:
             result_queue = Queue(2000)
-
-            master_ip = "localhost"
-            server = dist.Server()
-            port = server.py_server_port
-            procs = []
-            for i in range(args.devices):
-                proc = Process(
-                    target=worker,
-                    args=(
-                        current_network,
-                        weight_file,
-                        args.dataset_dir,
-                        result_queue,
-                        master_ip,
-                        port,
-                        args.devices,
-                        i,
-                    ),
-                )
-                proc.start()
-                procs.append(proc)
+            dist_worker = dist.launcher()(worker)
+            dist_worker(
+                current_network,
+                weight_file,
+                args.dataset_dir,
+                result_queue,
+            )
 
             num_imgs = dict(coco=5000, objects365=30000)
 
             for _ in tqdm(range(num_imgs[cfg.test_dataset["name"]])):
                 result_list.append(result_queue.get())
-
-            for p in procs:
-                p.join()
         else:
             worker(current_network, weight_file, args.dataset_dir, result_list)
 
@@ -151,16 +134,7 @@ def main():
 
 def worker(
     current_network, weight_file, dataset_dir, result_list,
-    master_ip=None, port=None, world_size=1, rank=0
 ):
-    if world_size > 1:
-        dist.init_process_group(
-            master_ip=master_ip,
-            port=port,
-            world_size=world_size,
-            rank=rank,
-            device=rank,
-        )
 
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
