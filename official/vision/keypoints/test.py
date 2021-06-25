@@ -9,7 +9,6 @@
 import argparse
 import json
 import os
-from multiprocessing import Queue
 from tqdm import tqdm
 
 import cv2
@@ -158,7 +157,6 @@ def worker(
     model_file,
     data_root,
     ann_file,
-    result_queue,
 ):
     """
     :param net_file: network description file
@@ -166,7 +164,6 @@ def worker(
     :param data_dir: the dataset directory
     :param worker_id: the index of the worker
     :param total_worker: number of gpu for evaluation
-    :param result_queue: processing queue
     """
 
     model = getattr(kpm, arch)()
@@ -176,7 +173,10 @@ def worker(
     model.load_state_dict(weight)
 
     loader = build_dataloader(dist.get_rank(), dist.get_world_size(), data_root, ann_file)
+    if dist.get_rank() == 0:
+        loader = tqdm(loader)
 
+    result_list = []
     for data_dict in loader:
         img, bbox, info = data_dict
 
@@ -206,7 +206,8 @@ def worker(
                 "keypoints": keypoints,
             }
 
-            result_queue.put(instance)
+            result_list.append(instance)
+    return result_list
 
 
 def make_parser():
@@ -294,21 +295,9 @@ def main():
             model_file = "{}/epoch_{}.pkl".format(args.model_dir, epoch_num)
         logger.info("Load Model : %s completed", model_file)
 
-        all_results = list()
-
-        result_queue = Queue(5000)
-
-        dist_worker = dist.launcher()(worker)
-        dist_worker(
-            args.arch,
-            model_file,
-            cfg.data_root,
-            ann_file,
-            result_queue,
-        )
-
-        for _ in tqdm(range(len(dets))):
-            all_results.append(result_queue.get())
+        dist_worker = dist.launcher(n_gpus=args.ngpus)(worker)
+        all_results = dist_worker(args.arch, model_file, cfg.data_root, ann_file)
+        all_results = sum(all_results, [])
 
         json_name = "log-of-{}_epoch_{}.json".format(args.arch, epoch_num)
         json_path = os.path.join(save_dir, json_name)

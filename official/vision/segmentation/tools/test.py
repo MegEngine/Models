@@ -8,7 +8,6 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import argparse
 import os
-from multiprocessing import Queue
 from tqdm import tqdm
 
 import cv2
@@ -49,25 +48,12 @@ def main():
     current_network = import_from_file(args.file)
     cfg = current_network.Cfg()
 
-    result_list = []
     if args.devices > 1:
-        result_queue = Queue(500)
-
         dist_worker = dist.launcher(n_gpus=args.devices)(worker)
-        dist_worker(
-            current_network,
-            args.weight_file,
-            args.dataset_dir,
-            result_queue,
-        )
-
-        num_imgs = dict(VOC2012=1449, Cityscapes=500)
-
-        for _ in tqdm(range(num_imgs[cfg.dataset])):
-            result_list.append(result_queue.get())
-
+        result_list = dist_worker(current_network, args.weight_file, args.dataset_dir)
+        result_list = sum(result_list, [])
     else:
-        worker(current_network, args.weight_file, args.dataset_dir, result_list)
+        result_list = worker(current_network, args.weight_file, args.dataset_dir)
 
     if cfg.val_save_path is not None:
         save_results(result_list, cfg.val_save_path, cfg)
@@ -75,10 +61,7 @@ def main():
     compute_metric(result_list, cfg)
 
 
-def worker(
-    current_network, weight_file, dataset_dir, result_list,
-):
-
+def worker(current_network, weight_file, dataset_dir):
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
     model = current_network.Net(cfg)
@@ -94,22 +77,20 @@ def worker(
         return pred
 
     test_loader = build_dataloader(dataset_dir, model.cfg)
-    if dist.get_world_size() == 1:
+    if dist.get_rank() == 0:
         test_loader = tqdm(test_loader)
 
+    result_list = []
     for data in test_loader:
         img = data[0].squeeze()
         label = data[1].squeeze()
         im_info = data[2]
         pred = evaluate(pred_func, img, model.cfg)
         result = {"pred": pred, "gt": label, "name": im_info[2]}
-        if dist.get_world_size() > 1:
-            result_list.put_nowait(result)
-        else:
-            result_list.append(result)
+        result_list.append(result)
+    return result_list
 
 
-# inference one image
 def pad_image_to_shape(img, shape, border_mode, value):
     margin = np.zeros(4, np.uint32)
     pad_height = shape[0] - img.shape[0] if shape[0] - img.shape[0] > 0 else 0
