@@ -9,7 +9,6 @@
 import argparse
 import json
 import os
-from multiprocessing import Queue
 from tqdm import tqdm
 
 import megengine as mge
@@ -75,25 +74,12 @@ def main():
                 os.path.basename(args.file).split(".")[0], epoch_num
             )
 
-        result_list = []
         if args.devices > 1:
-            result_queue = Queue(2000)
-
-            dist_worker = dist.launcher()(worker)
-            dist_worker(
-                current_network,
-                weight_file,
-                args.dataset_dir,
-                result_queue,
-            )
-
-            num_imgs = dict(coco=5000, objects365=30000)
-
-            for _ in tqdm(range(num_imgs[cfg.test_dataset["name"]])):
-                result_list.append(result_queue.get())
-
+            dist_worker = dist.launcher(n_gpus=args.devices)(worker)
+            result_list = dist_worker(current_network, weight_file, args.dataset_dir)
+            result_list = sum(result_list, [])
         else:
-            worker(current_network, weight_file, args.dataset_dir, result_list)
+            result_list = worker(current_network, weight_file, args.dataset_dir)
 
         all_results = DetEvaluator.format(result_list, cfg)
         if args.weight_file:
@@ -141,9 +127,7 @@ def main():
         logger.info("-" * 32)
 
 
-def worker(
-    current_network, weight_file, dataset_dir, result_list,
-):
+def worker(current_network, weight_file, dataset_dir):
     cfg = current_network.Cfg()
     cfg.backbone_pretrained = False
 
@@ -158,9 +142,10 @@ def worker(
     evaluator = DetEvaluator(model)
 
     test_loader = build_dataloader(dataset_dir, model.cfg)
-    if dist.get_world_size() == 1:
+    if dist.get_rank() == 0:
         test_loader = tqdm(test_loader)
 
+    result_list = []
     for data in test_loader:
         image, im_info = DetEvaluator.process_inputs(
             data[0][0],
@@ -175,10 +160,8 @@ def worker(
             "pred_boxes": pred_res,
             "image_id": int(data[1][2][0].split(".")[0].split("_")[-1]),
         }
-        if dist.get_world_size() > 1:
-            result_list.put_nowait(result)
-        else:
-            result_list.append(result)
+        result_list.append(result)
+    return result_list
 
 
 # pylint: disable=unused-argument
