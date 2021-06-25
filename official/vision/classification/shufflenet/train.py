@@ -122,14 +122,15 @@ def worker(args):
     # build model
     model = snet_model.__dict__[args.arch]()
 
-    # Sync parameters
+    # Sync parameters and buffers
     if dist.get_world_size() > 1:
-        dist.bcast_list_(model.parameters(), dist.WORLD)
+        dist.bcast_list_(model.parameters())
+        dist.bcast_list_(model.buffers())
 
     # Autodiff gradient manager
     gm = autodiff.GradManager().attach(
         model.parameters(),
-        callbacks=dist.make_allreduce_cb("SUM") if dist.get_world_size() > 1 else None,
+        callbacks=dist.make_allreduce_cb("mean") if dist.get_world_size() > 1 else None,
     )
 
     # Optimizer
@@ -147,9 +148,9 @@ def worker(args):
             {"params": params_wd},
             {"params": params_nwd, "weight_decay": 0},
         ],
-        lr=args.lr,
+        lr=args.lr * dist.get_world_size(),
         momentum=args.momentum,
-        weight_decay=args.weight_decay * dist.get_world_size(),  # scale weight decay in "SUM" mode
+        weight_decay=args.weight_decay,
     )
 
     # train and valid func
