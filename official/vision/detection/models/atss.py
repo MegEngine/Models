@@ -62,8 +62,8 @@ class ATSS(M.Module):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
             padded_image
-            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
-        ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
+            - np.array(self.cfg.img_mean, dtype="float32")[None, :, None, None]
+        ) / np.array(self.cfg.img_std, dtype="float32")[None, :, None, None]
         return normed_image
 
     def forward(self, image, im_info, gt_boxes=None):
@@ -92,7 +92,7 @@ class ATSS(M.Module):
 
         if self.training:
             gt_labels, gt_offsets, gt_ctrness = self.get_ground_truth(
-                anchors_list, gt_boxes, im_info[:, 4].astype(np.int32),
+                anchors_list, gt_boxes, im_info[:, 4].astype("int32"),
             )
 
             all_level_box_logits = all_level_box_logits.reshape(-1, self.cfg.num_classes)
@@ -215,7 +215,7 @@ class ATSS(M.Module):
             gt_boxes_matched = gt_boxes[match_indices]
             anchor_max_iou = F.indexing_one_hot(ious, match_indices, axis=0)
 
-            labels = gt_boxes_matched[:, 4].astype(np.int32)
+            labels = gt_boxes_matched[:, 4].astype("int32")
             labels[anchor_max_iou == -1] = 0
             offsets = self.point_coder.encode(all_level_anchors, gt_boxes_matched[:, :4])
 

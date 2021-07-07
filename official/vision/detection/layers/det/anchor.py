@@ -76,8 +76,8 @@ class AnchorBoxGenerator(BaseAnchorGenerator):
         offset: float = 0.5,
     ):
         super().__init__()
-        self.anchor_scales = np.array(anchor_scales, dtype=np.float32)
-        self.anchor_ratios = np.array(anchor_ratios, dtype=np.float32)
+        self.anchor_scales = np.array(anchor_scales, dtype="float32")
+        self.anchor_ratios = np.array(anchor_ratios, dtype="float32")
         self.strides = strides
         self.offset = offset
         self.num_features = len(strides)

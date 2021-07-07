@@ -63,8 +63,8 @@ class FreeAnchor(M.Module):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
             padded_image
-            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
-        ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
+            - np.array(self.cfg.img_mean, dtype="float32")[None, :, None, None]
+        ) / np.array(self.cfg.img_std, dtype="float32")[None, :, None, None]
         return normed_image
 
     def forward(self, image, im_info, gt_boxes=None):
@@ -200,12 +200,12 @@ class FreeAnchor(M.Module):
             )
 
         num_foreground = im_info[:, 4].sum()
-        pos_loss = F.concat(positive_losses).sum() / F.maximum(1.0, num_foreground)
+        pos_loss = F.concat(positive_losses).sum() / F.maximum(num_foreground, 1)
         box_probs = F.stack(box_prob_list, axis=0)
 
         neg_loss = negative_bag_loss(
             pred_scores * (1 - box_probs), self.cfg.focal_loss_gamma
-        ).sum() / F.maximum(1.0, num_foreground * bucket_size)
+        ).sum() / F.maximum(num_foreground * bucket_size, 1)
 
         alpha = self.cfg.focal_loss_alpha
         pos_loss = pos_loss * alpha
