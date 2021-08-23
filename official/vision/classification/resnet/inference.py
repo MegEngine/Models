@@ -61,6 +61,7 @@ def main():
         return probs
 
     processed_img = transform.apply(image)[np.newaxis, :]
+    processed_img = megengine.tensor(processed_img, dtype="float32")
     probs = infer_func(processed_img)
 
     top_probs, classes = F.topk(probs, k=5, descending=True)
