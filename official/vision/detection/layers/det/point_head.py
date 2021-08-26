@@ -80,7 +80,7 @@ class PointHead(M.Module):
         bias_value = -math.log((1 - prior_prob) / prior_prob)
         M.init.fill_(self.cls_score.bias, bias_value)
 
-        self.scale_list = mge.Parameter(np.ones(len(self.stride_list), dtype=np.float32))
+        self.scale_list = mge.Parameter(np.ones(len(self.stride_list), dtype="float32"))
 
     def forward(self, features: List[Tensor]):
         logits, offsets, ctrness = [], [], []

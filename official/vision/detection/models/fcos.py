@@ -63,8 +63,8 @@ class FCOS(M.Module):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
             padded_image
-            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
-        ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
+            - np.array(self.cfg.img_mean, dtype="float32")[None, :, None, None]
+        ) / np.array(self.cfg.img_std, dtype="float32")[None, :, None, None]
         return normed_image
 
     def forward(self, image, im_info, gt_boxes=None):
@@ -93,7 +93,7 @@ class FCOS(M.Module):
 
         if self.training:
             gt_labels, gt_offsets, gt_ctrness = self.get_ground_truth(
-                anchors_list, gt_boxes, im_info[:, 4].astype(np.int32),
+                anchors_list, gt_boxes, im_info[:, 4].astype("int32"),
             )
 
             all_level_box_logits = all_level_box_logits.reshape(-1, self.cfg.num_classes)
@@ -183,7 +183,7 @@ class FCOS(M.Module):
 
             object_sizes_of_interest = F.concat([
                 F.broadcast_to(
-                    F.expand_dims(mge.tensor(size, dtype=np.float32), axis=0),
+                    F.expand_dims(mge.tensor(size, dtype="float32"), axis=0),
                     (anchors_i.shape[0], 2)
                 )
                 for anchors_i, size in zip(anchors_list, self.cfg.object_sizes_of_interest)
@@ -221,7 +221,7 @@ class FCOS(M.Module):
             gt_boxes_matched = gt_boxes[match_indices]
             anchor_min_area = F.indexing_one_hot(areas, match_indices, axis=0)
 
-            labels = gt_boxes_matched[:, 4].astype(np.int32)
+            labels = gt_boxes_matched[:, 4].astype("int32")
             labels[anchor_min_area == float("inf")] = 0
             offsets = self.point_coder.encode(all_level_anchors, gt_boxes_matched[:, :4])
 

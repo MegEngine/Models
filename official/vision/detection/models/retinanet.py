@@ -67,8 +67,8 @@ class RetinaNet(M.Module):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
             padded_image
-            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
-        ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
+            - np.array(self.cfg.img_mean, dtype="float32")[None, :, None, None]
+        ) / np.array(self.cfg.img_std, dtype="float32")[None, :, None, None]
         return normed_image
 
     def forward(self, image, im_info, gt_boxes=None):
@@ -94,7 +94,7 @@ class RetinaNet(M.Module):
 
         if self.training:
             gt_labels, gt_offsets = self.get_ground_truth(
-                all_level_anchors, gt_boxes, im_info[:, 4].astype(np.int32),
+                all_level_anchors, gt_boxes, im_info[:, 4].astype("int32"),
             )
 
             all_level_box_logits = all_level_box_logits.reshape(-1, self.cfg.num_classes)
@@ -163,7 +163,7 @@ class RetinaNet(M.Module):
             gt_boxes_matched = gt_boxes[match_indices]
 
             fg_mask = labels == 1
-            labels[fg_mask] = gt_boxes_matched[fg_mask, 4].astype(np.int32)
+            labels[fg_mask] = gt_boxes_matched[fg_mask, 4].astype("int32")
             offsets = self.box_coder.encode(anchors, gt_boxes_matched[:, :4])
 
             labels_list.append(labels)

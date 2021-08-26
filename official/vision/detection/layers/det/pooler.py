@@ -8,8 +8,6 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import math
 
-import numpy as np
-
 import megengine.functional as F
 
 
@@ -26,7 +24,7 @@ def roi_pool(
     num_fms = len(rpn_fms)
     box_area = (rois[:, 3] - rois[:, 1]) * (rois[:, 4] - rois[:, 2])
     assigned_level = F.floor(
-        canonical_level + F.log(F.sqrt(box_area) / canonical_box_size) / np.log(2)
+        canonical_level + F.log(F.sqrt(box_area) / canonical_box_size) / math.log(2)
     ).astype("int32")
     assigned_level = F.minimum(assigned_level, max_level)
     assigned_level = F.maximum(assigned_level, min_level)

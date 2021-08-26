@@ -6,8 +6,6 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-import numpy as np
-
 import megengine.functional as F
 import megengine.module as M
 
@@ -25,7 +23,6 @@ class RPN(M.Module):
         assert len(set(len(x) for x in cfg.anchor_ratios)) == 1
         self.num_cell_anchors = len(cfg.anchor_scales[0]) * len(cfg.anchor_ratios[0])
 
-        self.stride_list = np.array(cfg.rpn_stride).astype(np.float32)
         rpn_channel = cfg.rpn_channel
         self.in_features = cfg.rpn_in_features
 
@@ -89,7 +86,7 @@ class RPN(M.Module):
 
         if self.training:
             rpn_labels, rpn_offsets = self.get_ground_truth(
-                anchors_list, boxes, im_info[:, 4].astype(np.int32)
+                anchors_list, boxes, im_info[:, 4].astype("int32")
             )
             pred_cls_logits, pred_bbox_offsets = self.merge_rpn_score_box(
                 pred_cls_logit_list, pred_bbox_offset_list
@@ -222,7 +219,7 @@ class RPN(M.Module):
             num_positive = int(self.cfg.num_sample_anchors * self.cfg.positive_anchor_ratio)
             labels = layers.sample_labels(labels, num_positive, 1, -1)
             # sample negative labels
-            num_positive = (labels == 1).sum().astype(np.int32)
+            num_positive = (labels == 1).sum().astype("int32")
             num_negative = self.cfg.num_sample_anchors - num_positive
             labels = layers.sample_labels(labels, num_negative, 0, -1)
 
