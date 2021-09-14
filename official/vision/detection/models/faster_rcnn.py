@@ -50,8 +50,8 @@ class FasterRCNN(M.Module):
         padded_image = layers.get_padded_tensor(image, 32, 0.0)
         normed_image = (
             padded_image
-            - np.array(self.cfg.img_mean, dtype=np.float32)[None, :, None, None]
-        ) / np.array(self.cfg.img_std, dtype=np.float32)[None, :, None, None]
+            - np.array(self.cfg.img_mean, dtype="float32")[None, :, None, None]
+        ) / np.array(self.cfg.img_std, dtype="float32")[None, :, None, None]
         return normed_image
 
     def forward(self, image, im_info, gt_boxes=None):

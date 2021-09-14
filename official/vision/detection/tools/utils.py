@@ -281,7 +281,7 @@ class DetEvaluator:
         all_results = []
         for record in results:
             image_filename = record["image_id"]
-            boxes = record["det_res"]
+            boxes = record["pred_boxes"]
             if len(boxes) <= 0:
                 continue
             boxes[:, 2:4] = boxes[:, 2:4] - boxes[:, 0:2]

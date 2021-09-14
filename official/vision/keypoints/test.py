@@ -9,7 +9,6 @@
 import argparse
 import json
 import os
-from multiprocessing import Process, Queue
 from tqdm import tqdm
 
 import cv2
@@ -158,11 +157,6 @@ def worker(
     model_file,
     data_root,
     ann_file,
-    master_ip,
-    port,
-    rank,
-    world_size,
-    result_queue,
 ):
     """
     :param net_file: network description file
@@ -170,18 +164,7 @@ def worker(
     :param data_dir: the dataset directory
     :param worker_id: the index of the worker
     :param total_worker: number of gpu for evaluation
-    :param result_queue: processing queue
     """
-    if world_size > 1:
-        dist.init_process_group(
-            master_ip=master_ip,
-            port=port,
-            world_size=world_size,
-            rank=rank,
-            device=rank,
-        )
-
-    mge.device.set_default_device("gpu{}".format(rank))
 
     model = getattr(kpm, arch)()
     model.eval()
@@ -189,8 +172,11 @@ def worker(
     weight = weight["state_dict"] if "state_dict" in weight.keys() else weight
     model.load_state_dict(weight)
 
-    loader = build_dataloader(rank, world_size, data_root, ann_file)
+    loader = build_dataloader(dist.get_rank(), dist.get_world_size(), data_root, ann_file)
+    if dist.get_rank() == 0:
+        loader = tqdm(loader)
 
+    result_list = []
     for data_dict in loader:
         img, bbox, info = data_dict
 
@@ -220,7 +206,8 @@ def worker(
                 "keypoints": keypoints,
             }
 
-            result_queue.put(instance)
+            result_list.append(instance)
+    return result_list
 
 
 def make_parser():
@@ -308,37 +295,9 @@ def main():
             model_file = "{}/epoch_{}.pkl".format(args.model_dir, epoch_num)
         logger.info("Load Model : %s completed", model_file)
 
-        all_results = list()
-
-        result_queue = Queue(5000)
-        procs = []
-        for i in range(args.ngpus):
-
-            master_ip = "localhost"
-            port = dist.get_free_ports(1)[0]
-            dist.Server(port)
-
-            proc = Process(
-                target=worker,
-                args=(
-                    args.arch,
-                    model_file,
-                    cfg.data_root,
-                    ann_file,
-                    master_ip,
-                    port,
-                    i,
-                    args.ngpus,
-                    result_queue,
-                ),
-            )
-            proc.start()
-            procs.append(proc)
-
-        for _ in tqdm(range(len(dets))):
-            all_results.append(result_queue.get())
-        for p in procs:
-            p.join()
+        dist_worker = dist.launcher(n_gpus=args.ngpus)(worker)
+        all_results = dist_worker(args.arch, model_file, cfg.data_root, ann_file)
+        all_results = sum(all_results, [])
 
         json_name = "log-of-{}_epoch_{}.json".format(args.arch, epoch_num)
         json_path = os.path.join(save_dir, json_name)

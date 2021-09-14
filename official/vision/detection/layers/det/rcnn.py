@@ -6,6 +6,7 @@
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+import megengine as mge
 import megengine.functional as F
 import megengine.module as M
 
@@ -65,7 +66,7 @@ class RCNN(M.Module):
                 pred_offsets[fg_mask, labels[fg_mask] - 1],
                 bbox_targets[fg_mask],
                 self.cfg.rcnn_smooth_l1_beta,
-            ).sum() / F.maximum(num_samples, 1)
+            ).sum() / F.maximum(num_samples, mge.tensor(1))
 
             loss_dict = {
                 "loss_rcnn_cls": loss_rcnn_cls,
