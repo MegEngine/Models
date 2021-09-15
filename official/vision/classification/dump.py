@@ -8,6 +8,7 @@
 # "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 import argparse
+import sys
 # pylint: disable=import-error
 import resnet.model as resnet_model
 # pylint: disable=import-error
@@ -15,7 +16,6 @@ import shufflenet.model as snet_model
 import megengine as mge
 from megengine import jit
 import numpy as np
-import sys
 
 def dump_static_graph(model, graph_name, shape):
     model.eval()
