@@ -9,13 +9,17 @@
 
 import argparse
 import sys
+
 # pylint: disable=import-error
 import resnet.model as resnet_model
 # pylint: disable=import-error
 import shufflenet.model as snet_model
+
+import numpy as np
+
 import megengine as mge
 from megengine import jit
-import numpy as np
+
 
 def dump_static_graph(model, graph_name, shape):
     model.eval()
@@ -34,6 +38,7 @@ def dump_static_graph(model, graph_name, shape):
         optimize_for_inference=True,
         enable_fuse_conv_bias_nonlinearity=True,
     )
+
 
 def main():
     parser = argparse.ArgumentParser(description="MegEngine Classification Dump .mge")
