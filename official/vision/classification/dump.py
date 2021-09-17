@@ -71,7 +71,7 @@ def main():
     elif 'shufflenet' in args.arch:
         model = getattr(snet_model, args.arch)(pretrained=True)
     else:
-        print(f'unavailable arch {args.arch}')
+        print('unavailable arch {}'.format(args.arch))
         sys.exit()
     dump_static_graph(model, args.output, tuple(args.shape))
 
