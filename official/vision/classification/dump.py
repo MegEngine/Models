@@ -75,5 +75,6 @@ def main():
         sys.exit()
     dump_static_graph(model, args.output, tuple(args.shape))
 
+
 if __name__ == "__main__":
     main()
