@@ -53,7 +53,7 @@ def main():
         "--shape",
         type=int,
         nargs=4,
-        default="1 3 224 224",
+        default=(1, 3, 224, 224),
         help="input shape (default: 1 3 224 224)"
     )
     parser.add_argument(
