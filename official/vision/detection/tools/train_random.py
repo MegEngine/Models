@@ -29,7 +29,6 @@ from official.vision.detection.tools.utils import (
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
-mge.device.set_prealloc_config(1024, 1024, 256 * 1024 * 1024, 4.0)
 
 
 def make_parser():
@@ -182,7 +181,7 @@ def train_one_epoch(model, data_queue, opt, gm, epoch, args):
 
 def adjust_learning_rate(optimizer, epoch, step, cfg, args):
     base_lr = (
-        cfg.basic_lr * args.batch_size * (
+        cfg.basic_lr * args.batch_size * dist.get_world_size() * (
             cfg.lr_decay_rate
             ** bisect.bisect_right(cfg.lr_decay_stages, epoch)
         )
