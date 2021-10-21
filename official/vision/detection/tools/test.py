@@ -20,7 +20,6 @@ from official.vision.detection.tools.utils import DetEvaluator, InferenceSampler
 
 logger = mge.get_logger(__name__)
 logger.setLevel("INFO")
-mge.device.set_prealloc_config(1024, 1024, 256 * 1024 * 1024, 4.0)
 
 
 def make_parser():

@@ -165,11 +165,11 @@ def worker(args):
 
     # multi-step learning rate scheduler with warmup
     def adjust_learning_rate(step):
-        lr = args.lr * 0.1 ** bisect.bisect_right(
+        lr = args.lr * dist.get_world_size() * 0.1 ** bisect.bisect_right(
             [30 * steps_per_epoch, 60 * steps_per_epoch, 80 * steps_per_epoch], step
         )
         if step < 5 * steps_per_epoch:  # warmup
-            lr = args.lr * (step / (5 * steps_per_epoch))
+            lr = args.lr * dist.get_world_size() * (step / (5 * steps_per_epoch))
         for param_group in opt.param_groups:
             param_group["lr"] = lr
         return lr

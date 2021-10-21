@@ -176,7 +176,7 @@ def worker(args):
 
     # linear learning rate scheduler
     def adjust_learning_rate(step):
-        lr = args.lr * (1 - step / (args.epochs * steps_per_epoch))
+        lr = args.lr * dist.get_world_size() * (1 - step / (args.epochs * steps_per_epoch))
         for param_group in opt.param_groups:
             param_group["lr"] = lr
         return lr
