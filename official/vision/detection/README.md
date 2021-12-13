@@ -120,6 +120,13 @@ python3 tools/test.py -f configs/retinanet_res50_coco_3x_800size.py -n 8 \
                       -d /path/to/COCO2017
 ```
 
+表格输出多个模型测试结果（不需要gpu，只需要提前准备模型输出的json文件）：
+```bash
+python3 tools/test_in_table.py -f file1.py file2.py\
+                      -j file1.json file2.json\
+                      -d /path/to/COCO2017
+```
+
 验证某个指定weights的性能：
 
 ```bash
