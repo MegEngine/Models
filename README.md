@@ -74,3 +74,7 @@ export PYTHONPATH=/path/to/models:$PYTHONPATH
 我们同样支持一些常见的自然语言处理模型，模型的权重来自Google的pre-trained models, 用户可以直接使用`megengine.hub`轻松的调用预训练的bert模型。
 
 另外，我们在[bert](./official/nlp/bert)中还提供了更加方便的脚本, 可以通过任务名直接获取到对应字典, 配置, 与预训练模型。
+
+### 多模态
+
+多模态学习拥有令人着迷的魅力，其有着丰富有趣的现实应用。我们支持了一些经典的多模态模型，模型的权重来源于官方预训练模型，用户可以参考仓库下的教程轻松体验多模态的奇妙。

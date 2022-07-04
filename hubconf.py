@@ -67,3 +67,15 @@ from official.vision.segmentation.configs import (
     deeplabv3plus_res101_voc_512size,
 )
 from official.vision.segmentation.models import DeepLabV3Plus
+from official.multimodal.clip.models import (
+    rn50,
+    rn101,
+    rn50x4,
+    rn50x16,
+    rn50x64,
+    vit_b_32,
+    vit_b_16,
+    vit_l_14,
+    vit_l_14_336px,
+)
+from official.multimodal.clip.inference_utils import ClipInferenceUtils
