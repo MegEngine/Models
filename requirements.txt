@@ -3,3 +3,5 @@ numpy
 opencv-python
 tqdm
 tabulate
+ftfy
+regex==2020.10.15
