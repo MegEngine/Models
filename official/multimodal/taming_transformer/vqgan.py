@@ -25,6 +25,8 @@ class BaseVQModel(M.Module):
         self.decoder = Decoder(**diffusion_config)
 
         self.in_resolution = diffusion_config['in_resolution']
+        self.attn_resolution = diffusion_config['attention_resolutions']
+        self.in_channel = diffusion_config['in_channel']
 
         if colorize_nlabels is not None or task_type == 'segmentation':
             colorize_nlabels = diffusion_config['out_channel']
