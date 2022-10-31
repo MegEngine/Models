@@ -141,6 +141,29 @@ class SimpleTokenizer():
             'utf-8', errors="replace").replace('</w>', ' ')
         return text
 
+    def tokenize(
+        self,
+        texts: Union[str, List[str]],
+        context_length: int = 77,
+        truncate_text: bool = False
+    ):
+        if isinstance(texts, str):
+            texts = [texts]
+
+        all_tokens = [self.encode(text) for text in texts]
+        result = np.zeros((len(all_tokens), context_length), dtype=np.int32)
+
+        for i, tokens in enumerate(all_tokens):
+            if len(tokens) > context_length:
+                if truncate_text:
+                    tokens = tokens[:context_length]
+                else:
+                    raise RuntimeError(
+                        f"Input {texts[i]} is too long for context length {context_length}")
+            result[i, :len(tokens)] = tokens
+
+        return mge.tensor(result)
+
 
 def tokenize(texts: Union[str, List[str]], context_length: int = 77, truncate: bool = False):
     """
