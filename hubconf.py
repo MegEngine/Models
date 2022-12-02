@@ -1,38 +1,43 @@
-from official.multimodal.big_sleep import BigGAN, Imagine, biggan_128, biggan_256, biggan_512
-from official.multimodal.clip.inference_utils import ClipInferenceUtils
-from official.multimodal.clip.models import (
-    rn50,
-    rn50x4,
-    rn50x16,
-    rn50x64,
-    rn101,
-    vit_b_16,
-    vit_b_32,
-    vit_l_14,
-    vit_l_14_336px,
-)
-from official.multimodal.dalle import (
-    Generator,
-    OpenAIDiscreteVAE,
-    OpenAIDiscreteVAEDecoder,
-    OpenAIDiscreteVAEEncoder,
-    VQGanVAE,
-    coco_512_16_16d_16h_80tsl,
-    openai_discrete_VAE_decoder,
-    openai_discrete_VAE_encoder,
-    vqgan_vae_1024,
-)
-from official.multimodal.taming_transformer import (
-    ConditionalSampler,
-    FastSampler,
-    Reconstruction,
-    celebahq_transformer,
-    drin_transformer,
-    s_flckr_transformer,
-    vqgan_gumbel_f8,
-    vqgan_imagenet_f16_1024,
-    vqgan_imagenet_f16_16384,
-)
+try:
+    from official.multimodal.big_sleep import BigGAN, Imagine, biggan_128, biggan_256, biggan_512
+    from official.multimodal.clip.inference_utils import ClipInferenceUtils
+    from official.multimodal.clip.models import (
+        rn50,
+        rn50x4,
+        rn50x16,
+        rn50x64,
+        rn101,
+        vit_b_16,
+        vit_b_32,
+        vit_l_14,
+        vit_l_14_336px,
+    )
+    from official.multimodal.dalle import (
+        Generator,
+        OpenAIDiscreteVAE,
+        OpenAIDiscreteVAEDecoder,
+        OpenAIDiscreteVAEEncoder,
+        VQGanVAE,
+        coco_512_16_16d_16h_80tsl,
+        openai_discrete_VAE_decoder,
+        openai_discrete_VAE_encoder,
+        vqgan_vae_1024,
+    )
+    from official.multimodal.taming_transformer import (
+        ConditionalSampler,
+        FastSampler,
+        Reconstruction,
+        celebahq_transformer,
+        drin_transformer,
+        s_flckr_transformer,
+        vqgan_gumbel_f8,
+        vqgan_imagenet_f16_1024,
+        vqgan_imagenet_f16_16384,
+    )
+except ModuleNotFoundError:
+    import warnings
+    warnings.warn("Module not found! Please ensure that you install the dependencies, such as 'ftfy', 'youtokentome' and so on.")
+
 from official.nlp.bert.model import (
     cased_L_12_H_768_A_12,
     cased_L_24_H_1024_A_16,
