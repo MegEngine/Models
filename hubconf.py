@@ -34,7 +34,7 @@ try:
         vqgan_imagenet_f16_1024,
         vqgan_imagenet_f16_16384,
     )
-except ModuleNotFoundError:
+except ImportError:
     import warnings
     warnings.warn("Module not found! Please ensure that you install the dependencies, such as 'ftfy', 'youtokentome' and so on.")
 
